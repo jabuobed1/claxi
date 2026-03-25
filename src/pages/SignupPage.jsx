@@ -27,24 +27,24 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div className="min-h-screen bg-black flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* Background Accents */}
       <div className="absolute top-0 left-0 w-full h-full -z-10">
-        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-zinc-100 rounded-full blur-[120px] opacity-50" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-zinc-200 rounded-full blur-[120px] opacity-30" />
+        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-zinc-900 rounded-full blur-[120px] opacity-50" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-zinc-800 rounded-full blur-[120px] opacity-30" />
       </div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <Link to="/" className="flex items-center justify-center gap-2 text-zinc-500 hover:text-black transition-colors mb-8">
+        <Link to="/" className="flex items-center justify-center gap-2 text-zinc-400 hover:text-white transition-colors mb-8">
           <ArrowLeft className="w-4 h-4" />
           <span className="text-sm font-medium">Back to home</span>
         </Link>
-        <h2 className="text-center text-4xl font-black tracking-tight text-black">
+        <h2 className="text-center text-4xl font-black tracking-tight text-white">
           Create your account
         </h2>
-        <p className="mt-2 text-center text-sm text-zinc-500">
+        <p className="mt-2 text-center text-sm text-zinc-400">
           Already have an account?{' '}
-          <Link to="/login" className="font-bold text-black hover:underline">
+          <Link to="/login" className="font-bold text-white hover:underline">
             Sign in
           </Link>
         </p>
@@ -55,7 +55,7 @@ export default function SignupPage() {
         animate={{ opacity: 1, y: 0 }}
         className="mt-8 sm:mx-auto sm:w-full sm:max-w-xl"
       >
-        <div className="bg-white py-10 px-6 shadow-2xl shadow-black/5 sm:rounded-[32px] sm:px-12 border border-zinc-100">
+        <div className="bg-zinc-900 py-10 px-6 shadow-2xl shadow-black/50 sm:rounded-[32px] sm:px-12 border border-zinc-800">
           <form className="space-y-6" onSubmit={handleSubmit}>
             {/* Role Selection */}
             <div className="grid grid-cols-2 gap-4 mb-8">
@@ -64,11 +64,11 @@ export default function SignupPage() {
                 onClick={() => setRole('student')}
                 className={`flex flex-col items-center p-4 rounded-2xl border-2 transition-all ${
                   role === 'student' 
-                    ? 'border-black bg-black text-white' 
-                    : 'border-zinc-100 bg-zinc-50 text-zinc-500 hover:border-zinc-200'
+                    ? 'border-white bg-white text-black' 
+                    : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600'
                 }`}
               >
-                <GraduationCap className={`w-8 h-8 mb-2 ${role === 'student' ? 'text-white' : 'text-zinc-400'}`} />
+                <GraduationCap className={`w-8 h-8 mb-2 ${role === 'student' ? 'text-black' : 'text-zinc-500'}`} />
                 <span className="text-sm font-bold">I'm a Student</span>
               </button>
               <button
@@ -76,22 +76,22 @@ export default function SignupPage() {
                 onClick={() => setRole('tutor')}
                 className={`flex flex-col items-center p-4 rounded-2xl border-2 transition-all ${
                   role === 'tutor' 
-                    ? 'border-black bg-black text-white' 
-                    : 'border-zinc-100 bg-zinc-50 text-zinc-500 hover:border-zinc-200'
+                    ? 'border-white bg-white text-black' 
+                    : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600'
                 }`}
               >
-                <BookOpen className={`w-8 h-8 mb-2 ${role === 'tutor' ? 'text-white' : 'text-zinc-400'}`} />
+                <BookOpen className={`w-8 h-8 mb-2 ${role === 'tutor' ? 'text-black' : 'text-zinc-500'}`} />
                 <span className="text-sm font-bold">I'm a Tutor</span>
               </button>
             </div>
 
             <div>
-              <label htmlFor="name" className="block text-sm font-bold text-black mb-2">
+              <label htmlFor="name" className="block text-sm font-bold text-white mb-2">
                 Full name
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-zinc-400" />
+                  <User className="h-5 w-5 text-zinc-500" />
                 </div>
                 <input
                   id="name"
@@ -100,7 +100,7 @@ export default function SignupPage() {
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="block w-full pl-11 pr-4 py-3 bg-zinc-50 border border-zinc-200 rounded-2xl text-black placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent transition-all"
+                  className="block w-full pl-11 pr-4 py-3 bg-zinc-800 border border-zinc-700 rounded-2xl text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent transition-all"
                   placeholder="John Doe"
                 />
               </div>

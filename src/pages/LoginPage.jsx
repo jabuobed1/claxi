@@ -25,24 +25,24 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div className="min-h-screen bg-black flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* Background Accents */}
       <div className="absolute top-0 left-0 w-full h-full -z-10">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-zinc-100 rounded-full blur-[120px] opacity-50" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-zinc-200 rounded-full blur-[120px] opacity-30" />
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-zinc-900 rounded-full blur-[120px] opacity-50" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-zinc-800 rounded-full blur-[120px] opacity-30" />
       </div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <Link to="/" className="flex items-center justify-center gap-2 text-zinc-500 hover:text-black transition-colors mb-8">
+        <Link to="/" className="flex items-center justify-center gap-2 text-zinc-400 hover:text-white transition-colors mb-8">
           <ArrowLeft className="w-4 h-4" />
           <span className="text-sm font-medium">Back to home</span>
         </Link>
-        <h2 className="text-center text-4xl font-black tracking-tight text-black">
+        <h2 className="text-center text-4xl font-black tracking-tight text-white">
           Welcome back
         </h2>
-        <p className="mt-2 text-center text-sm text-zinc-500">
+        <p className="mt-2 text-center text-sm text-zinc-400">
           Don't have an account?{' '}
-          <Link to="/signup" className="font-bold text-black hover:underline">
+          <Link to="/signup" className="font-bold text-white hover:underline">
             Sign up for free
           </Link>
         </p>
@@ -53,10 +53,10 @@ export default function LoginPage() {
         animate={{ opacity: 1, y: 0 }}
         className="mt-8 sm:mx-auto sm:w-full sm:max-w-md"
       >
-        <div className="bg-white py-10 px-6 shadow-2xl shadow-black/5 sm:rounded-[32px] sm:px-12 border border-zinc-100">
+        <div className="bg-zinc-900 py-10 px-6 shadow-2xl shadow-black/50 sm:rounded-[32px] sm:px-12 border border-zinc-800">
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="email" className="block text-sm font-bold text-black mb-2">
+              <label htmlFor="email" className="block text-sm font-bold text-white mb-2">
                 Email address
               </label>
               <div className="relative">
@@ -71,19 +71,19 @@ export default function LoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full pl-11 pr-4 py-3 bg-zinc-50 border border-zinc-200 rounded-2xl text-black placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent transition-all"
+                  className="block w-full pl-11 pr-4 py-3 bg-zinc-800 border border-zinc-700 rounded-2xl text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent transition-all"
                   placeholder="name@company.com"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-bold text-black mb-2">
+              <label htmlFor="password" className="block text-sm font-bold text-white mb-2">
                 Password
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-zinc-400" />
+                  <Lock className="h-5 w-5 text-zinc-500" />
                 </div>
                 <input
                   id="password"
@@ -93,7 +93,7 @@ export default function LoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-11 pr-4 py-3 bg-zinc-50 border border-zinc-200 rounded-2xl text-black placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent transition-all"
+                  className="block w-full pl-11 pr-4 py-3 bg-zinc-800 border border-zinc-700 rounded-2xl text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent transition-all"
                   placeholder="••••••••"
                 />
               </div>
@@ -105,15 +105,15 @@ export default function LoginPage() {
                   id="remember-me"
                   name="remember-me"
                   type="checkbox"
-                  className="h-4 w-4 text-black focus:ring-black border-zinc-300 rounded cursor-pointer"
+                  className="h-4 w-4 text-white focus:ring-white border-zinc-600 rounded cursor-pointer"
                 />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-zinc-500 cursor-pointer">
+                <label htmlFor="remember-me" className="ml-2 block text-sm text-zinc-400 cursor-pointer">
                   Remember me
                 </label>
               </div>
 
               <div className="text-sm">
-                <a href="#" className="font-bold text-black hover:underline">
+                <a href="#" className="font-bold text-white hover:underline">
                   Forgot password?
                 </a>
               </div>
@@ -129,18 +129,18 @@ export default function LoginPage() {
           <div className="mt-8">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-zinc-100" />
+                <div className="w-full border-t border-zinc-700" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-zinc-400">Or continue with</span>
+                <span className="px-2 bg-zinc-900 text-zinc-500">Or continue with</span>
               </div>
             </div>
 
             <div className="mt-6 grid grid-cols-2 gap-4">
-              <button className="w-full inline-flex justify-center py-3 px-4 border border-zinc-200 rounded-2xl bg-white text-sm font-bold text-black hover:bg-zinc-50 transition-colors">
+              <button className="w-full inline-flex justify-center py-3 px-4 border border-zinc-700 rounded-2xl bg-zinc-800 text-sm font-bold text-white hover:bg-zinc-700 transition-colors">
                 Google
               </button>
-              <button className="w-full inline-flex justify-center py-3 px-4 border border-zinc-200 rounded-2xl bg-white text-sm font-bold text-black hover:bg-zinc-50 transition-colors">
+              <button className="w-full inline-flex justify-center py-3 px-4 border border-zinc-700 rounded-2xl bg-zinc-800 text-sm font-bold text-white hover:bg-zinc-700 transition-colors">
                 Apple
               </button>
             </div>
