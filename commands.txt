@@ -1,0 +1,48 @@
+1) Before you start working in Codespaces
+
+Use this first so your Codespace is up to date with GitHub before you edit anything.
+
+git status
+git branch
+git fetch origin
+git pull origin main
+
+If your branch is not main, replace main with your branch name.
+
+2) If Codespaces says you have local changes before pulling
+
+Use this safe flow:
+
+git status
+git stash
+git pull origin main
+git stash pop
+
+This temporarily saves your local uncommitted changes, pulls the latest remote code, then reapplies your local edits.
+
+3) Before switching from Codespaces to Codex
+
+Do this so Codex sees your latest work on GitHub.
+
+git status
+git add .
+git commit -m "Save progress before Codex"
+git push origin main
+
+If you are not ready to commit everything, then at least check status:
+
+git status
+4) After Codex has made changes and you want them in Codespaces
+
+Go back to Codespaces and run:
+
+git status
+git fetch origin
+git pull origin main
+
+If you already changed files locally in Codespaces, use this instead:
+
+git status
+git stash
+git pull origin main
+git stash pop
