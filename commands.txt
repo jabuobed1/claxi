@@ -1,48 +1,187 @@
-1) Before you start working in Codespaces
+# CODEX + CODESPACES GIT WORKFLOW GUIDE
 
-Use this first so your Codespace is up to date with GitHub before you edit anything.
+## PURPOSE
+
+This guide helps you safely work between Codespaces and Codex without losing work,
+overwriting changes, or creating Git conflicts.
+
+## CORE RULE
+
+ALWAYS:
+
+1. Pull before you start working
+2. Push before you leave the environment
+
+---
+
+1. WHEN YOU OPEN CODESPACES (START OF WORK)
+
+---
+
+Run:
 
 git status
 git branch
 git fetch origin
 git pull origin main
 
-If your branch is not main, replace main with your branch name.
+(If your branch is not "main", replace "main" with your branch name)
 
-2) If Codespaces says you have local changes before pulling
+---
 
-Use this safe flow:
+2. IF GIT SAYS YOU HAVE LOCAL CHANGES BEFORE PULLING
+
+---
+
+Run:
 
 git status
 git stash
 git pull origin main
 git stash pop
 
-This temporarily saves your local uncommitted changes, pulls the latest remote code, then reapplies your local edits.
+(This temporarily saves your changes, pulls updates, then restores your work)
 
-3) Before switching from Codespaces to Codex
+---
 
-Do this so Codex sees your latest work on GitHub.
+3. WHILE WORKING (OPTIONAL CHECK)
+
+---
+
+Run:
+
+git status
+
+(This shows what files have changed)
+
+---
+
+4. BEFORE SWITCHING TO CODEX (VERY IMPORTANT)
+
+---
+
+Run:
 
 git status
 git add .
-git commit -m "Save progress before Codex"
+git commit -m "Commit before starting to set up firebase."
 git push origin main
 
-If you are not ready to commit everything, then at least check status:
+(This ensures Codex sees your latest work from GitHub)
 
-git status
-4) After Codex has made changes and you want them in Codespaces
+---
 
-Go back to Codespaces and run:
+5. AFTER CODEX HAS MADE CHANGES (BACK TO CODESPACES)
+
+---
+
+Run:
 
 git status
 git fetch origin
 git pull origin main
 
-If you already changed files locally in Codespaces, use this instead:
+---
+
+6. IF YOU ALSO HAVE LOCAL CHANGES WHEN PULLING
+
+---
+
+Run:
 
 git status
 git stash
 git pull origin main
 git stash pop
+
+---
+
+7. IF YOU WANT TO RESET CODESPACES TO MATCH GITHUB EXACTLY
+
+---
+
+WARNING: This deletes ALL uncommitted local changes
+
+Run:
+
+git fetch origin
+git reset --hard origin/main
+
+---
+
+8. IF GIT SAYS "BRANCHES HAVE DIVERGED"
+
+---
+
+Run:
+
+git fetch origin
+git pull --rebase origin main
+
+If you have local changes first:
+
+git stash
+git pull --rebase origin main
+git stash pop
+
+---
+
+9. DAILY WORKFLOW (SIMPLE VERSION)
+
+---
+
+START OF DAY:
+git status
+git fetch origin
+git pull origin main
+
+WORK...
+
+SAVE WORK:
+git add .
+git commit -m "Work update"
+git push origin main
+
+RETURN AFTER CODEX:
+git status
+git fetch origin
+git pull origin main
+
+---
+
+10. SAFE FULL WORKFLOW EXAMPLE
+
+---
+
+# Get latest code
+
+git status
+git fetch origin
+git pull origin main
+
+# Do your work...
+
+# Save before leaving
+
+git add .
+git commit -m "Save progress before Codex"
+git push origin main
+
+# Later, sync again
+
+git status
+git fetch origin
+git pull origin main
+
+---
+
+## FINAL REMINDER
+
+If something goes wrong:
+
+* Run "git status" first
+* NEVER panic
+* NEVER randomly delete files
+* Ask for help with the exact error message
+
+## END OF GUIDE
