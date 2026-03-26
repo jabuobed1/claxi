@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { ArrowLeft, Mail, Lock, User, GraduationCap, BookOpen } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 
 function Button({ type = 'button', children, className = '', ...props }) {
   return (
@@ -20,10 +21,24 @@ export default function SignupPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { signup } = useAuth();
+  const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Signup attempt:', { name, email, password, role });
+    setError('');
+
+    try {
+      setIsSubmitting(true);
+      const user = await signup({ name, email, password, role });
+      navigate(user.role === 'tutor' ? '/app/tutor' : '/app/student');
+    } catch (submissionError) {
+      setError(submissionError.message || 'Unable to create account right now.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -156,9 +171,11 @@ export default function SignupPage() {
               <a href="#" className="text-black font-bold hover:underline">Privacy Policy</a>.
             </p>
 
+            {error ? <p className="text-sm text-rose-400">{error}</p> : null}
+
             <div>
-              <Button type="submit" className="w-full py-4 text-lg">
-                Create Account
+              <Button type="submit" className="w-full py-4 text-lg" disabled={isSubmitting}>
+                {isSubmitting ? 'Creating account...' : 'Create Account'}
               </Button>
             </div>
           </form>

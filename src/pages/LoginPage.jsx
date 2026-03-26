@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { ArrowLeft, Mail, Lock } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 
 function Button({ type = 'button', children, className = '', ...props }) {
   return (
@@ -18,10 +19,26 @@ function Button({ type = 'button', children, className = '', ...props }) {
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAuth();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Login attempt:', { email, password });
+    setError('');
+
+    try {
+      setIsSubmitting(true);
+      const user = await login({ email, password });
+      const fallbackPath = user.role === 'tutor' ? '/app/tutor' : '/app/student';
+      navigate(location.state?.from || fallbackPath);
+    } catch (submissionError) {
+      setError(submissionError.message || 'Unable to sign in right now.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -119,9 +136,11 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {error ? <p className="text-sm text-rose-400">{error}</p> : null}
+
             <div>
-              <Button type="submit" className="w-full py-4 text-lg">
-                Sign in
+              <Button type="submit" className="w-full py-4 text-lg" disabled={isSubmitting}>
+                {isSubmitting ? 'Signing in...' : 'Sign in'}
               </Button>
             </div>
           </form>
