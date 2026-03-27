@@ -31,7 +31,7 @@ export default function AppShell() {
         ) : null}
 
         <div>
-          <Topbar name={user?.displayName || 'Claxi User'} role={user?.role || 'student'} onMenuClick={() => setIsOpen(true)} />
+          <Topbar name={user?.fullName || user?.displayName || 'Claxi User'} role={user?.role || 'student'} onMenuClick={() => setIsOpen(true)} />
           <Outlet />
         </div>
       </div>

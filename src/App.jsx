@@ -8,10 +8,13 @@ import AppHomeRedirect from './pages/app/AppHomeRedirect';
 import StudentDashboardPage from './pages/app/student/StudentDashboardPage';
 import RequestClassPage from './pages/app/student/RequestClassPage';
 import StudentRequestsPage from './pages/app/student/StudentRequestsPage';
+import StudentSessionsPage from './pages/app/student/StudentSessionsPage';
 import TutorDashboardPage from './pages/app/tutor/TutorDashboardPage';
 import AvailableRequestsPage from './pages/app/tutor/AvailableRequestsPage';
 import MyClassesPage from './pages/app/tutor/MyClassesPage';
+import TutorSessionsPage from './pages/app/tutor/TutorSessionsPage';
 import ProfilePage from './pages/app/ProfilePage';
+import SettingsPage from './pages/app/SettingsPage';
 
 export default function App() {
   return (
@@ -31,6 +34,7 @@ export default function App() {
         >
           <Route index element={<AppHomeRedirect />} />
           <Route path="profile" element={<ProfilePage />} />
+          <Route path="settings" element={<SettingsPage />} />
 
           <Route
             path="student"
@@ -56,6 +60,14 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="student/sessions"
+            element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <StudentSessionsPage />
+              </ProtectedRoute>
+            }
+          />
 
           <Route
             path="tutor"
@@ -78,6 +90,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={['tutor']}>
                 <MyClassesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="tutor/sessions"
+            element={
+              <ProtectedRoute allowedRoles={['tutor']}>
+                <TutorSessionsPage />
               </ProtectedRoute>
             }
           />

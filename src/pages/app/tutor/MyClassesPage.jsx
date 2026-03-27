@@ -4,11 +4,11 @@ import LoadingState from '../../../components/ui/LoadingState';
 import EmptyState from '../../../components/ui/EmptyState';
 import RequestCard from '../../../components/app/RequestCard';
 import { useAuth } from '../../../hooks/useAuth';
-import { useTutorClasses } from '../../../hooks/useClassRequests';
+import { useTutorAcceptedRequests } from '../../../hooks/useClassRequests';
 
 export default function MyClassesPage() {
   const { user } = useAuth();
-  const { classes, isLoading } = useTutorClasses(user?.uid);
+  const { classes, isLoading } = useTutorAcceptedRequests(user?.uid);
 
   return (
     <div>

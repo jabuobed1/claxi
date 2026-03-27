@@ -1,0 +1,15 @@
+export const SESSION_STATUSES = {
+  ACCEPTED: 'accepted',
+  SCHEDULED: 'scheduled',
+  IN_PROGRESS: 'in_progress',
+  COMPLETED: 'completed',
+  CANCELED: 'canceled',
+};
+
+export const sessionStatusOptions = [
+  SESSION_STATUSES.ACCEPTED,
+  SESSION_STATUSES.SCHEDULED,
+  SESSION_STATUSES.IN_PROGRESS,
+  SESSION_STATUSES.COMPLETED,
+  SESSION_STATUSES.CANCELED,
+];

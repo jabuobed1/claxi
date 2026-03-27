@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import PageHeader from '../../../components/ui/PageHeader';
 import SectionCard from '../../../components/ui/SectionCard';
 import FormField from '../../../components/ui/FormField';
+import SelectField from '../../../components/ui/SelectField';
 import { useAuth } from '../../../hooks/useAuth';
+import { meetingProviderOptions } from '../../../constants/meetingProviders';
 import { createClassRequest } from '../../../services/classRequestService';
 
 const initialForm = {
@@ -13,7 +15,7 @@ const initialForm = {
   preferredDate: '',
   preferredTime: '',
   duration: '60 mins',
-  tutorPreference: '',
+  meetingProviderPreference: 'any',
   budget: '',
 };
 
@@ -39,7 +41,8 @@ export default function RequestClassPage() {
         ...form,
         mode: 'online',
         studentId: user.uid,
-        studentName: user.displayName || user.email,
+        studentName: user.fullName || user.displayName || user.email,
+        studentEmail: user.email,
       });
       navigate('/app/student/requests');
     } catch (submissionError) {
@@ -78,17 +81,15 @@ export default function RequestClassPage() {
 
           <div className="grid gap-5 md:grid-cols-3">
             <FormField label="Duration" name="duration" value={form.duration} onChange={onChange} placeholder="60 mins" required />
-            <FormField label="Mode" name="modeDisplay" value="Online" readOnly className="bg-zinc-900 text-zinc-400" />
+            <SelectField
+              label="Meeting provider"
+              name="meetingProviderPreference"
+              value={form.meetingProviderPreference}
+              onChange={onChange}
+              options={meetingProviderOptions}
+            />
             <FormField label="Budget (optional)" name="budget" value={form.budget} onChange={onChange} placeholder="$20-40/hr" />
           </div>
-
-          <FormField
-            label="Tutor preference (optional)"
-            name="tutorPreference"
-            value={form.tutorPreference}
-            onChange={onChange}
-            placeholder="Preferred tutor name or expertise"
-          />
 
           {error ? <p className="text-sm text-rose-400">{error}</p> : null}
 
