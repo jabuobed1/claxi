@@ -1,6 +1,7 @@
 export const REQUEST_STATUSES = {
   PENDING: 'pending',
   ACCEPTED: 'accepted',
+  SCHEDULED: 'scheduled',
   IN_PROGRESS: 'in_progress',
   COMPLETED: 'completed',
   CANCELED: 'canceled',
@@ -14,6 +15,10 @@ export const statusConfig = {
   [REQUEST_STATUSES.ACCEPTED]: {
     label: 'Accepted',
     className: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
+  },
+  [REQUEST_STATUSES.SCHEDULED]: {
+    label: 'Scheduled',
+    className: 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30',
   },
   [REQUEST_STATUSES.IN_PROGRESS]: {
     label: 'In Progress',

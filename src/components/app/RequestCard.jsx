@@ -1,4 +1,5 @@
-import { Clock3, DollarSign } from 'lucide-react';
+import { Clock3, DollarSign, UserCircle2 } from 'lucide-react';
+import { getMeetingProviderLabel } from '../../constants/meetingProviders';
 import StatusBadge from '../ui/StatusBadge';
 
 export default function RequestCard({ request, action }) {
@@ -19,10 +20,17 @@ export default function RequestCard({ request, action }) {
           <Clock3 className="h-4 w-4 text-zinc-500" />
           {request.preferredDate} • {request.preferredTime} • {request.duration}
         </p>
+        <p className="text-zinc-400">Provider pref: {getMeetingProviderLabel(request.meetingProviderPreference)}</p>
         {request.budget ? (
           <p className="flex items-center gap-2">
             <DollarSign className="h-4 w-4 text-zinc-500" />
             Budget: {request.budget}
+          </p>
+        ) : null}
+        {request.tutorName ? (
+          <p className="flex items-center gap-2">
+            <UserCircle2 className="h-4 w-4 text-zinc-500" />
+            Tutor: {request.tutorName}
           </p>
         ) : null}
       </div>

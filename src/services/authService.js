@@ -1,4 +1,5 @@
 import { getFirebaseClients } from '../firebase/config';
+import { EMAIL_EVENT_TYPES, queueEmailEvent } from './emailEventService';
 import { getUserProfile, upsertUserProfile } from './userService';
 
 const MOCK_USER_KEY = 'claxi_mock_user';
@@ -23,6 +24,7 @@ export function subscribeToAuthChanges(callback) {
       const profile = (await getUserProfile(firebaseUser.uid)) || {
         uid: firebaseUser.uid,
         email: firebaseUser.email,
+        fullName: firebaseUser.displayName,
         displayName: firebaseUser.displayName,
         role: 'student',
       };
@@ -41,6 +43,7 @@ export async function loginWithEmail({ email, password }) {
     const mockUser = {
       uid: 'mock-user',
       email,
+      fullName: email.split('@')[0],
       displayName: email.split('@')[0],
       role: 'student',
     };
@@ -55,8 +58,10 @@ export async function loginWithEmail({ email, password }) {
   return {
     uid: credential.user.uid,
     email: credential.user.email,
+    fullName: profile?.fullName || profile?.displayName || credential.user.displayName,
     displayName: profile?.displayName || credential.user.displayName,
     role: profile?.role || 'student',
+    ...profile,
   };
 }
 
@@ -67,6 +72,7 @@ export async function signupWithEmail({ name, email, password, role }) {
     const mockUser = {
       uid: 'mock-user',
       email,
+      fullName: name,
       displayName: name,
       role,
     };
@@ -85,11 +91,20 @@ export async function signupWithEmail({ name, email, password, role }) {
     role,
   });
 
+  await queueEmailEvent(EMAIL_EVENT_TYPES.WELCOME, {
+    userId: credential.user.uid,
+    email,
+    fullName: name,
+    role,
+  });
+
   return {
     uid: credential.user.uid,
     email,
+    fullName: profile.fullName,
     displayName: profile.displayName,
     role: profile.role,
+    ...profile,
   };
 }
 

@@ -13,7 +13,7 @@ export default function ProfilePage() {
         <dl className="grid gap-6 sm:grid-cols-2">
           <div>
             <dt className="text-xs uppercase tracking-wide text-zinc-500">Full name</dt>
-            <dd className="mt-1 text-lg font-semibold text-white">{user?.displayName || 'No name set'}</dd>
+            <dd className="mt-1 text-lg font-semibold text-white">{user?.fullName || user?.displayName || 'No name set'}</dd>
           </div>
           <div>
             <dt className="text-xs uppercase tracking-wide text-zinc-500">Email</dt>
@@ -24,6 +24,10 @@ export default function ProfilePage() {
             <dd className="mt-1 text-lg font-semibold capitalize text-white">{user?.role}</dd>
           </div>
           <div>
+            <dt className="text-xs uppercase tracking-wide text-zinc-500">Phone number</dt>
+            <dd className="mt-1 text-sm text-zinc-300">{user?.phoneNumber || 'Not set'}</dd>
+          </div>
+          <div className="sm:col-span-2">
             <dt className="text-xs uppercase tracking-wide text-zinc-500">User ID</dt>
             <dd className="mt-1 break-all text-sm text-zinc-300">{user?.uid}</dd>
           </div>

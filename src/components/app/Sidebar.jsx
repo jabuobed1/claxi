@@ -5,6 +5,7 @@ import {
   ClipboardList,
   Home,
   LogOut,
+  Settings,
   UserCircle2,
   Users,
 } from 'lucide-react';
@@ -17,11 +18,13 @@ const linksByRole = {
     { to: '/app/student', label: 'Dashboard', icon: Home },
     { to: '/app/student/request-class', label: 'Request Class', icon: ClipboardList },
     { to: '/app/student/requests', label: 'My Requests', icon: CalendarClock },
+    { to: '/app/student/sessions', label: 'My Sessions', icon: BookOpen },
   ],
   tutor: [
     { to: '/app/tutor', label: 'Dashboard', icon: Home },
     { to: '/app/tutor/available-requests', label: 'Available Requests', icon: Users },
     { to: '/app/tutor/my-classes', label: 'My Classes', icon: BookOpen },
+    { to: '/app/tutor/sessions', label: 'Sessions', icon: CalendarClock },
   ],
 };
 
@@ -31,7 +34,7 @@ export default function Sidebar({ role, onLogout }) {
   return (
     <aside className="flex h-full w-full flex-col rounded-3xl border border-zinc-800 bg-zinc-900/95 p-4">
       <Link to="/app" className="mb-6 flex items-center gap-2 px-2">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-white font-black">C</div>
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand font-black text-white">C</div>
         <div>
           <p className="text-sm text-zinc-400">Claxi</p>
           <p className="text-xs uppercase text-zinc-500">{role}</p>
@@ -64,6 +67,18 @@ export default function Sidebar({ role, onLogout }) {
         >
           <UserCircle2 className="h-4 w-4" />
           Profile
+        </NavLink>
+
+        <NavLink
+          to="/app/settings"
+          className={({ isActive }) =>
+            `${baseClass} ${
+              isActive ? 'bg-brand text-white' : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
+            }`
+          }
+        >
+          <Settings className="h-4 w-4" />
+          Settings
         </NavLink>
       </nav>
 

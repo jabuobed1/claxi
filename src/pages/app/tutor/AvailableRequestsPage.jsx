@@ -5,12 +5,12 @@ import LoadingState from '../../../components/ui/LoadingState';
 import EmptyState from '../../../components/ui/EmptyState';
 import RequestCard from '../../../components/app/RequestCard';
 import { useAuth } from '../../../hooks/useAuth';
-import { useAvailableRequests } from '../../../hooks/useClassRequests';
+import { useTutorAvailableRequests } from '../../../hooks/useClassRequests';
 import { acceptClassRequest } from '../../../services/classRequestService';
 
 export default function AvailableRequestsPage() {
   const { user } = useAuth();
-  const { requests, isLoading } = useAvailableRequests();
+  const { requests, isLoading } = useTutorAvailableRequests();
   const [activeRequest, setActiveRequest] = useState(null);
 
   const handleAccept = async (requestId) => {
@@ -19,7 +19,8 @@ export default function AvailableRequestsPage() {
       await acceptClassRequest({
         requestId,
         tutorId: user.uid,
-        tutorName: user.displayName || user.email,
+        tutorName: user.fullName || user.displayName || user.email,
+        tutorEmail: user.email,
       });
     } finally {
       setActiveRequest(null);

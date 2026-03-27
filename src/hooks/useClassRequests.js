@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  subscribeToAvailableRequests,
   subscribeToStudentRequests,
-  subscribeToTutorClasses,
+  subscribeToTutorAcceptedRequests,
+  subscribeToTutorAvailableRequests,
 } from '../services/classRequestService';
+import { REQUEST_STATUSES } from '../utils/requestStatus';
 
 export function useStudentRequests(studentId) {
   const [requests, setRequests] = useState([]);
@@ -28,13 +29,13 @@ export function useStudentRequests(studentId) {
   return { requests, isLoading };
 }
 
-export function useAvailableRequests() {
+export function useTutorAvailableRequests() {
   const [requests, setRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     setIsLoading(true);
-    const unsub = subscribeToAvailableRequests((items) => {
+    const unsub = subscribeToTutorAvailableRequests((items) => {
       setRequests(items);
       setIsLoading(false);
     });
@@ -45,7 +46,7 @@ export function useAvailableRequests() {
   return { requests, isLoading };
 }
 
-export function useTutorClasses(tutorId) {
+export function useTutorAcceptedRequests(tutorId) {
   const [classes, setClasses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -57,7 +58,7 @@ export function useTutorClasses(tutorId) {
     }
 
     setIsLoading(true);
-    const unsub = subscribeToTutorClasses(tutorId, (items) => {
+    const unsub = subscribeToTutorAcceptedRequests(tutorId, (items) => {
       setClasses(items);
       setIsLoading(false);
     });
@@ -66,7 +67,10 @@ export function useTutorClasses(tutorId) {
   }, [tutorId]);
 
   const upcoming = useMemo(
-    () => classes.filter((item) => item.status === 'accepted' || item.status === 'in_progress'),
+    () =>
+      classes.filter((item) =>
+        [REQUEST_STATUSES.ACCEPTED, REQUEST_STATUSES.SCHEDULED, REQUEST_STATUSES.IN_PROGRESS].includes(item.status),
+      ),
     [classes],
   );
 
