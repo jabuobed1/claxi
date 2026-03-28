@@ -7,14 +7,21 @@ import RequestCard from '../../../components/app/RequestCard';
 import { useAuth } from '../../../hooks/useAuth';
 import { useTutorAvailableRequests } from '../../../hooks/useClassRequests';
 import { acceptClassRequest } from '../../../services/classRequestService';
+import { getTutorOnboardingStatus } from '../../../utils/onboarding';
 
 export default function AvailableRequestsPage() {
   const { user } = useAuth();
   const { requests, isLoading } = useTutorAvailableRequests();
   const [activeRequest, setActiveRequest] = useState(null);
+  const onboardingStatus = getTutorOnboardingStatus(user);
+  const canAccept = onboardingStatus.complete && user?.onlineStatus === 'online';
 
   const handleAccept = async (requestId) => {
     try {
+      if (!canAccept) {
+        return;
+      }
+
       setActiveRequest(requestId);
       await acceptClassRequest({
         requestId,
@@ -30,6 +37,11 @@ export default function AvailableRequestsPage() {
   return (
     <div>
       <PageHeader title="Available Requests" description="Accept requests instantly. Status changes are reflected for students immediately." />
+      {!canAccept ? (
+        <p className="mb-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
+          You must be online with a completed tutor profile before accepting requests.
+        </p>
+      ) : null}
 
       <SectionCard>
         {isLoading ? (
@@ -43,7 +55,7 @@ export default function AvailableRequestsPage() {
                 action={
                   <button
                     type="button"
-                    disabled={activeRequest === request.id}
+                    disabled={!canAccept || activeRequest === request.id}
                     onClick={() => handleAccept(request.id)}
                     className="rounded-2xl bg-brand px-4 py-2 text-sm font-bold text-white transition hover:bg-brand-dark disabled:opacity-50"
                   >

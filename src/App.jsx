@@ -15,6 +15,8 @@ import MyClassesPage from './pages/app/tutor/MyClassesPage';
 import TutorSessionsPage from './pages/app/tutor/TutorSessionsPage';
 import ProfilePage from './pages/app/ProfilePage';
 import SettingsPage from './pages/app/SettingsPage';
+import OnboardingPage from './pages/app/OnboardingPage';
+import TutorPaymentsPage from './pages/app/tutor/TutorPaymentsPage';
 
 export default function App() {
   return (
@@ -35,6 +37,7 @@ export default function App() {
           <Route index element={<AppHomeRedirect />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="onboarding" element={<OnboardingPage />} />
 
           <Route
             path="student"
@@ -98,6 +101,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={['tutor']}>
                 <TutorSessionsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="tutor/payments"
+            element={
+              <ProtectedRoute allowedRoles={['tutor']}>
+                <TutorPaymentsPage />
               </ProtectedRoute>
             }
           />

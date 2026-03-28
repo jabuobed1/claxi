@@ -4,6 +4,20 @@ import { getUserProfile, upsertUserProfile } from './userService';
 
 const MOCK_USER_KEY = 'claxi_mock_user';
 
+
+function normalizeUserProfile(profile = {}, fallback = {}) {
+  const roles = Array.isArray(profile.roles) && profile.roles.length ? profile.roles : [profile.role || fallback.role || 'student'];
+  const activeRole = profile.activeRole || profile.role || fallback.role || roles[0] || 'student';
+
+  return {
+    ...fallback,
+    ...profile,
+    roles,
+    role: activeRole,
+    activeRole,
+  };
+}
+
 export function subscribeToAuthChanges(callback) {
   let unsub = () => {};
 
@@ -29,7 +43,7 @@ export function subscribeToAuthChanges(callback) {
         role: 'student',
       };
 
-      callback({ ...profile, uid: firebaseUser.uid });
+      callback(normalizeUserProfile({ ...profile, uid: firebaseUser.uid }, { uid: firebaseUser.uid }));
     });
   });
 
@@ -48,21 +62,21 @@ export async function loginWithEmail({ email, password }) {
       role: 'student',
     };
     localStorage.setItem(MOCK_USER_KEY, JSON.stringify(mockUser));
-    return mockUser;
+    return normalizeUserProfile(mockUser, mockUser);
   }
 
   const { auth, authModule } = clients;
   const credential = await authModule.signInWithEmailAndPassword(auth, email, password);
   const profile = await getUserProfile(credential.user.uid);
 
-  return {
+  return normalizeUserProfile({
     uid: credential.user.uid,
     email: credential.user.email,
     fullName: profile?.fullName || profile?.displayName || credential.user.displayName,
     displayName: profile?.displayName || credential.user.displayName,
     role: profile?.role || 'student',
     ...profile,
-  };
+  });
 }
 
 export async function signupWithEmail({ name, email, password, role }) {
@@ -77,7 +91,7 @@ export async function signupWithEmail({ name, email, password, role }) {
       role,
     };
     localStorage.setItem(MOCK_USER_KEY, JSON.stringify(mockUser));
-    return mockUser;
+    return normalizeUserProfile(mockUser, mockUser);
   }
 
   const { auth, authModule } = clients;
@@ -98,14 +112,14 @@ export async function signupWithEmail({ name, email, password, role }) {
     role,
   });
 
-  return {
+  return normalizeUserProfile({
     uid: credential.user.uid,
     email,
     fullName: profile.fullName,
     displayName: profile.displayName,
     role: profile.role,
     ...profile,
-  };
+  });
 }
 
 export async function logoutUser() {

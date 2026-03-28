@@ -1,9 +1,12 @@
 import SectionCard from '../../components/ui/SectionCard';
 import PageHeader from '../../components/ui/PageHeader';
 import { useAuth } from '../../hooks/useAuth';
+import { getStudentOnboardingStatus, getTutorOnboardingStatus } from '../../utils/onboarding';
 
 export default function ProfilePage() {
   const { user } = useAuth();
+  const studentStatus = getStudentOnboardingStatus(user);
+  const tutorStatus = getTutorOnboardingStatus(user);
 
   return (
     <div>
@@ -26,6 +29,19 @@ export default function ProfilePage() {
           <div>
             <dt className="text-xs uppercase tracking-wide text-zinc-500">Phone number</dt>
             <dd className="mt-1 text-sm text-zinc-300">{user?.phoneNumber || 'Not set'}</dd>
+          </div>
+
+          <div>
+            <dt className="text-xs uppercase tracking-wide text-zinc-500">Student onboarding</dt>
+            <dd className="mt-1 text-sm text-zinc-300">{studentStatus.complete ? 'Complete' : studentStatus.message}</dd>
+          </div>
+          <div>
+            <dt className="text-xs uppercase tracking-wide text-zinc-500">Tutor onboarding</dt>
+            <dd className="mt-1 text-sm text-zinc-300">{tutorStatus.complete ? 'Complete' : tutorStatus.message}</dd>
+          </div>
+          <div>
+            <dt className="text-xs uppercase tracking-wide text-zinc-500">Saved cards</dt>
+            <dd className="mt-1 text-sm text-zinc-300">{user?.paymentMethods?.length || 0}</dd>
           </div>
           <div className="sm:col-span-2">
             <dt className="text-xs uppercase tracking-wide text-zinc-500">User ID</dt>

@@ -1,20 +1,47 @@
 import { getFirebaseClients } from '../firebase/config';
 
-export async function upsertUserProfile({ uid, email, displayName, role }) {
-  const clients = await getFirebaseClients();
+function buildDefaultProfile({ uid, email, displayName, role }) {
+  const normalizedRole = role || 'student';
 
-  const profileShape = {
+  return {
     uid,
     email,
     fullName: displayName,
     displayName,
-    role: role || 'student',
+    role: normalizedRole,
+    activeRole: normalizedRole,
+    roles: normalizedRole === 'tutor' ? ['tutor'] : ['student'],
     profilePhoto: '',
     phoneNumber: '',
-    subjects: [],
+    subjects: normalizedRole === 'tutor' ? ['mathematics'] : ['mathematics'],
     bio: '',
     availability: '',
+    onlineStatus: 'offline',
+    studentProfile: {
+      grade: '',
+      curriculum: '',
+      discoverySource: '',
+    },
+    tutorProfile: {
+      highestGradeResultUrl: '',
+      mathScore: null,
+      gradesToTutor: [],
+      topics: [],
+      verificationStatus: 'pending',
+      payout: {
+        bankName: '',
+        accountNumber: '',
+        accountHolder: '',
+      },
+    },
+    paymentMethods: [],
   };
+}
+
+export async function upsertUserProfile({ uid, email, displayName, role }) {
+  const clients = await getFirebaseClients();
+
+  const profileShape = buildDefaultProfile({ uid, email, displayName, role });
 
   if (!clients) {
     return profileShape;

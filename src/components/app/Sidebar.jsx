@@ -19,12 +19,15 @@ const linksByRole = {
     { to: '/app/student/request-class', label: 'Request Class', icon: ClipboardList },
     { to: '/app/student/requests', label: 'My Requests', icon: CalendarClock },
     { to: '/app/student/sessions', label: 'My Sessions', icon: BookOpen },
+    { to: '/app/onboarding?role=student', label: 'Complete Profile', icon: ClipboardList },
   ],
   tutor: [
     { to: '/app/tutor', label: 'Dashboard', icon: Home },
     { to: '/app/tutor/available-requests', label: 'Available Requests', icon: Users },
     { to: '/app/tutor/my-classes', label: 'My Classes', icon: BookOpen },
     { to: '/app/tutor/sessions', label: 'Sessions', icon: CalendarClock },
+    { to: '/app/tutor/payments', label: 'Payments', icon: CalendarClock },
+    { to: '/app/onboarding?role=tutor', label: 'Complete Profile', icon: ClipboardList },
   ],
 };
 
