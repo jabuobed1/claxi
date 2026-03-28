@@ -1,7 +1,12 @@
 import { getFirebaseClients } from '../firebase/config';
 import { REQUEST_STATUSES } from '../utils/requestStatus';
+import { BILLING_RULES } from '../utils/onboarding';
 import { createNotification } from './notificationService';
 import { EMAIL_EVENT_TYPES, queueEmailEvent } from './emailEventService';
+import { settleSessionBilling } from './classRequestService';
+import { chargeCard } from './paymentGatewayService';
+import { applyWalletDebt } from './walletService';
+import { getUserProfile } from './userService';
 
 const MOCK_SESSIONS_KEY = 'claxi_mock_sessions';
 
@@ -103,11 +108,11 @@ export async function updateSession(sessionId, updates) {
     );
 
     setMockSessions(next);
-    return;
+    return next.find((item) => item.id === sessionId);
   }
 
   const { db, firestoreModule } = clients;
-  const { doc, updateDoc, serverTimestamp, writeBatch } = firestoreModule;
+  const { doc, serverTimestamp, updateDoc, getDoc, writeBatch } = firestoreModule;
 
   const sessionRef = doc(db, 'sessions', sessionId);
   const batch = writeBatch(db);
@@ -117,7 +122,7 @@ export async function updateSession(sessionId, updates) {
     updatedAt: serverTimestamp(),
   });
 
-  if (updates.status) {
+  if (updates.status && updates.requestId) {
     const requestRef = doc(db, 'classRequests', updates.requestId);
     batch.update(requestRef, {
       status: updates.status,
@@ -127,60 +132,100 @@ export async function updateSession(sessionId, updates) {
 
   await batch.commit();
 
-  if (updates.status === REQUEST_STATUSES.SCHEDULED) {
-    await queueEmailEvent(EMAIL_EVENT_TYPES.SESSION_SCHEDULED, {
-      sessionId,
-      requestId: updates.requestId,
-      studentId: updates.studentId,
-      studentEmail: updates.studentEmail,
-      studentName: updates.studentName,
-      tutorId: updates.tutorId,
-      tutorEmail: updates.tutorEmail,
-      tutorName: updates.tutorName,
-      scheduledDate: updates.scheduledDate,
-      scheduledTime: updates.scheduledTime,
-      meetingProvider: updates.meetingProvider,
-      meetingLink: updates.meetingLink,
-      subject: updates.subject,
-      topic: updates.topic,
-    });
-  } else if (updates.status === REQUEST_STATUSES.COMPLETED) {
-    await queueEmailEvent(EMAIL_EVENT_TYPES.SESSION_COMPLETED, {
-      sessionId,
-      requestId: updates.requestId,
-      studentEmail: updates.studentEmail,
-      tutorEmail: updates.tutorEmail,
-      subject: updates.subject,
-      topic: updates.topic,
-    });
-  } else {
-    await queueEmailEvent(EMAIL_EVENT_TYPES.SESSION_UPDATED, {
-      sessionId,
-      requestId: updates.requestId,
-      studentEmail: updates.studentEmail,
-      tutorEmail: updates.tutorEmail,
-      status: updates.status,
-      subject: updates.subject,
-      topic: updates.topic,
-    });
+  const snap = await getDoc(sessionRef);
+  return { id: snap.id, ...snap.data() };
+}
+
+export async function joinSessionAsStudent(session, selectedCardId, selectedCardLast4) {
+  return updateSession(session.id, {
+    ...session,
+    status: REQUEST_STATUSES.IN_PROGRESS,
+    studentJoinedAt: Date.now(),
+    billingStartedAt: Date.now(),
+    selectedCardId,
+    selectedCardLast4,
+  });
+}
+
+export async function endSession(session) {
+  const billing = await settleSessionBilling(session);
+  const studentProfile = await getUserProfile(session.studentId);
+  const selectedCard = (studentProfile?.paymentMethods || []).find((card) => card.id === session.selectedCardId)
+    || (studentProfile?.paymentMethods || []).find((card) => card.isDefault)
+    || studentProfile?.paymentMethods?.[0];
+
+  const charge = await chargeCard({
+    amount: billing.totalAmount,
+    card: selectedCard,
+  });
+
+  let paymentStatus = 'paid';
+
+  if (!charge.ok) {
+    paymentStatus = 'wallet_debt_recorded';
+    await applyWalletDebt(session.studentId, billing.totalAmount);
   }
+
+  const updated = await updateSession(session.id, {
+    ...session,
+    status: REQUEST_STATUSES.COMPLETED,
+    endedAt: Date.now(),
+    billedSeconds: billing.billedSeconds,
+    totalAmount: billing.totalAmount,
+    payoutBreakdown: billing.payoutBreakdown,
+    chargedCardLast4: billing.chargedCardLast4,
+    paymentStatus,
+    paymentTransactionId: charge.transactionId || null,
+  });
 
   await Promise.all([
     createNotification({
-      userId: updates.studentId,
-      title: 'Session updated',
-      message: `${updates.subject} session is now ${updates.status.replace('_', ' ')}.`,
-      type: 'session_update',
-      requestId: updates.requestId,
-      sessionId,
+      userId: session.studentId,
+      title: charge.ok ? 'Session ended' : 'Payment declined - wallet updated',
+      message: charge.ok
+        ? `Billing complete: R${billing.totalAmount.toFixed(2)} (${billing.billedSeconds}s).`
+        : `Card declined. Wallet updated to cover R${billing.totalAmount.toFixed(2)} outstanding.`,
+      type: 'session_billing',
+      requestId: session.requestId,
+      sessionId: session.id,
     }),
     createNotification({
-      userId: updates.tutorId,
-      title: 'Session updated',
-      message: `${updates.subject} session is now ${updates.status.replace('_', ' ')}.`,
-      type: 'session_update',
-      requestId: updates.requestId,
-      sessionId,
+      userId: session.tutorId,
+      title: 'Session ended',
+      message: `Tutor payout pending: R${billing.payoutBreakdown.tutorAmount.toFixed(2)}.`,
+      type: 'session_billing',
+      requestId: session.requestId,
+      sessionId: session.id,
+    }),
+    queueEmailEvent(EMAIL_EVENT_TYPES.SESSION_COMPLETED, {
+      sessionId: session.id,
+      requestId: session.requestId,
+      studentEmail: session.studentEmail,
+      tutorEmail: session.tutorEmail,
+      subject: session.subject,
+      topic: session.topic,
+      amount: billing.totalAmount,
+      rate: BILLING_RULES.DISPLAY_RATE_PER_MINUTE,
+      paymentStatus,
     }),
   ]);
+
+  return updated;
+}
+
+export async function submitSessionRating(session, role, payload) {
+  const ratings = {
+    ...(session.ratings || {}),
+    [role]: {
+      overall: payload.overall,
+      topic: payload.topic,
+      comment: payload.comment || '',
+      submittedAt: Date.now(),
+    },
+  };
+
+  return updateSession(session.id, {
+    ...session,
+    ratings,
+  });
 }

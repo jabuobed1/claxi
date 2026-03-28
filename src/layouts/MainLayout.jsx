@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 
 export default function MainLayout({ children }) {
@@ -29,8 +30,8 @@ export default function MainLayout({ children }) {
             <div>
               <h4 className="font-bold mb-4 text-zinc-900 dark:text-white">Legal</h4>
               <ul className="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
-                <li><a href="#" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Privacy</a></li>
-                <li><a href="#" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Terms</a></li>
+                <li><Link to="/privacy-policy" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Privacy Policy</Link></li>
+                <li><Link to="/terms" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Terms of Service</Link></li>
               </ul>
             </div>
             <div>

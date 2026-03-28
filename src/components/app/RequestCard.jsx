@@ -14,11 +14,12 @@ export default function RequestCard({ request, action }) {
       </div>
 
       <p className="mt-3 text-sm text-zinc-400">{request.description}</p>
+      {request.imageAttachment ? <p className="mt-2 text-xs text-sky-300">Image attached</p> : null}
 
       <div className="mt-4 grid gap-2 text-sm text-zinc-300 sm:grid-cols-2">
         <p className="flex items-center gap-2">
           <Clock3 className="h-4 w-4 text-zinc-500" />
-          {request.preferredDate} • {request.preferredTime} • {request.duration}
+          {request.preferredDate || 'ASAP'} • {request.preferredTime || 'Now'} • {request.duration || 'Flexible'}
         </p>
         <p className="text-zinc-400">Provider pref: {getMeetingProviderLabel(request.meetingProviderPreference)}</p>
         {request.budget ? (

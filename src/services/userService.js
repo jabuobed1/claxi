@@ -1,20 +1,52 @@
 import { getFirebaseClients } from '../firebase/config';
 
-export async function upsertUserProfile({ uid, email, displayName, role }) {
-  const clients = await getFirebaseClients();
+function buildDefaultProfile({ uid, email, displayName, role }) {
+  const normalizedRole = role || 'student';
 
-  const profileShape = {
+  return {
     uid,
     email,
     fullName: displayName,
     displayName,
-    role: role || 'student',
+    role: normalizedRole,
+    activeRole: normalizedRole,
+    roles: normalizedRole === 'tutor' ? ['tutor'] : ['student'],
     profilePhoto: '',
     phoneNumber: '',
-    subjects: [],
+    subjects: normalizedRole === 'tutor' ? ['mathematics'] : ['mathematics'],
     bio: '',
     availability: '',
+    onlineStatus: 'offline',
+    studentProfile: {
+      grade: '',
+      curriculum: '',
+      discoverySource: '',
+    },
+    tutorProfile: {
+      highestGradeResultUrl: '',
+      mathScore: null,
+      gradesToTutor: [],
+      topics: [],
+      verificationStatus: 'pending',
+      payout: {
+        bankName: '',
+        accountNumber: '',
+        accountHolder: '',
+      },
+    },
+    paymentMethods: [],
+    wallet: {
+      balance: 0,
+      currency: 'ZAR',
+      updatedAt: new Date().toISOString(),
+    },
   };
+}
+
+export async function upsertUserProfile({ uid, email, displayName, role }) {
+  const clients = await getFirebaseClients();
+
+  const profileShape = buildDefaultProfile({ uid, email, displayName, role });
 
   if (!clients) {
     return profileShape;
@@ -79,4 +111,56 @@ export async function getUserProfile(uid) {
   }
 
   return { uid: snap.id, ...snap.data() };
+}
+
+
+function scoreTutorForTopic(tutor = {}, topic = '') {
+  const topicKey = topic.toLowerCase();
+  const topicRatings = tutor?.tutorProfile?.topicRatings || {};
+  const topicScore = Number(topicRatings[topicKey] || 0);
+  const overall = Number(tutor?.tutorProfile?.overallRating || 0);
+  const sessionLoadPenalty = tutor?.activeSessionId ? 100 : 0;
+  return topicScore * 2 + overall - sessionLoadPenalty;
+}
+
+export async function getTutorCandidatesForRequest({ topic }) {
+  const clients = await getFirebaseClients();
+
+  if (!clients) {
+    return [];
+  }
+
+  const { db, firestoreModule } = clients;
+  const { collection, getDocs, query, where } = firestoreModule;
+
+  const q = query(
+    collection(db, 'users'),
+    where('activeRole', '==', 'tutor'),
+    where('onlineStatus', '==', 'online'),
+  );
+
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs
+    .map((doc) => ({ uid: doc.id, ...doc.data() }))
+    .filter((tutor) => {
+      const tutorProfile = tutor.tutorProfile || {};
+      const isVerified = tutorProfile.verificationStatus === 'verified';
+      const teachesMath = (tutor.subjects || []).includes('mathematics');
+      return isVerified && teachesMath && !tutor.activeSessionId;
+    })
+    .sort((a, b) => scoreTutorForTopic(b, topic) - scoreTutorForTopic(a, topic));
+}
+
+
+export async function deleteUserProfile(uid) {
+  const clients = await getFirebaseClients();
+
+  if (!clients) {
+    return;
+  }
+
+  const { db, firestoreModule } = clients;
+  const { deleteDoc, doc } = firestoreModule;
+  await deleteDoc(doc(db, 'users', uid));
 }

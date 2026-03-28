@@ -1,8 +1,10 @@
 import { getFirebaseClients } from '../firebase/config';
 import { MEETING_PROVIDERS } from '../constants/meetingProviders';
 import { REQUEST_STATUSES } from '../utils/requestStatus';
+import { BILLING_RULES, PLATFORM_FEE_RATE, TUTOR_PAYOUT_RATE } from '../utils/onboarding';
 import { createNotification } from './notificationService';
 import { EMAIL_EVENT_TYPES, queueEmailEvent } from './emailEventService';
+import { getTutorCandidatesForRequest } from './userService';
 
 const MOCK_REQUESTS_KEY = 'claxi_mock_requests';
 const MOCK_SESSIONS_KEY = 'claxi_mock_sessions';
@@ -32,16 +34,160 @@ function withMockSnapshot(filterFn, callback) {
   return () => window.removeEventListener('storage', emit);
 }
 
+function computeTutorQueue(tutors = []) {
+  return tutors.map((tutor) => tutor.uid);
+}
+
+async function assignNextTutorOffer(requestId) {
+  const clients = await getFirebaseClients();
+
+  if (!clients) {
+    const existing = getMockRequests().find((request) => request.id === requestId);
+    if (!existing) {
+      return null;
+    }
+
+    const queue = existing.tutorQueue || [];
+    const nextTutorId = queue[0] || null;
+
+    if (!nextTutorId) {
+      const next = getMockRequests().map((request) =>
+        request.id === requestId
+          ? {
+              ...request,
+              status: REQUEST_STATUSES.NO_TUTOR_AVAILABLE,
+              currentOfferTutorId: null,
+              offerExpiresAt: null,
+              updatedAt: new Date().toISOString(),
+            }
+          : request,
+      );
+      setMockRequests(next);
+      return null;
+    }
+
+    const next = getMockRequests().map((request) =>
+      request.id === requestId
+        ? {
+            ...request,
+            status: REQUEST_STATUSES.OFFERED,
+            currentOfferTutorId: nextTutorId,
+            tutorQueue: queue,
+            offerExpiresAt: Date.now() + 10000,
+            updatedAt: new Date().toISOString(),
+          }
+        : request,
+    );
+    setMockRequests(next);
+    return nextTutorId;
+  }
+
+  const { db, firestoreModule } = clients;
+  const { doc, getDoc, updateDoc, serverTimestamp } = firestoreModule;
+  const requestRef = doc(db, 'classRequests', requestId);
+  const requestSnap = await getDoc(requestRef);
+
+  if (!requestSnap.exists()) {
+    return null;
+  }
+
+  const requestData = requestSnap.data();
+  const queue = requestData.tutorQueue || [];
+  const nextTutorId = queue[0] || null;
+
+  if (!nextTutorId) {
+    await updateDoc(requestRef, {
+      status: REQUEST_STATUSES.NO_TUTOR_AVAILABLE,
+      currentOfferTutorId: null,
+      offerExpiresAt: null,
+      updatedAt: serverTimestamp(),
+    });
+
+    await createNotification({
+      userId: requestData.studentId,
+      title: 'No tutor available',
+      message: 'No tutor accepted in time. Please retry your request.',
+      type: 'matching_update',
+      requestId,
+    });
+
+    return null;
+  }
+
+  await updateDoc(requestRef, {
+    status: REQUEST_STATUSES.OFFERED,
+    currentOfferTutorId: nextTutorId,
+    offerExpiresAt: Date.now() + 10000,
+    updatedAt: serverTimestamp(),
+  });
+
+  await createNotification({
+    userId: nextTutorId,
+    title: 'New live request',
+    message: `New math request: ${requestData.topic}. Accept within 10 seconds.`,
+    type: 'tutor_offer',
+    requestId,
+  });
+
+  return nextTutorId;
+}
+
+async function initializeTutorMatching(requestId, payload) {
+  const candidates = await getTutorCandidatesForRequest({ topic: payload.topic });
+  const queue = computeTutorQueue(candidates);
+  const clients = await getFirebaseClients();
+
+  if (!clients) {
+    const next = getMockRequests().map((request) =>
+      request.id === requestId
+        ? {
+            ...request,
+            status: REQUEST_STATUSES.MATCHING,
+            tutorQueue: queue,
+            updatedAt: new Date().toISOString(),
+          }
+        : request,
+    );
+    setMockRequests(next);
+    await assignNextTutorOffer(requestId);
+    return;
+  }
+
+  const { db, firestoreModule } = clients;
+  const { doc, updateDoc, serverTimestamp } = firestoreModule;
+
+  await updateDoc(doc(db, 'classRequests', requestId), {
+    status: REQUEST_STATUSES.MATCHING,
+    tutorQueue: queue,
+    updatedAt: serverTimestamp(),
+  });
+
+  await createNotification({
+    userId: payload.studentId,
+    title: 'Finding a tutor',
+    message: 'We are notifying online tutors now.',
+    type: 'matching_update',
+    requestId,
+  });
+
+  await assignNextTutorOffer(requestId);
+}
+
 export async function createClassRequest(payload) {
   const clients = await getFirebaseClients();
   const requestBody = {
     ...payload,
+    subject: 'Mathematics',
     mode: 'online',
     meetingProviderPreference: payload.meetingProviderPreference || MEETING_PROVIDERS.ANY,
     status: REQUEST_STATUSES.PENDING,
     tutorId: null,
     tutorName: null,
     tutorEmail: null,
+    tutorQueue: [],
+    currentOfferTutorId: null,
+    offerExpiresAt: null,
+    imageAttachment: payload.imageAttachment || '',
   };
 
   if (!clients) {
@@ -57,11 +203,12 @@ export async function createClassRequest(payload) {
     await createNotification({
       userId: payload.studentId,
       title: 'Class request submitted',
-      message: `Your ${payload.subject} request is now visible to tutors.`,
+      message: `Your ${payload.topic || payload.subject} request is now matching tutors.`,
       type: 'class_request',
       requestId: request.id,
     });
 
+    await initializeTutorMatching(request.id, payload);
     return request.id;
   }
 
@@ -77,7 +224,7 @@ export async function createClassRequest(payload) {
   await createNotification({
     userId: payload.studentId,
     title: 'Class request submitted',
-    message: `Your ${payload.subject} request is now visible to tutors.`,
+    message: `Your ${payload.topic || payload.subject} request is now matching tutors.`,
     type: 'class_request',
     requestId: docRef.id,
   });
@@ -87,10 +234,11 @@ export async function createClassRequest(payload) {
     studentId: payload.studentId,
     studentName: payload.studentName,
     studentEmail: payload.studentEmail,
-    subject: payload.subject,
+    subject: 'Mathematics',
     topic: payload.topic,
   });
 
+  await initializeTutorMatching(docRef.id, payload);
   return docRef.id;
 }
 
@@ -112,34 +260,80 @@ export function subscribeToStudentRequests(studentId, callback) {
       orderBy('createdAt', 'desc'),
     );
 
-    unsub = onSnapshot(queryRef, (snapshot) => {
-      callback(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
+    unsub = onSnapshot(queryRef, async (snapshot) => {
+      const items = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+      callback(items);
     });
   });
 
   return () => unsub();
 }
 
-export function subscribeToTutorAvailableRequests(callback) {
+export function subscribeToTutorAvailableRequests(tutorId, callback) {
   let unsub = () => {};
 
   getFirebaseClients().then((clients) => {
     if (!clients) {
-      unsub = withMockSnapshot((item) => item.status === REQUEST_STATUSES.PENDING, callback);
+      const emit = async () => {
+        const now = Date.now();
+        const current = getMockRequests();
+
+        const updated = current.map((request) => {
+          if (request.status === REQUEST_STATUSES.OFFERED && request.offerExpiresAt && request.offerExpiresAt <= now) {
+            const queue = (request.tutorQueue || []).filter((id) => id !== request.currentOfferTutorId);
+            return {
+              ...request,
+              tutorQueue: queue,
+              status: REQUEST_STATUSES.MATCHING,
+              currentOfferTutorId: null,
+              offerExpiresAt: null,
+              updatedAt: new Date().toISOString(),
+            };
+          }
+          return request;
+        });
+
+        setMockRequests(updated);
+
+        const mine = updated.filter(
+          (request) =>
+            request.status === REQUEST_STATUSES.OFFERED &&
+            request.currentOfferTutorId === tutorId,
+        );
+
+        callback(mine);
+      };
+
+      emit();
+      const interval = setInterval(emit, 1000);
+      window.addEventListener('storage', emit);
+      unsub = () => {
+        clearInterval(interval);
+        window.removeEventListener('storage', emit);
+      };
       return;
     }
 
     const { db, firestoreModule } = clients;
-    const { collection, onSnapshot, orderBy, query, where } = firestoreModule;
+    const { collection, onSnapshot, query, where } = firestoreModule;
 
     const queryRef = query(
       collection(db, 'classRequests'),
-      where('status', '==', REQUEST_STATUSES.PENDING),
-      orderBy('createdAt', 'desc'),
+      where('status', '==', REQUEST_STATUSES.OFFERED),
+      where('currentOfferTutorId', '==', tutorId),
     );
 
-    unsub = onSnapshot(queryRef, (snapshot) => {
-      callback(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
+    unsub = onSnapshot(queryRef, async (snapshot) => {
+      const now = Date.now();
+      const items = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+
+      for (const item of items) {
+        if (item.offerExpiresAt && item.offerExpiresAt <= now) {
+          await handleTutorOfferResponse({ requestId: item.id, tutorId, response: 'timeout' });
+        }
+      }
+
+      callback(items.filter((item) => !item.offerExpiresAt || item.offerExpiresAt > now));
     });
   });
 
@@ -172,60 +366,92 @@ export function subscribeToTutorAcceptedRequests(tutorId, callback) {
   return () => unsub();
 }
 
-export async function acceptClassRequest({ requestId, tutorId, tutorName, tutorEmail }) {
+export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, tutorEmail, response }) {
   const clients = await getFirebaseClients();
 
   if (!clients) {
     const existing = getMockRequests().find((item) => item.id === requestId);
-    if (!existing || existing.status !== REQUEST_STATUSES.PENDING) {
-      throw new Error('This request is no longer available.');
+    if (!existing || existing.currentOfferTutorId !== tutorId) {
+      return;
     }
 
-    const next = getMockRequests().map((item) =>
+    if (response === 'accept') {
+      const next = getMockRequests().map((item) =>
+        item.id === requestId
+          ? {
+              ...item,
+              tutorId,
+              tutorName: tutorName || existing.tutorName || 'Tutor',
+              tutorEmail: tutorEmail || existing.tutorEmail || '',
+              status: REQUEST_STATUSES.ACCEPTED,
+              updatedAt: new Date().toISOString(),
+            }
+          : item,
+      );
+      setMockRequests(next);
+
+      const session = {
+        id: crypto.randomUUID(),
+        requestId,
+        studentId: existing.studentId,
+        studentName: existing.studentName,
+        studentEmail: existing.studentEmail,
+        tutorId,
+        tutorName: tutorName || existing.tutorName || 'Tutor',
+        tutorEmail: tutorEmail || existing.tutorEmail || '',
+        subject: 'Mathematics',
+        topic: existing.topic,
+        scheduledDate: existing.preferredDate,
+        scheduledTime: existing.preferredTime,
+        duration: existing.duration,
+        meetingProvider: existing.meetingProviderPreference || MEETING_PROVIDERS.ANY,
+        meetingLink: '',
+        notes: '',
+        status: REQUEST_STATUSES.WAITING_STUDENT,
+        joinGraceEndsAt: Date.now() + 2 * 60 * 1000,
+        callStartedAt: Date.now(),
+        studentJoinedAt: null,
+        billingStartedAt: null,
+        billedSeconds: 0,
+        totalAmount: 0,
+        payoutBreakdown: {
+          platformFeeRate: PLATFORM_FEE_RATE,
+          tutorRate: TUTOR_PAYOUT_RATE,
+          tutorAmount: 0,
+          platformAmount: 0,
+        },
+        ratings: {
+          student: null,
+          tutor: null,
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      setMockSessions([session, ...getMockSessions()]);
+
+      return;
+    }
+
+    const queue = (existing.tutorQueue || []).filter((id) => id !== tutorId);
+    const updated = getMockRequests().map((item) =>
       item.id === requestId
         ? {
             ...item,
-            tutorId,
-            tutorName,
-            tutorEmail,
-            status: REQUEST_STATUSES.ACCEPTED,
+            tutorQueue: queue,
+            status: REQUEST_STATUSES.MATCHING,
+            currentOfferTutorId: null,
+            offerExpiresAt: null,
             updatedAt: new Date().toISOString(),
           }
         : item,
     );
-
-    setMockRequests(next);
-
-    const session = {
-      id: crypto.randomUUID(),
-      requestId,
-      studentId: existing.studentId,
-      studentName: existing.studentName,
-      studentEmail: existing.studentEmail,
-      tutorId,
-      tutorName,
-      tutorEmail,
-      subject: existing.subject,
-      topic: existing.topic,
-      scheduledDate: existing.preferredDate,
-      scheduledTime: existing.preferredTime,
-      duration: existing.duration,
-      meetingProvider: existing.meetingProviderPreference || MEETING_PROVIDERS.ANY,
-      meetingLink: '',
-      notes: '',
-      status: REQUEST_STATUSES.ACCEPTED,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setMockSessions([session, ...getMockSessions()]);
-
+    setMockRequests(updated);
+    await assignNextTutorOffer(requestId);
     return;
   }
 
   const { db, firestoreModule } = clients;
-  const { runTransaction, doc, collection, serverTimestamp } = firestoreModule;
-
-  let acceptedRequest = null;
+  const { doc, getDoc, runTransaction, collection, serverTimestamp } = firestoreModule;
 
   await runTransaction(db, async (transaction) => {
     const requestRef = doc(db, 'classRequests', requestId);
@@ -236,65 +462,114 @@ export async function acceptClassRequest({ requestId, tutorId, tutorName, tutorE
     }
 
     const requestData = requestSnap.data();
-    if (requestData.status !== REQUEST_STATUSES.PENDING) {
-      throw new Error('This request is already assigned.');
+
+    if (requestData.currentOfferTutorId !== tutorId) {
+      return;
     }
 
-    acceptedRequest = { id: requestId, ...requestData };
+    if (response === 'accept') {
+      transaction.update(requestRef, {
+        tutorId,
+        tutorName: tutorName || 'Tutor',
+        tutorEmail: tutorEmail || '',
+        status: REQUEST_STATUSES.ACCEPTED,
+        currentOfferTutorId: null,
+        offerExpiresAt: null,
+        updatedAt: serverTimestamp(),
+      });
 
-    transaction.update(requestRef, {
-      tutorId,
-      tutorName,
-      tutorEmail,
-      status: REQUEST_STATUSES.ACCEPTED,
-      updatedAt: serverTimestamp(),
-    });
-
-    const sessionRef = doc(collection(db, 'sessions'));
-    transaction.set(sessionRef, {
-      requestId,
-      studentId: requestData.studentId,
-      studentName: requestData.studentName,
-      studentEmail: requestData.studentEmail,
-      tutorId,
-      tutorName,
-      tutorEmail,
-      subject: requestData.subject,
-      topic: requestData.topic,
-      scheduledDate: requestData.preferredDate,
-      scheduledTime: requestData.preferredTime,
-      duration: requestData.duration,
-      meetingProvider: requestData.meetingProviderPreference || MEETING_PROVIDERS.ANY,
-      meetingLink: '',
-      notes: '',
-      status: REQUEST_STATUSES.ACCEPTED,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
+      const sessionRef = doc(collection(db, 'sessions'));
+      transaction.set(sessionRef, {
+        requestId,
+        studentId: requestData.studentId,
+        studentName: requestData.studentName,
+        studentEmail: requestData.studentEmail,
+        tutorId,
+        tutorName: tutorName || requestData.tutorName || 'Tutor',
+        tutorEmail: tutorEmail || requestData.tutorEmail || '',
+        subject: 'Mathematics',
+        topic: requestData.topic,
+        scheduledDate: requestData.preferredDate,
+        scheduledTime: requestData.preferredTime,
+        duration: requestData.duration,
+        meetingProvider: requestData.meetingProviderPreference || MEETING_PROVIDERS.ANY,
+        meetingLink: '',
+        notes: '',
+        status: REQUEST_STATUSES.WAITING_STUDENT,
+        joinGraceEndsAt: Date.now() + 2 * 60 * 1000,
+        callStartedAt: Date.now(),
+        studentJoinedAt: null,
+        billingStartedAt: null,
+        billedSeconds: 0,
+        totalAmount: 0,
+        payoutBreakdown: {
+          platformFeeRate: PLATFORM_FEE_RATE,
+          tutorRate: TUTOR_PAYOUT_RATE,
+          tutorAmount: 0,
+          platformAmount: 0,
+        },
+        ratings: {
+          student: null,
+          tutor: null,
+        },
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    } else {
+      const queue = (requestData.tutorQueue || []).filter((id) => id !== tutorId);
+      transaction.update(requestRef, {
+        tutorQueue: queue,
+        status: REQUEST_STATUSES.MATCHING,
+        currentOfferTutorId: null,
+        offerExpiresAt: null,
+        updatedAt: serverTimestamp(),
+      });
+    }
   });
 
-  if (!acceptedRequest) {
+  if (response === 'accept') {
+    await Promise.all([
+      createNotification({
+        userId: tutorId,
+        title: 'Call ready',
+        message: 'You accepted the request. Start the call now.',
+        type: 'request_accepted',
+        requestId,
+      }),
+      queueEmailEvent(EMAIL_EVENT_TYPES.REQUEST_ACCEPTED, {
+        requestId,
+        tutorId,
+      }),
+    ]);
     return;
   }
 
-  await Promise.all([
-    createNotification({
-      userId: acceptedRequest.studentId,
-      title: 'Request accepted',
-      message: `${tutorName} accepted your ${acceptedRequest.subject} request.`,
-      type: 'request_accepted',
-      requestId,
-    }),
-    queueEmailEvent(EMAIL_EVENT_TYPES.REQUEST_ACCEPTED, {
-      requestId,
-      studentId: acceptedRequest.studentId,
-      studentName: acceptedRequest.studentName,
-      studentEmail: acceptedRequest.studentEmail,
-      tutorId,
-      tutorName,
-      tutorEmail,
-      subject: acceptedRequest.subject,
-      topic: acceptedRequest.topic,
-    }),
-  ]);
+  await assignNextTutorOffer(requestId);
+}
+
+export async function acceptClassRequest({ requestId, tutorId, tutorName, tutorEmail }) {
+  return handleTutorOfferResponse({ requestId, tutorId, tutorName, tutorEmail, response: 'accept' });
+}
+
+export async function declineClassRequest({ requestId, tutorId }) {
+  return handleTutorOfferResponse({ requestId, tutorId, response: 'decline' });
+}
+
+export async function settleSessionBilling(session) {
+  const billedSeconds = Math.max(0, Math.floor((Date.now() - (session.billingStartedAt || Date.now())) / 1000));
+  const totalAmount = Number(((billedSeconds / 60) * BILLING_RULES.DISPLAY_RATE_PER_MINUTE).toFixed(2));
+  const tutorAmount = Number((totalAmount * TUTOR_PAYOUT_RATE).toFixed(2));
+  const platformAmount = Number((totalAmount * PLATFORM_FEE_RATE).toFixed(2));
+
+  return {
+    billedSeconds,
+    totalAmount,
+    payoutBreakdown: {
+      platformFeeRate: PLATFORM_FEE_RATE,
+      tutorRate: TUTOR_PAYOUT_RATE,
+      tutorAmount,
+      platformAmount,
+    },
+    chargedCardLast4: session.selectedCardLast4 || null,
+  };
 }
