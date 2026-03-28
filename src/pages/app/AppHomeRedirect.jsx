@@ -4,7 +4,9 @@ import { useAuth } from '../../hooks/useAuth';
 export default function AppHomeRedirect() {
   const { user } = useAuth();
 
-  if (user?.role === 'tutor') {
+  const activeRole = user?.activeRole || user?.role;
+
+  if (activeRole === 'tutor') {
     return <Navigate to="/app/tutor" replace />;
   }
 

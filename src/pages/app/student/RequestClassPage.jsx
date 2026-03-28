@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import PageHeader from '../../../components/ui/PageHeader';
 import SectionCard from '../../../components/ui/SectionCard';
 import FormField from '../../../components/ui/FormField';
@@ -7,9 +7,10 @@ import SelectField from '../../../components/ui/SelectField';
 import { useAuth } from '../../../hooks/useAuth';
 import { meetingProviderOptions } from '../../../constants/meetingProviders';
 import { createClassRequest } from '../../../services/classRequestService';
+import { getStudentOnboardingStatus } from '../../../utils/onboarding';
 
 const initialForm = {
-  subject: '',
+  subject: 'Mathematics',
   topic: '',
   description: '',
   preferredDate: '',
@@ -25,6 +26,7 @@ export default function RequestClassPage() {
   const [form, setForm] = useState(initialForm);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
+  const onboardingStatus = getStudentOnboardingStatus(user);
 
   const onChange = (event) => {
     const { name, value } = event.target;
@@ -39,6 +41,7 @@ export default function RequestClassPage() {
     try {
       await createClassRequest({
         ...form,
+        subject: 'Mathematics',
         mode: 'online',
         studentId: user.uid,
         studentName: user.fullName || user.displayName || user.email,
@@ -52,14 +55,27 @@ export default function RequestClassPage() {
     }
   };
 
+  if (!onboardingStatus.complete) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Request a Class" description="Complete onboarding before requesting a math session." />
+        <SectionCard>
+          <p className="text-sm text-amber-200">{onboardingStatus.message}</p>
+          <Link to="/app/onboarding?role=student" className="mt-4 inline-flex rounded-2xl bg-brand px-4 py-2 text-sm font-bold text-white">
+            Complete profile
+          </Link>
+        </SectionCard>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader title="Request a Class" description="Fill in details and tutors will receive this request in real time." />
 
       <SectionCard>
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="grid gap-5 md:grid-cols-2">
-            <FormField label="Subject" name="subject" value={form.subject} onChange={onChange} placeholder="Mathematics" required />
+          <div className="grid gap-5 md:grid-cols-1">
             <FormField label="Topic / Title" name="topic" value={form.topic} onChange={onChange} placeholder="Derivatives and limits" required />
           </div>
 

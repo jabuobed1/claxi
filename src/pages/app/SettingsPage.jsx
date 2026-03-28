@@ -39,6 +39,23 @@ export default function SettingsPage() {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
+
+  const switchRole = async (nextRole) => {
+    if (!user?.uid) {
+      return;
+    }
+
+    const nextRoles = Array.from(new Set([...(user.roles || [user.role || 'student']), nextRole]));
+    const profile = await updateUserProfile(user.uid, {
+      role: nextRole,
+      activeRole: nextRole,
+      roles: nextRoles,
+    });
+
+    setUser((prev) => ({ ...prev, ...profile, role: nextRole, activeRole: nextRole, roles: nextRoles }));
+    setMessage(`Switched to ${nextRole} profile.`);
+  };
+
   const onSubmit = async (event) => {
     event.preventDefault();
     if (!user?.uid) {
@@ -70,6 +87,25 @@ export default function SettingsPage() {
 
       <SectionCard>
         <form onSubmit={onSubmit} className="space-y-4">
+          <div className="rounded-2xl border border-zinc-700 bg-zinc-950/70 p-3">
+            <p className="text-xs uppercase tracking-wide text-zinc-500">Active profile mode</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {['student', 'tutor'].map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => switchRole(mode)}
+                  className={`rounded-xl px-3 py-1.5 text-xs font-bold uppercase ${
+                    (user?.activeRole || user?.role) === mode
+                      ? 'bg-brand text-white'
+                      : 'border border-zinc-600 bg-zinc-900 text-zinc-300'
+                  }`}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="grid gap-4 md:grid-cols-2">
             <FormField label="Full name" name="fullName" value={form.fullName} onChange={onChange} required />
             <FormField label="Phone number" name="phoneNumber" value={form.phoneNumber} onChange={onChange} />

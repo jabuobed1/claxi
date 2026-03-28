@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarClock, ClipboardList, PlayCircle } from 'lucide-react';
 import PageHeader from '../../../components/ui/PageHeader';
@@ -7,21 +8,68 @@ import RequestCard from '../../../components/app/RequestCard';
 import EmptyState from '../../../components/ui/EmptyState';
 import LoadingState from '../../../components/ui/LoadingState';
 import NotificationFeed from '../../../components/app/NotificationFeed';
+import OnboardingStatusBanner from '../../../components/app/OnboardingStatusBanner';
 import { useAuth } from '../../../hooks/useAuth';
 import { useStudentRequests } from '../../../hooks/useClassRequests';
 import { useStudentSessions } from '../../../hooks/useSessions';
 import { useNotifications } from '../../../hooks/useNotifications';
+import { getStudentOnboardingStatus } from '../../../utils/onboarding';
+import { createClassRequest } from '../../../services/classRequestService';
 
 export default function StudentDashboardPage() {
   const { user } = useAuth();
   const { requests, isLoading } = useStudentRequests(user?.uid);
   const { sessions } = useStudentSessions(user?.uid);
   const { notifications } = useNotifications(user?.uid);
+  const [topic, setTopic] = useState('');
+  const [imageAttachment, setImageAttachment] = useState('');
+  const [isSending, setIsSending] = useState(false);
 
-  const activeRequests = requests.filter((request) => request.status === 'pending' || request.status === 'accepted');
+  const onboardingStatus = getStudentOnboardingStatus(user);
+  const walletBalance = Number(user?.wallet?.balance || 0);
+  const activeRequests = requests.filter((request) => ['pending', 'matching', 'offered', 'accepted', 'waiting_student', 'in_progress'].includes(request.status));
   const upcoming = sessions.filter((session) =>
-    ['accepted', 'scheduled', 'in_progress'].includes(session.status),
+    ['accepted', 'waiting_student', 'in_progress'].includes(session.status),
   );
+
+  const quickRequest = async (event) => {
+    event.preventDefault();
+    if (!topic.trim() || !onboardingStatus.complete) {
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      await createClassRequest({
+        topic: topic.trim(),
+        description: topic.trim(),
+        preferredDate: '',
+        preferredTime: '',
+        duration: 'Flexible',
+        meetingProviderPreference: 'any',
+        mode: 'online',
+        imageAttachment,
+        studentId: user.uid,
+        studentName: user.fullName || user.displayName || user.email,
+        studentEmail: user.email,
+      });
+      setTopic('');
+      setImageAttachment('');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleFileChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => setImageAttachment(reader.result?.toString() || '');
+    reader.readAsDataURL(file);
+  };
 
   return (
     <div className="space-y-6">
@@ -29,14 +77,62 @@ export default function StudentDashboardPage() {
         title="Student Dashboard"
         description="Track your class requests in real time and launch sessions quickly."
         action={
-          <Link
-            to="/app/student/request-class"
-            className="inline-flex rounded-2xl bg-brand px-4 py-2.5 text-sm font-bold text-white transition hover:bg-brand-dark"
-          >
-            Request New Class
-          </Link>
+          onboardingStatus.complete ? (
+            <Link
+              to="/app/student/request-class"
+              className="inline-flex rounded-2xl bg-brand px-4 py-2.5 text-sm font-bold text-white transition hover:bg-brand-dark"
+            >
+              Request New Class
+            </Link>
+          ) : (
+            <Link
+              to="/app/onboarding?role=student"
+              className="inline-flex rounded-2xl border border-amber-400/40 bg-amber-500/10 px-4 py-2.5 text-sm font-bold text-amber-200 transition hover:bg-amber-500/20"
+            >
+              Complete profile to request
+            </Link>
+          )
         }
       />
+
+      <OnboardingStatusBanner user={user} role="student" />
+
+
+      {walletBalance < 0 ? (
+        <SectionCard title="Wallet balance due" subtitle="Auto-charge failed for a previous session.">
+          <p className="text-sm text-amber-200">Outstanding wallet debt: R{Math.abs(walletBalance).toFixed(2)}</p>
+          <Link to="/app/student/wallet" className="mt-3 inline-flex rounded-2xl bg-brand px-4 py-2 text-sm font-bold text-white">
+            Add money to wallet
+          </Link>
+        </SectionCard>
+      ) : null}
+
+      <SectionCard title="Need help right now?" subtitle="Enter the topic and we immediately notify online tutors.">
+        <form className="space-y-3" onSubmit={quickRequest}>
+          <input
+            value={topic}
+            onChange={(event) => setTopic(event.target.value)}
+            placeholder="What topic do you need help with?"
+            className="w-full rounded-2xl border border-zinc-700 bg-zinc-950/70 px-4 py-3 text-sm text-white outline-none focus:border-brand"
+            disabled={!onboardingStatus.complete || isSending}
+            required
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="cursor-pointer rounded-2xl border border-zinc-600 px-3 py-2 text-xs font-semibold text-zinc-200">
+              Add photo
+              <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+            </label>
+            {imageAttachment ? <span className="text-xs text-emerald-300">Photo attached</span> : null}
+            <button
+              type="submit"
+              disabled={!onboardingStatus.complete || isSending}
+              className="rounded-2xl bg-brand px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+            >
+              {isSending ? 'Sending to tutors...' : 'Request now'}
+            </button>
+          </div>
+        </form>
+      </SectionCard>
 
       <div className="grid gap-4 md:grid-cols-3">
         <StatCard title="Total Requests" value={requests.length} icon={ClipboardList} />
@@ -59,11 +155,6 @@ export default function StudentDashboardPage() {
               <EmptyState
                 title="No class requests yet"
                 description="Create your first class request and tutors will see it instantly."
-                action={
-                  <Link to="/app/student/request-class" className="rounded-2xl bg-brand px-4 py-2 text-sm font-bold text-white">
-                    Create Request
-                  </Link>
-                }
               />
             )}
           </SectionCard>
