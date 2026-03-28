@@ -107,3 +107,42 @@ export async function getUserProfile(uid) {
 
   return { uid: snap.id, ...snap.data() };
 }
+
+
+function scoreTutorForTopic(tutor = {}, topic = '') {
+  const topicKey = topic.toLowerCase();
+  const topicRatings = tutor?.tutorProfile?.topicRatings || {};
+  const topicScore = Number(topicRatings[topicKey] || 0);
+  const overall = Number(tutor?.tutorProfile?.overallRating || 0);
+  const sessionLoadPenalty = tutor?.activeSessionId ? 100 : 0;
+  return topicScore * 2 + overall - sessionLoadPenalty;
+}
+
+export async function getTutorCandidatesForRequest({ topic }) {
+  const clients = await getFirebaseClients();
+
+  if (!clients) {
+    return [];
+  }
+
+  const { db, firestoreModule } = clients;
+  const { collection, getDocs, query, where } = firestoreModule;
+
+  const q = query(
+    collection(db, 'users'),
+    where('activeRole', '==', 'tutor'),
+    where('onlineStatus', '==', 'online'),
+  );
+
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs
+    .map((doc) => ({ uid: doc.id, ...doc.data() }))
+    .filter((tutor) => {
+      const tutorProfile = tutor.tutorProfile || {};
+      const isVerified = tutorProfile.verificationStatus === 'verified';
+      const teachesMath = (tutor.subjects || []).includes('mathematics');
+      return isVerified && teachesMath && !tutor.activeSessionId;
+    })
+    .sort((a, b) => scoreTutorForTopic(b, topic) - scoreTutorForTopic(a, topic));
+}

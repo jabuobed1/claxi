@@ -17,6 +17,7 @@ import ProfilePage from './pages/app/ProfilePage';
 import SettingsPage from './pages/app/SettingsPage';
 import OnboardingPage from './pages/app/OnboardingPage';
 import TutorPaymentsPage from './pages/app/tutor/TutorPaymentsPage';
+import SessionRoomPage from './pages/app/SessionRoomPage';
 
 export default function App() {
   return (
@@ -38,6 +39,7 @@ export default function App() {
           <Route path="profile" element={<ProfilePage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="onboarding" element={<OnboardingPage />} />
+          <Route path="session/:id" element={<SessionRoomPage />} />
 
           <Route
             path="student"

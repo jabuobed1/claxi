@@ -17,13 +17,16 @@ import { updateUserProfile } from '../../../services/userService';
 
 export default function TutorDashboardPage() {
   const { user, setUser } = useAuth();
-  const { requests: availableRequests, isLoading: isAvailableLoading } = useTutorAvailableRequests();
+  const { requests: availableRequests, isLoading: isAvailableLoading } = useTutorAvailableRequests(user?.uid);
   const { classes } = useTutorAcceptedRequests(user?.uid);
   const { sessions } = useTutorSessions(user?.uid);
   const { notifications } = useNotifications(user?.uid);
   const onboardingStatus = getTutorOnboardingStatus(user);
   const isOnline = user?.onlineStatus === 'online';
-  const upcoming = sessions.filter((session) => ['accepted', 'scheduled', 'in_progress'].includes(session.status));
+  const upcoming = sessions.filter((session) => ['accepted', 'waiting_student', 'in_progress'].includes(session.status));
+  const payoutTotal = sessions
+    .filter((session) => session.status === 'completed')
+    .reduce((sum, session) => sum + Number(session.payoutBreakdown?.tutorAmount || 0), 0);
 
   const toggleOnlineStatus = async () => {
     if (!onboardingStatus.complete) {
@@ -69,7 +72,7 @@ export default function TutorDashboardPage() {
         <StatCard title="Available Requests" value={availableRequests.length} icon={Inbox} />
         <StatCard title="Accepted Classes" value={classes.length} icon={BookOpenCheck} tone="sky" />
         <StatCard title="Upcoming Sessions" value={upcoming.length} icon={CalendarClock} tone="zinc" />
-        <StatCard title="Earnings" value="—" icon={CalendarClock} tone="zinc" />
+        <StatCard title="Earnings" value={`R${payoutTotal.toFixed(2)}`} icon={CalendarClock} tone="zinc" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">

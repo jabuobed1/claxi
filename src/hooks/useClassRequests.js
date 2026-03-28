@@ -29,19 +29,25 @@ export function useStudentRequests(studentId) {
   return { requests, isLoading };
 }
 
-export function useTutorAvailableRequests() {
+export function useTutorAvailableRequests(tutorId) {
   const [requests, setRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     setIsLoading(true);
-    const unsub = subscribeToTutorAvailableRequests((items) => {
+    if (!tutorId) {
+      setRequests([]);
+      setIsLoading(false);
+      return;
+    }
+
+    const unsub = subscribeToTutorAvailableRequests(tutorId, (items) => {
       setRequests(items);
       setIsLoading(false);
     });
 
     return () => unsub?.();
-  }, []);
+  }, [tutorId]);
 
   return { requests, isLoading };
 }
@@ -69,7 +75,7 @@ export function useTutorAcceptedRequests(tutorId) {
   const upcoming = useMemo(
     () =>
       classes.filter((item) =>
-        [REQUEST_STATUSES.ACCEPTED, REQUEST_STATUSES.SCHEDULED, REQUEST_STATUSES.IN_PROGRESS].includes(item.status),
+        [REQUEST_STATUSES.ACCEPTED, REQUEST_STATUSES.WAITING_STUDENT, REQUEST_STATUSES.IN_PROGRESS].includes(item.status),
       ),
     [classes],
   );
