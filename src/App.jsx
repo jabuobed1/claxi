@@ -9,6 +9,7 @@ import StudentDashboardPage from './pages/app/student/StudentDashboardPage';
 import RequestClassPage from './pages/app/student/RequestClassPage';
 import StudentRequestsPage from './pages/app/student/StudentRequestsPage';
 import StudentSessionsPage from './pages/app/student/StudentSessionsPage';
+import StudentWalletPage from './pages/app/student/StudentWalletPage';
 import TutorDashboardPage from './pages/app/tutor/TutorDashboardPage';
 import AvailableRequestsPage from './pages/app/tutor/AvailableRequestsPage';
 import MyClassesPage from './pages/app/tutor/MyClassesPage';
@@ -18,6 +19,8 @@ import SettingsPage from './pages/app/SettingsPage';
 import OnboardingPage from './pages/app/OnboardingPage';
 import TutorPaymentsPage from './pages/app/tutor/TutorPaymentsPage';
 import SessionRoomPage from './pages/app/SessionRoomPage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import TermsPage from './pages/TermsPage';
 
 export default function App() {
   return (
@@ -26,6 +29,8 @@ export default function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
 
         <Route
           path="/app"
@@ -70,6 +75,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={['student']}>
                 <StudentSessionsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="student/wallet"
+            element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <StudentWalletPage />
               </ProtectedRoute>
             }
           />

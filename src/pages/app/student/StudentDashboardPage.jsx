@@ -26,6 +26,7 @@ export default function StudentDashboardPage() {
   const [isSending, setIsSending] = useState(false);
 
   const onboardingStatus = getStudentOnboardingStatus(user);
+  const walletBalance = Number(user?.wallet?.balance || 0);
   const activeRequests = requests.filter((request) => ['pending', 'matching', 'offered', 'accepted', 'waiting_student', 'in_progress'].includes(request.status));
   const upcoming = sessions.filter((session) =>
     ['accepted', 'waiting_student', 'in_progress'].includes(session.status),
@@ -95,6 +96,16 @@ export default function StudentDashboardPage() {
       />
 
       <OnboardingStatusBanner user={user} role="student" />
+
+
+      {walletBalance < 0 ? (
+        <SectionCard title="Wallet balance due" subtitle="Auto-charge failed for a previous session.">
+          <p className="text-sm text-amber-200">Outstanding wallet debt: R{Math.abs(walletBalance).toFixed(2)}</p>
+          <Link to="/app/student/wallet" className="mt-3 inline-flex rounded-2xl bg-brand px-4 py-2 text-sm font-bold text-white">
+            Add money to wallet
+          </Link>
+        </SectionCard>
+      ) : null}
 
       <SectionCard title="Need help right now?" subtitle="Enter the topic and we immediately notify online tutors.">
         <form className="space-y-3" onSubmit={quickRequest}>

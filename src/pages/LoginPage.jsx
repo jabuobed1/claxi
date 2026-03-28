@@ -21,6 +21,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [acceptedLegal, setAcceptedLegal] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
@@ -28,6 +29,11 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (!acceptedLegal) {
+      setError('You must accept Terms and Privacy Policy before login.');
+      return;
+    }
 
     try {
       setIsSubmitting(true);
@@ -138,8 +144,23 @@ export default function LoginPage() {
 
             {error ? <p className="text-sm text-rose-400">{error}</p> : null}
 
+            <div className="rounded-2xl border border-zinc-700 bg-zinc-800/50 p-3">
+              <label className="flex items-start gap-3 text-xs text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={acceptedLegal}
+                  onChange={(event) => setAcceptedLegal(event.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-zinc-500"
+                />
+                <span>
+                  I accept Claxi's <Link to="/terms" className="font-bold text-white underline">Terms of Service</Link> and{' '}
+                  <Link to="/privacy-policy" className="font-bold text-white underline">Privacy Policy</Link>.
+                </span>
+              </label>
+            </div>
+
             <div>
-              <Button type="submit" className="w-full py-4 text-lg" disabled={isSubmitting}>
+              <Button type="submit" className="w-full py-4 text-lg" disabled={isSubmitting || !acceptedLegal}>
                 {isSubmitting ? 'Signing in...' : 'Sign in'}
               </Button>
             </div>

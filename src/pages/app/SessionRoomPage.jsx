@@ -134,6 +134,13 @@ export default function SessionRoomPage() {
             Session billed at R5/min. Total: R{Number(session.totalAmount || 0).toFixed(2)}. Tutor share: R{Number(session.payoutBreakdown?.tutorAmount || 0).toFixed(2)} ({Math.round(TUTOR_PAYOUT_RATE * 100)}%).
           </p>
         ) : null}
+
+        {session.status === 'completed' && session.paymentStatus === 'wallet_debt_recorded' ? (
+          <p className="mt-2 text-sm text-amber-200">
+            Card charge was declined. Outstanding balance moved to wallet debt.
+            <Link to="/app/student/wallet" className="ml-1 underline">Pay from wallet</Link>
+          </p>
+        ) : null}
       </SectionCard>
 
       {needsRating ? (

@@ -19,6 +19,7 @@ const linksByRole = {
     { to: '/app/student/request-class', label: 'Request Class', icon: ClipboardList },
     { to: '/app/student/requests', label: 'My Requests', icon: CalendarClock },
     { to: '/app/student/sessions', label: 'My Sessions', icon: BookOpen },
+    { to: '/app/student/wallet', label: 'Wallet', icon: CalendarClock },
     { to: '/app/onboarding?role=student', label: 'Complete Profile', icon: ClipboardList },
   ],
   tutor: [

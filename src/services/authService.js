@@ -1,6 +1,6 @@
 import { getFirebaseClients } from '../firebase/config';
 import { EMAIL_EVENT_TYPES, queueEmailEvent } from './emailEventService';
-import { getUserProfile, upsertUserProfile } from './userService';
+import { deleteUserProfile, getUserProfile, upsertUserProfile } from './userService';
 
 const MOCK_USER_KEY = 'claxi_mock_user';
 
@@ -131,4 +131,25 @@ export async function logoutUser() {
   }
 
   await clients.authModule.signOut(clients.auth);
+}
+
+
+export async function deleteAccount(user) {
+  const clients = await getFirebaseClients();
+
+  if (!clients) {
+    localStorage.removeItem(MOCK_USER_KEY);
+    localStorage.removeItem('claxi_mock_requests');
+    localStorage.removeItem('claxi_mock_sessions');
+    localStorage.removeItem('claxi_mock_notifications');
+    return;
+  }
+
+  const authUser = clients.auth.currentUser;
+  if (!authUser) {
+    throw new Error('No active user session found.');
+  }
+
+  await deleteUserProfile(user.uid);
+  await clients.authModule.deleteUser(authUser);
 }

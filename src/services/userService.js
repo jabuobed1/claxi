@@ -35,6 +35,11 @@ function buildDefaultProfile({ uid, email, displayName, role }) {
       },
     },
     paymentMethods: [],
+    wallet: {
+      balance: 0,
+      currency: 'ZAR',
+      updatedAt: new Date().toISOString(),
+    },
   };
 }
 
@@ -145,4 +150,17 @@ export async function getTutorCandidatesForRequest({ topic }) {
       return isVerified && teachesMath && !tutor.activeSessionId;
     })
     .sort((a, b) => scoreTutorForTopic(b, topic) - scoreTutorForTopic(a, topic));
+}
+
+
+export async function deleteUserProfile(uid) {
+  const clients = await getFirebaseClients();
+
+  if (!clients) {
+    return;
+  }
+
+  const { db, firestoreModule } = clients;
+  const { deleteDoc, doc } = firestoreModule;
+  await deleteDoc(doc(db, 'users', uid));
 }

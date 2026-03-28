@@ -1,5 +1,6 @@
 import { createContext, useEffect, useMemo, useState } from 'react';
 import {
+  deleteAccount,
   loginWithEmail,
   logoutUser,
   signupWithEmail,
@@ -29,6 +30,7 @@ export function AuthProvider({ children }) {
       login: loginWithEmail,
       signup: signupWithEmail,
       logout: logoutUser,
+      deleteAccount,
       setUser,
     }),
     [user, isInitializing],

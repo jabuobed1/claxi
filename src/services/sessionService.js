@@ -4,6 +4,9 @@ import { BILLING_RULES } from '../utils/onboarding';
 import { createNotification } from './notificationService';
 import { EMAIL_EVENT_TYPES, queueEmailEvent } from './emailEventService';
 import { settleSessionBilling } from './classRequestService';
+import { chargeCard } from './paymentGatewayService';
+import { applyWalletDebt } from './walletService';
+import { getUserProfile } from './userService';
 
 const MOCK_SESSIONS_KEY = 'claxi_mock_sessions';
 
@@ -146,6 +149,23 @@ export async function joinSessionAsStudent(session, selectedCardId, selectedCard
 
 export async function endSession(session) {
   const billing = await settleSessionBilling(session);
+  const studentProfile = await getUserProfile(session.studentId);
+  const selectedCard = (studentProfile?.paymentMethods || []).find((card) => card.id === session.selectedCardId)
+    || (studentProfile?.paymentMethods || []).find((card) => card.isDefault)
+    || studentProfile?.paymentMethods?.[0];
+
+  const charge = await chargeCard({
+    amount: billing.totalAmount,
+    card: selectedCard,
+  });
+
+  let paymentStatus = 'paid';
+
+  if (!charge.ok) {
+    paymentStatus = 'wallet_debt_recorded';
+    await applyWalletDebt(session.studentId, billing.totalAmount);
+  }
+
   const updated = await updateSession(session.id, {
     ...session,
     status: REQUEST_STATUSES.COMPLETED,
@@ -154,13 +174,17 @@ export async function endSession(session) {
     totalAmount: billing.totalAmount,
     payoutBreakdown: billing.payoutBreakdown,
     chargedCardLast4: billing.chargedCardLast4,
+    paymentStatus,
+    paymentTransactionId: charge.transactionId || null,
   });
 
   await Promise.all([
     createNotification({
       userId: session.studentId,
-      title: 'Session ended',
-      message: `Billing complete: R${billing.totalAmount.toFixed(2)} (${billing.billedSeconds}s).`,
+      title: charge.ok ? 'Session ended' : 'Payment declined - wallet updated',
+      message: charge.ok
+        ? `Billing complete: R${billing.totalAmount.toFixed(2)} (${billing.billedSeconds}s).`
+        : `Card declined. Wallet updated to cover R${billing.totalAmount.toFixed(2)} outstanding.`,
       type: 'session_billing',
       requestId: session.requestId,
       sessionId: session.id,
@@ -182,6 +206,7 @@ export async function endSession(session) {
       topic: session.topic,
       amount: billing.totalAmount,
       rate: BILLING_RULES.DISPLAY_RATE_PER_MINUTE,
+      paymentStatus,
     }),
   ]);
 
