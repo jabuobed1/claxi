@@ -36,12 +36,12 @@ export default function Sidebar({ role, onLogout }) {
   const links = linksByRole[role] || linksByRole.student;
 
   return (
-    <aside className="flex h-full w-full flex-col rounded-3xl border border-zinc-800 bg-zinc-900/95 p-4">
+    <aside className="flex h-full w-full flex-col rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm">
       <Link to="/app" className="mb-6 flex items-center gap-2 px-2">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand font-black text-white">C</div>
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-black font-black text-white">C</div>
         <div>
-          <p className="text-sm text-zinc-400">Claxi</p>
-          <p className="text-xs uppercase text-zinc-500">{role}</p>
+          <p className="text-sm text-zinc-500">Claxi</p>
+          <p className="text-xs uppercase text-zinc-400">{role}</p>
         </div>
       </Link>
 
@@ -52,7 +52,7 @@ export default function Sidebar({ role, onLogout }) {
             to={to}
             className={({ isActive }) =>
               `${baseClass} ${
-                isActive ? 'bg-brand text-white' : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
+                isActive ? 'bg-black text-white' : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
               }`
             }
           >
@@ -65,7 +65,7 @@ export default function Sidebar({ role, onLogout }) {
           to="/app/profile"
           className={({ isActive }) =>
             `${baseClass} ${
-              isActive ? 'bg-brand text-white' : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
+              isActive ? 'bg-black text-white' : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
             }`
           }
         >
@@ -77,7 +77,7 @@ export default function Sidebar({ role, onLogout }) {
           to="/app/settings"
           className={({ isActive }) =>
             `${baseClass} ${
-              isActive ? 'bg-brand text-white' : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
+              isActive ? 'bg-black text-white' : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
             }`
           }
         >
@@ -89,7 +89,7 @@ export default function Sidebar({ role, onLogout }) {
       <button
         type="button"
         onClick={onLogout}
-        className="mt-auto flex items-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-semibold text-zinc-300 hover:bg-zinc-800 hover:text-white"
+        className="mt-auto flex items-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-semibold text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
       >
         <LogOut className="h-4 w-4" />
         Log out
