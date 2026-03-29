@@ -3,7 +3,7 @@
     "source": "functions"
   },
   "hosting": {
-    "site": "bakayise-claxi",
+    "site": "claxi",
     "public": "dist",
     "ignore": [
       "firebase.json",

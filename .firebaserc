@@ -1,5 +1,15 @@
 {
   "projects": {
-    "default": "tutoring-e68f8"
-  }
+    "default": "claxi-bakayise"
+  },
+  "targets": {
+    "claxi-bakayise": {
+      "hosting": {
+        "main": [
+          "claxi"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }
