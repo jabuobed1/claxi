@@ -1,16 +1,18 @@
 const { onDocumentCreated } = require('firebase-functions/v2/firestore');
 const { onRequest } = require('firebase-functions/v2/https');
+const { defineSecret } = require('firebase-functions/params');
 const { logger } = require('firebase-functions');
 const admin = require('firebase-admin');
 const { Resend } = require('resend');
+const { randomUUID } = require('crypto');
 
 admin.initializeApp();
 
 const db = admin.firestore();
-const resendApiKey = process.env.RESEND_API_KEY;
-const emailFrom = process.env.EMAIL_FROM || 'noreply@claxi.app';
-const resend = resendApiKey ? new Resend(resendApiKey) : null;
-const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
+
+const PAYSTACK_SECRET_KEY = defineSecret('PAYSTACK_SECRET_KEY');
+const RESEND_API_KEY = defineSecret('RESEND_API_KEY');
+const EMAIL_FROM = defineSecret('EMAIL_FROM');
 
 function buildEmailPayload(eventType, payload) {
   switch (eventType) {
@@ -70,11 +72,11 @@ function getBearerToken(req) {
   return authHeader.substring('Bearer '.length).trim();
 }
 
-async function verifyPaystackTransaction(reference) {
+async function verifyPaystackTransaction(reference, paystackSecretKey) {
   const response = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
     method: 'GET',
     headers: {
-      Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+      Authorization: `Bearer ${paystackSecretKey}`,
       'Content-Type': 'application/json',
     },
   });
@@ -87,11 +89,11 @@ async function verifyPaystackTransaction(reference) {
   return response.json();
 }
 
-async function refundPaystackTransaction(reference) {
+async function refundPaystackTransaction(reference, paystackSecretKey) {
   const response = await fetch('https://api.paystack.co/refund', {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+      Authorization: `Bearer ${paystackSecretKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ transaction: reference }),
@@ -105,13 +107,14 @@ async function refundPaystackTransaction(reference) {
   return response.json();
 }
 
-exports.verifyPaystack = onRequest({ cors: true }, async (req, res) => {
+exports.verifyPaystack = onRequest({ cors: true, secrets: [PAYSTACK_SECRET_KEY] }, async (req, res) => {
   if (req.method !== 'POST') {
     res.status(405).json({ success: false, message: 'Method not allowed' });
     return;
   }
 
-  if (!PAYSTACK_SECRET_KEY) {
+  const paystackSecretKey = PAYSTACK_SECRET_KEY.value();
+  if (!paystackSecretKey) {
     logger.error('PAYSTACK_SECRET_KEY missing.');
     res.status(500).json({ success: false, message: 'Payment configuration is unavailable.' });
     return;
@@ -141,7 +144,7 @@ exports.verifyPaystack = onRequest({ cors: true }, async (req, res) => {
   }
 
   try {
-    const verification = await verifyPaystackTransaction(reference);
+    const verification = await verifyPaystackTransaction(reference, paystackSecretKey);
     const transactionData = verification?.data;
 
     if (transactionData?.status !== 'success') {
@@ -170,7 +173,7 @@ exports.verifyPaystack = onRequest({ cors: true }, async (req, res) => {
     const duplicateMethod = existingMethods.find((method) => method.paystackAuthorizationCode === authorizationCode);
 
     const paymentMethod = duplicateMethod || {
-      id: crypto.randomUUID(),
+      id: randomUUID(),
       nickname: `${authorization.brand || 'Card'} •••• ${authorization.last4 || '----'}`,
       brand: authorization.brand || 'Card',
       last4: authorization.last4 || '----',
@@ -194,7 +197,7 @@ exports.verifyPaystack = onRequest({ cors: true }, async (req, res) => {
     let refundErrorMessage = null;
 
     try {
-      await refundPaystackTransaction(reference);
+      await refundPaystackTransaction(reference, paystackSecretKey);
       refundSucceeded = true;
     } catch (refundError) {
       refundErrorMessage = 'Card saved, but refund is still processing. Please contact support if not reversed shortly.';
@@ -225,15 +228,19 @@ exports.verifyPaystack = onRequest({ cors: true }, async (req, res) => {
   }
 });
 
-exports.sendEmailFromQueue = onDocumentCreated('emailEvents/{eventId}', async (event) => {
+exports.sendEmailFromQueue = onDocumentCreated({
+  document: 'emailEvents/{eventId}',
+  secrets: [RESEND_API_KEY, EMAIL_FROM],
+}, async (event) => {
   const data = event.data?.data();
   if (!data) {
     return;
   }
 
   const eventRef = db.collection('emailEvents').doc(event.params.eventId);
+  const resendApiKey = RESEND_API_KEY.value();
 
-  if (!resend) {
+  if (!resendApiKey) {
     logger.warn('RESEND_API_KEY missing. Skipping email send.');
     await eventRef.set(
       {
@@ -246,7 +253,10 @@ exports.sendEmailFromQueue = onDocumentCreated('emailEvents/{eventId}', async (e
     return;
   }
 
+  const resend = new Resend(resendApiKey);
+  const emailFrom = EMAIL_FROM.value() || 'noreply@claxi.app';
   const emailPayload = buildEmailPayload(data.eventType, data.payload);
+
   if (!emailPayload) {
     await eventRef.set(
       {
