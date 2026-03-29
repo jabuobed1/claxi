@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, signOut, deleteUser } from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc, updateDoc, addDoc, collection, serverTimestamp, onSnapshot, query, where, orderBy, runTransaction } from 'firebase/firestore';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -31,6 +32,7 @@ function initializeFirebase() {
     cachedClients = {
       auth: getAuth(app),
       db: getFirestore(app),
+      storage: getStorage(app),
       // Auth module functions
       authModule: {
         onAuthStateChanged,
@@ -54,6 +56,11 @@ function initializeFirebase() {
         where,
         orderBy,
         runTransaction,
+      },
+      storageModule: {
+        ref,
+        uploadBytes,
+        getDownloadURL,
       },
     };
     return cachedClients;

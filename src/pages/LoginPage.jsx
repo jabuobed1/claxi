@@ -32,7 +32,7 @@ export default function LoginPage() {
     try {
       setIsSubmitting(true);
       const user = await login({ email, password });
-      const fallbackPath = user.role === 'tutor' ? '/app/tutor' : '/app/student';
+      const fallbackPath = String(user?.activeRole || user?.role || 'student').toLowerCase() === 'tutor' ? '/app/tutor' : '/app/student';
       navigate(location.state?.from || fallbackPath);
     } catch (submissionError) {
       setError(submissionError.message || 'Unable to sign in right now.');

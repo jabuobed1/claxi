@@ -7,6 +7,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { updateUserProfile } from '../../services/userService';
 import { removePaymentMethod, setDefaultPaymentMethod } from '../../services/paymentMethodService';
 import { initializeCardAuthorization, verifyCardAuthorization } from '../../services/paystackService';
+import { uploadUserFile } from '../../services/storageService';
 import {
   getStudentOnboardingStatus,
   getTutorOnboardingStatus,
@@ -15,26 +16,26 @@ import {
 
 function CardList({ cards, onSetDefault, onRemove }) {
   if (!cards.length) {
-    return <p className="text-sm text-zinc-400">No cards added yet.</p>;
+    return <p className="text-sm text-zinc-500">No cards added yet.</p>;
   }
 
   return (
     <div className="space-y-2">
       {cards.map((card) => (
-        <div key={card.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-zinc-700 bg-zinc-950/70 p-3">
+        <div key={card.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
           <div>
-            <p className="text-sm font-semibold text-white">{card.nickname}</p>
-            <p className="text-xs text-zinc-400">{card.brand} •••• {card.last4}</p>
+            <p className="text-sm font-semibold text-zinc-900">{card.nickname}</p>
+            <p className="text-xs text-zinc-500">{card.brand} •••• {card.last4}</p>
           </div>
           <div className="flex gap-2">
             <button
               type="button"
               onClick={() => onSetDefault(card.id)}
-              className="rounded-xl border border-zinc-600 px-3 py-1.5 text-xs font-semibold text-zinc-200"
+              className="rounded-xl border border-zinc-300 px-3 py-1.5 text-xs font-semibold text-zinc-700"
             >
               {card.isDefault ? 'Primary' : 'Set Primary'}
             </button>
-            <button type="button" onClick={() => onRemove(card.id)} className="rounded-xl border border-rose-500/40 px-3 py-1.5 text-xs font-semibold text-rose-200">
+            <button type="button" onClick={() => onRemove(card.id)} className="rounded-xl border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-600">
               Remove
             </button>
           </div>
@@ -51,6 +52,7 @@ export default function OnboardingPage() {
   const role = queryRole === 'tutor' ? 'tutor' : 'student';
   const [statusMessage, setStatusMessage] = useState('');
   const [isAuthorizingCard, setIsAuthorizingCard] = useState(false);
+  const [isSavingTutorProfile, setIsSavingTutorProfile] = useState(false);
 
   const studentStatus = useMemo(() => getStudentOnboardingStatus(user), [user]);
   const tutorStatus = useMemo(() => getTutorOnboardingStatus(user), [user]);
@@ -75,26 +77,51 @@ export default function OnboardingPage() {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const mathScore = Number(formData.get('mathScore'));
+    const profilePhotoFile = formData.get('profilePhotoFile');
+    const highestGradeResultFile = formData.get('highestGradeResultFile');
 
-    const profile = await updateUserProfile(user.uid, {
-      profilePhoto: formData.get('profilePhoto')?.toString().trim() || user?.profilePhoto || '',
-      tutorProfile: {
-        highestGradeResultUrl: formData.get('highestGradeResultUrl')?.toString().trim() || '',
-        mathScore,
-        gradesToTutor: (formData.get('gradesToTutor')?.toString() || '').split(',').map((item) => item.trim()).filter(Boolean),
-        topics: (formData.get('topics')?.toString() || '').split(',').map((item) => item.trim()).filter(Boolean),
-        verificationStatus: mathScore >= 60 ? TUTOR_VERIFICATION_STATUSES.VERIFIED : TUTOR_VERIFICATION_STATUSES.REJECTED,
-        payout: {
-          bankName: formData.get('bankName')?.toString().trim() || '',
-          accountNumber: formData.get('accountNumber')?.toString().trim() || '',
-          accountHolder: formData.get('accountHolder')?.toString().trim() || '',
+    if (!(profilePhotoFile instanceof File) || !profilePhotoFile.size) {
+      setStatusMessage('Please upload a profile photo file.');
+      return;
+    }
+
+    if (!(highestGradeResultFile instanceof File) || !highestGradeResultFile.size) {
+      setStatusMessage('Please upload your highest grade result document.');
+      return;
+    }
+
+    try {
+      setIsSavingTutorProfile(true);
+
+      const [photoUpload, resultUpload] = await Promise.all([
+        uploadUserFile({ userId: user.uid, file: profilePhotoFile, pathPrefix: 'tutor-profile-photos' }),
+        uploadUserFile({ userId: user.uid, file: highestGradeResultFile, pathPrefix: 'tutor-grade-results' }),
+      ]);
+
+      const profile = await updateUserProfile(user.uid, {
+        profilePhoto: photoUpload.downloadUrl,
+        tutorProfile: {
+          highestGradeResultUrl: resultUpload.downloadUrl,
+          mathScore,
+          gradesToTutor: (formData.get('gradesToTutor')?.toString() || '').split(',').map((item) => item.trim()).filter(Boolean),
+          topics: (formData.get('topics')?.toString() || '').split(',').map((item) => item.trim()).filter(Boolean),
+          verificationStatus: mathScore >= 60 ? TUTOR_VERIFICATION_STATUSES.VERIFIED : TUTOR_VERIFICATION_STATUSES.REJECTED,
+          payout: {
+            bankName: formData.get('bankName')?.toString().trim() || '',
+            accountNumber: formData.get('accountNumber')?.toString().trim() || '',
+            accountHolder: formData.get('accountHolder')?.toString().trim() || '',
+          },
         },
-      },
-      subjects: ['mathematics'],
-    });
+        subjects: ['mathematics'],
+      });
 
-    setUser((prev) => ({ ...prev, ...profile }));
-    setStatusMessage(mathScore >= 60 ? 'Tutor profile submitted and auto-verified for MVP.' : 'Tutor profile saved, score below 60% threshold.');
+      setUser((prev) => ({ ...prev, ...profile }));
+      setStatusMessage(mathScore >= 60 ? 'Tutor profile submitted and auto-verified for MVP.' : 'Tutor profile saved, score below 60% threshold.');
+    } catch (error) {
+      setStatusMessage(error.message || 'Unable to upload documents and save tutor profile.');
+    } finally {
+      setIsSavingTutorProfile(false);
+    }
   };
 
   const addCard = async () => {
@@ -105,7 +132,7 @@ export default function OnboardingPage() {
         email: user.email,
         onSuccess: async (response) => {
           try {
-            const result = await verifyCardAuthorization(response.reference);
+            const result = await verifyCardAuthorization(response.reference, { userId: user.uid });
             setUser((prev) => {
               const existingMethods = Array.isArray(prev?.paymentMethods) ? prev.paymentMethods : [];
               const alreadyExists = existingMethods.some((method) => method.id === result.card.id);
@@ -153,7 +180,7 @@ export default function OnboardingPage() {
     <div className="space-y-6">
       <PageHeader title="Complete Your Profile" description="Profile and payment completion is required before live requests and tutoring." />
 
-      {statusMessage ? <p className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-300">{statusMessage}</p> : null}
+      {statusMessage ? <p className="rounded-2xl border border-zinc-300 bg-zinc-50 p-3 text-sm text-zinc-700">{statusMessage}</p> : null}
 
       {role === 'student' ? (
         <>
@@ -184,7 +211,7 @@ export default function OnboardingPage() {
               >
                 {isAuthorizingCard ? 'Authorizing card…' : 'Add a Card'}
               </button>
-              <p className="text-sm text-zinc-400">
+              <p className="text-sm text-zinc-500">
                 We charge R1 to securely authorize your card, then immediately refund it after verification.
               </p>
             </div>
@@ -197,13 +224,14 @@ export default function OnboardingPage() {
       ) : (
         <SectionCard title="Tutor setup" subtitle={tutorStatus.message}>
           <form className="grid gap-4 md:grid-cols-2" onSubmit={saveTutorProfile}>
-            <FormField
-              label="Highest grade result file URL"
-              name="highestGradeResultUrl"
-              defaultValue={user?.tutorProfile?.highestGradeResultUrl || ''}
-              placeholder="https://..."
-              required
-            />
+            <div>
+              <label className="block text-sm font-semibold text-zinc-700">Highest grade result document</label>
+              <input name="highestGradeResultFile" type="file" accept=".pdf,.jpg,.jpeg,.png" required className="mt-2 block w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-zinc-700">Profile photo</label>
+              <input name="profilePhotoFile" type="file" accept="image/*" required className="mt-2 block w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm" />
+            </div>
             <FormField label="Math score %" name="mathScore" type="number" defaultValue={user?.tutorProfile?.mathScore ?? ''} required />
             <FormField
               label="Grades to tutor (comma separated)"
@@ -222,9 +250,10 @@ export default function OnboardingPage() {
             <FormField label="Bank name" name="bankName" defaultValue={user?.tutorProfile?.payout?.bankName || ''} required />
             <FormField label="Account number" name="accountNumber" defaultValue={user?.tutorProfile?.payout?.accountNumber || ''} required />
             <FormField label="Account holder" name="accountHolder" defaultValue={user?.tutorProfile?.payout?.accountHolder || ''} required />
-            <FormField label="Profile photo URL" name="profilePhoto" defaultValue={user?.profilePhoto || ''} placeholder="https://..." required />
             <div className="md:col-span-2">
-              <button type="submit" className="rounded-2xl bg-brand px-4 py-2 text-sm font-bold text-white">Save tutor profile</button>
+              <button type="submit" disabled={isSavingTutorProfile} className="rounded-2xl bg-brand px-4 py-2 text-sm font-bold text-white disabled:opacity-60">
+                {isSavingTutorProfile ? 'Uploading files...' : 'Save tutor profile'}
+              </button>
             </div>
           </form>
         </SectionCard>

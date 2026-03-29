@@ -61,7 +61,7 @@ export async function initializeCardAuthorization({ email, onSuccess, onClose })
   handler.openIframe();
 }
 
-export async function verifyCardAuthorization(reference) {
+export async function verifyCardAuthorization(reference, options = {}) {
   const clients = await getFirebaseClients();
   const idToken = await clients?.auth?.currentUser?.getIdToken?.();
 
@@ -69,13 +69,19 @@ export async function verifyCardAuthorization(reference) {
     throw new Error('You must be signed in before adding a card.');
   }
 
+  const payloadBody = {
+    reference,
+    ...(options.nickname ? { nickname: options.nickname } : {}),
+    ...(options.userId ? { userId: options.userId } : {}),
+  };
+
   const response = await fetch(VERIFY_PAYSTACK_ENDPOINT, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${idToken}`,
     },
-    body: JSON.stringify({ reference }),
+    body: JSON.stringify(payloadBody),
   });
 
   const payload = await response.json();
