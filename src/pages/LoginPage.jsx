@@ -6,9 +6,9 @@ import { useAuth } from '../hooks/useAuth';
 
 function Button({ type = 'button', children, className = '', ...props }) {
   return (
-    <button 
+    <button
       type={type}
-      className={`w-full py-3 px-4 bg-black text-white font-bold rounded-2xl hover:bg-zinc-900 transition-colors ${className}`}
+      className={`w-full rounded-2xl bg-brand px-4 py-3 font-bold text-white transition-colors hover:bg-brand-dark ${className}`}
       {...props}
     >
       {children}
@@ -21,7 +21,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [acceptedLegal, setAcceptedLegal] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
@@ -29,11 +28,6 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-
-    if (!acceptedLegal) {
-      setError('You must accept Terms and Privacy Policy before login.');
-      return;
-    }
 
     try {
       setIsSubmitting(true);
@@ -48,42 +42,35 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
-      {/* Background Accents */}
-      <div className="absolute top-0 left-0 w-full h-full -z-10">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-zinc-900 rounded-full blur-[120px] opacity-50" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-zinc-800 rounded-full blur-[120px] opacity-30" />
+    <div className="relative flex min-h-screen flex-col justify-center overflow-hidden bg-zinc-100 py-12 sm:px-6 lg:px-8">
+      <div className="absolute inset-0 -z-10">
+        <div className="absolute -left-20 top-0 h-72 w-72 rounded-full bg-brand/20 blur-3xl" />
+        <div className="absolute -right-20 bottom-0 h-72 w-72 rounded-full bg-brand/15 blur-3xl" />
       </div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <Link to="/" className="flex items-center justify-center gap-2 text-zinc-400 hover:text-white transition-colors mb-8">
-          <ArrowLeft className="w-4 h-4" />
+        <Link to="/" className="mb-8 flex items-center justify-center gap-2 text-zinc-600 transition-colors hover:text-zinc-900">
+          <ArrowLeft className="h-4 w-4" />
           <span className="text-sm font-medium">Back to home</span>
         </Link>
-        <h2 className="text-center text-4xl font-black tracking-tight text-white">
-          Welcome back
-        </h2>
-        <p className="mt-2 text-center text-sm text-zinc-400">
+        <h2 className="text-center text-4xl font-black tracking-tight text-zinc-900">Welcome back</h2>
+        <p className="mt-2 text-center text-sm text-zinc-600">
           Don't have an account?{' '}
-          <Link to="/signup" className="font-bold text-white hover:underline">
+          <Link to="/signup" className="font-bold text-brand hover:underline">
             Sign up for free
           </Link>
         </p>
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mt-8 sm:mx-auto sm:w-full sm:max-w-md"
-      >
-        <div className="bg-zinc-900 py-10 px-6 shadow-2xl shadow-black/50 sm:rounded-[32px] sm:px-12 border border-zinc-800">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="rounded-[32px] border border-brand/20 bg-white py-10 px-6 shadow-xl sm:px-12">
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="email" className="block text-sm font-bold text-white mb-2">
+              <label htmlFor="email" className="mb-2 block text-sm font-bold text-zinc-900">
                 Email address
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
                   <Mail className="h-5 w-5 text-zinc-400" />
                 </div>
                 <input
@@ -94,19 +81,19 @@ export default function LoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full pl-11 pr-4 py-3 bg-zinc-800 border border-zinc-700 rounded-2xl text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent transition-all"
+                  className="block w-full rounded-2xl border border-zinc-300 bg-zinc-50 py-3 pl-11 pr-4 text-zinc-900 placeholder-zinc-400 transition-all focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30"
                   placeholder="name@company.com"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-bold text-white mb-2">
+              <label htmlFor="password" className="mb-2 block text-sm font-bold text-zinc-900">
                 Password
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-zinc-500" />
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                  <Lock className="h-5 w-5 text-zinc-400" />
                 </div>
                 <input
                   id="password"
@@ -116,75 +103,34 @@ export default function LoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-11 pr-4 py-3 bg-zinc-800 border border-zinc-700 rounded-2xl text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent transition-all"
+                  className="block w-full rounded-2xl border border-zinc-300 bg-zinc-50 py-3 pl-11 pr-4 text-zinc-900 placeholder-zinc-400 transition-all focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30"
                   placeholder="••••••••"
                 />
               </div>
             </div>
 
             <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 text-white focus:ring-white border-zinc-600 rounded cursor-pointer"
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-zinc-400 cursor-pointer">
-                  Remember me
-                </label>
-              </div>
-
-              <div className="text-sm">
-                <a href="#" className="font-bold text-white hover:underline">
-                  Forgot password?
-                </a>
-              </div>
-            </div>
-
-            {error ? <p className="text-sm text-rose-400">{error}</p> : null}
-
-            <div className="rounded-2xl border border-zinc-700 bg-zinc-800/50 p-3">
-              <label className="flex items-start gap-3 text-xs text-zinc-300">
-                <input
-                  type="checkbox"
-                  checked={acceptedLegal}
-                  onChange={(event) => setAcceptedLegal(event.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-zinc-500"
-                />
-                <span>
-                  I accept Claxi's <Link to="/terms" className="font-bold text-white underline">Terms of Service</Link> and{' '}
-                  <Link to="/privacy-policy" className="font-bold text-white underline">Privacy Policy</Link>.
-                </span>
+              <label className="flex items-center gap-2 text-sm text-zinc-600">
+                <input type="checkbox" className="h-4 w-4 cursor-pointer rounded border-zinc-300 text-brand focus:ring-brand" />
+                Remember me
               </label>
+              <a href="#" className="text-sm font-bold text-brand hover:underline">
+                Forgot password?
+              </a>
             </div>
 
-            <div>
-              <Button type="submit" className="w-full py-4 text-lg" disabled={isSubmitting || !acceptedLegal}>
-                {isSubmitting ? 'Signing in...' : 'Sign in'}
-              </Button>
-            </div>
+            <p className="rounded-2xl border border-brand/20 bg-brand/5 p-3 text-xs text-zinc-700">
+              By signing in, you agree to Claxi&apos;s{' '}
+              <Link to="/terms" className="font-bold text-brand underline">Terms of Service</Link> and{' '}
+              <Link to="/privacy-policy" className="font-bold text-brand underline">Privacy Policy</Link>.
+            </p>
+
+            {error ? <p className="text-sm text-rose-500">{error}</p> : null}
+
+            <Button type="submit" className="w-full py-4 text-lg" disabled={isSubmitting}>
+              {isSubmitting ? 'Signing in...' : 'Sign in'}
+            </Button>
           </form>
-
-          <div className="mt-8">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-zinc-700" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-zinc-900 text-zinc-500">Or continue with</span>
-              </div>
-            </div>
-
-            <div className="mt-6 grid grid-cols-2 gap-4">
-              <button className="w-full inline-flex justify-center py-3 px-4 border border-zinc-700 rounded-2xl bg-zinc-800 text-sm font-bold text-white hover:bg-zinc-700 transition-colors">
-                Google
-              </button>
-              <button className="w-full inline-flex justify-center py-3 px-4 border border-zinc-700 rounded-2xl bg-zinc-800 text-sm font-bold text-white hover:bg-zinc-700 transition-colors">
-                Apple
-              </button>
-            </div>
-          </div>
         </div>
       </motion.div>
     </div>
