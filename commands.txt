@@ -7,7 +7,7 @@ Run:
 
 git status
 git add .
-git commit -m "Commit before pull - 5."
+git commit -m "Commit before pull - 6."
 git push origin main
 
 (This ensures Codex sees your latest work from GitHub)
@@ -22,7 +22,7 @@ Run:
 
 git status
 git fetch origin
-git pull origin main
+git pull --rebase origin main
 
 
 Publishing to hosting
