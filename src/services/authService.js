@@ -4,7 +4,6 @@ import { deleteUserProfile, getUserProfile, upsertUserProfile } from './userServ
 
 const MOCK_USER_KEY = 'claxi_mock_user';
 
-
 function normalizeUserProfile(profile = {}, fallback = {}) {
   const roles = Array.isArray(profile.roles) && profile.roles.length ? profile.roles : [profile.role || fallback.role || 'student'];
   const activeRole = profile.activeRole || profile.role || fallback.role || roles[0] || 'student';
@@ -15,6 +14,16 @@ function normalizeUserProfile(profile = {}, fallback = {}) {
     roles,
     role: activeRole,
     activeRole,
+  };
+}
+
+function getFallbackProfile(firebaseUser) {
+  return {
+    uid: firebaseUser.uid,
+    email: firebaseUser.email,
+    fullName: firebaseUser.displayName,
+    displayName: firebaseUser.displayName,
+    role: 'student',
   };
 }
 
@@ -35,15 +44,13 @@ export function subscribeToAuthChanges(callback) {
         return;
       }
 
-      const profile = (await getUserProfile(firebaseUser.uid)) || {
-        uid: firebaseUser.uid,
-        email: firebaseUser.email,
-        fullName: firebaseUser.displayName,
-        displayName: firebaseUser.displayName,
-        role: 'student',
-      };
-
-      callback(normalizeUserProfile({ ...profile, uid: firebaseUser.uid }, { uid: firebaseUser.uid }));
+      try {
+        const profile = (await getUserProfile(firebaseUser.uid)) || getFallbackProfile(firebaseUser);
+        callback(normalizeUserProfile({ ...profile, uid: firebaseUser.uid }, { uid: firebaseUser.uid }));
+      } catch (error) {
+        console.warn('Failed to load Firestore profile during auth state change. Falling back to auth profile.', error);
+        callback(normalizeUserProfile(getFallbackProfile(firebaseUser), getFallbackProfile(firebaseUser)));
+      }
     });
   });
 
@@ -67,7 +74,13 @@ export async function loginWithEmail({ email, password }) {
 
   const { auth, authModule } = clients;
   const credential = await authModule.signInWithEmailAndPassword(auth, email, password);
-  const profile = await getUserProfile(credential.user.uid);
+
+  let profile = null;
+  try {
+    profile = await getUserProfile(credential.user.uid);
+  } catch (error) {
+    console.warn('Failed to load Firestore profile after login. Falling back to auth identity.', error);
+  }
 
   return normalizeUserProfile({
     uid: credential.user.uid,
@@ -98,12 +111,24 @@ export async function signupWithEmail({ name, email, password, role }) {
   const credential = await authModule.createUserWithEmailAndPassword(auth, email, password);
   await authModule.updateProfile(credential.user, { displayName: name });
 
-  const profile = await upsertUserProfile({
-    uid: credential.user.uid,
-    email,
-    displayName: name,
-    role,
-  });
+  let profile;
+  try {
+    profile = await upsertUserProfile({
+      uid: credential.user.uid,
+      email,
+      displayName: name,
+      role,
+    });
+  } catch (error) {
+    console.warn('Failed to create Firestore profile during signup. Falling back to auth user.', error);
+    profile = {
+      uid: credential.user.uid,
+      email,
+      fullName: name,
+      displayName: name,
+      role,
+    };
+  }
 
   await queueEmailEvent(EMAIL_EVENT_TYPES.WELCOME, {
     userId: credential.user.uid,
@@ -132,7 +157,6 @@ export async function logoutUser() {
 
   await clients.authModule.signOut(clients.auth);
 }
-
 
 export async function deleteAccount(user) {
   const clients = await getFirebaseClients();

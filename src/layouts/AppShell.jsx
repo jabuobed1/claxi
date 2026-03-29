@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/app/Sidebar';
 import Topbar from '../components/app/Topbar';
+import AppBottomNav from '../components/app/AppBottomNav';
 import { useAuth } from '../hooks/useAuth';
 
 export default function AppShell() {
@@ -15,14 +16,14 @@ export default function AppShell() {
   };
 
   return (
-    <div className="min-h-screen bg-black px-4 py-4 text-zinc-100 md:px-6 md:py-6">
+    <div className="min-h-screen bg-[#f4f5f7] px-3 py-3 text-zinc-900 md:px-6 md:py-6">
       <div className="mx-auto grid max-w-7xl gap-4 md:grid-cols-[260px_1fr]">
         <div className="hidden md:block">
           <Sidebar role={user?.role} onLogout={handleLogout} />
         </div>
 
         {isOpen ? (
-          <div className="fixed inset-0 z-40 bg-black/70 p-4 md:hidden">
+          <div className="fixed inset-0 z-40 bg-black/30 p-4 md:hidden">
             <div className="h-full max-w-[280px]">
               <Sidebar role={user?.role} onLogout={handleLogout} />
             </div>
@@ -30,11 +31,12 @@ export default function AppShell() {
           </div>
         ) : null}
 
-        <div>
+        <div className="pb-24 md:pb-0">
           <Topbar name={user?.fullName || user?.displayName || 'Claxi User'} role={user?.role || 'student'} onMenuClick={() => setIsOpen(true)} />
           <Outlet />
         </div>
       </div>
+      <AppBottomNav role={user?.role || 'student'} />
     </div>
   );
 }

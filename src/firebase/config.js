@@ -11,6 +11,10 @@ const appModuleName = 'firebase/app';
 const authModuleName = 'firebase/auth';
 const firestoreModuleName = 'firebase/firestore';
 
+// Firebase project uses a named Firestore database. We default to "claxi"
+// unless explicitly overridden by environment configuration.
+const firestoreDatabaseId = import.meta.env.VITE_FIREBASE_DATABASE_ID || 'claxi';
+
 export const hasFirebaseEnv = Boolean(
   firebaseConfig.apiKey &&
     firebaseConfig.authDomain &&
@@ -40,9 +44,10 @@ export async function getFirebaseClients() {
 
     cachedClients = {
       auth: authModule.getAuth(app),
-      db: firestoreModule.getFirestore(app),
+      db: firestoreModule.getFirestore(app, firestoreDatabaseId),
       authModule,
       firestoreModule,
+      firestoreDatabaseId,
     };
 
     return cachedClients;
