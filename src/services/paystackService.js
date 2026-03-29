@@ -1,6 +1,8 @@
-// Paystack service for handling payment authorization
+import { getFirebaseClients } from '../firebase/config';
+
 const PAYSTACK_SCRIPT_URL = 'https://js.paystack.co/v1/inline.js';
 const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
+const VERIFY_PAYSTACK_ENDPOINT = import.meta.env.VITE_VERIFY_PAYSTACK_ENDPOINT || '/verify-paystack';
 
 let paystackLoaded = false;
 let paystackPromise = null;
@@ -36,7 +38,7 @@ function loadPaystackScript() {
   return paystackPromise;
 }
 
-export async function initializeCardAuthorization({ email, amount = 0, onSuccess, onClose }) {
+export async function initializeCardAuthorization({ email, onSuccess, onClose }) {
   if (!PAYSTACK_PUBLIC_KEY) {
     throw new Error('Paystack public key not configured');
   }
@@ -46,26 +48,40 @@ export async function initializeCardAuthorization({ email, amount = 0, onSuccess
   const handler = window.PaystackPop.setup({
     key: PAYSTACK_PUBLIC_KEY,
     email,
-    amount: amount * 100, // Paystack expects amount in kobo (multiply by 100)
+    amount: 100,
     currency: 'ZAR',
     callback: (response) => {
-      // response.reference contains the transaction reference
-      // We need to verify this on the backend to get the authorization code
-      onSuccess(response);
+      onSuccess?.(response);
     },
     onClose: () => {
-      onClose && onClose();
+      onClose?.();
     },
   });
 
   handler.openIframe();
 }
 
-// Function to verify payment and get authorization details
-// This would typically be called from your backend after the frontend gets the reference
-export async function verifyPayment(reference) {
-  // This should be called from your backend API
-  // For now, we'll simulate the response structure
-  const response = await fetch(`/api/paystack/verify/${reference}`);
-  return response.json();
+export async function verifyCardAuthorization(reference) {
+  const clients = await getFirebaseClients();
+  const idToken = await clients?.auth?.currentUser?.getIdToken?.();
+
+  if (!idToken) {
+    throw new Error('You must be signed in before adding a card.');
+  }
+
+  const response = await fetch(VERIFY_PAYSTACK_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${idToken}`,
+    },
+    body: JSON.stringify({ reference }),
+  });
+
+  const payload = await response.json();
+  if (!response.ok || !payload.success) {
+    throw new Error(payload.message || 'Unable to verify your card authorization right now.');
+  }
+
+  return payload;
 }

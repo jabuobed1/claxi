@@ -12,6 +12,10 @@
     ],
     "rewrites": [
       {
+        "source": "/verify-paystack",
+        "function": "verifyPaystack"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

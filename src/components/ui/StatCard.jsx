@@ -2,7 +2,7 @@ export default function StatCard({ title, value, icon: Icon, tone = 'brand' }) {
   const toneMap = {
     brand: 'bg-emerald-50 text-emerald-500 border-emerald-100',
     zinc: 'bg-slate-50 text-slate-500 border-slate-200',
-    sky: 'bg-blue-50 text-blue-500 border-blue-100',
+    sky: 'bg-emerald-50 text-emerald-500 border-emerald-100',
   };
 
   return (
