@@ -1,7 +1,7 @@
 import { getFirebaseClients } from '../firebase/config';
 
 const PAYSTACK_SCRIPT_URL = 'https://js.paystack.co/v1/inline.js';
-const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
+const PAYSTACK_KEY = import.meta.env.VITE_PAYSTACK_KEY;
 const VERIFY_PAYSTACK_ENDPOINT = import.meta.env.VITE_VERIFY_PAYSTACK_ENDPOINT || '/verify-paystack';
 
 let paystackLoaded = false;
@@ -39,14 +39,14 @@ function loadPaystackScript() {
 }
 
 export async function initializeCardAuthorization({ email, onSuccess, onClose }) {
-  if (!PAYSTACK_PUBLIC_KEY) {
+  if (!PAYSTACK_KEY) {
     throw new Error('Paystack public key not configured');
   }
 
   await loadPaystackScript();
 
   const handler = window.PaystackPop.setup({
-    key: PAYSTACK_PUBLIC_KEY,
+    key: PAYSTACK_KEY,
     email,
     amount: 100,
     currency: 'ZAR',
