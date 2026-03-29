@@ -7,7 +7,7 @@ Run:
 
 git status
 git add .
-git commit -m "Commit before pull - 3."
+git commit -m "Commit before pull - 4."
 git push origin main
 
 (This ensures Codex sees your latest work from GitHub)
@@ -29,3 +29,11 @@ Publishing to hosting
 
 npm run build
 firebase deploy --only hosting:claxi
+firebase deploy --only functions
+
+
+firebase use default
+
+firebase functions:secrets:set PAYSTACK_SECRET_KEY
+firebase functions:secrets:set RESEND_API_KEY
+firebase functions:secrets:set EMAIL_FROM
