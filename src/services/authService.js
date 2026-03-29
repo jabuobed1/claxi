@@ -4,9 +4,15 @@ import { deleteUserProfile, getUserProfile, upsertUserProfile } from './userServ
 
 const MOCK_USER_KEY = 'claxi_mock_user';
 
+function normalizeRole(role) {
+  const normalized = String(role || '').toLowerCase();
+  return normalized === 'tutor' ? 'tutor' : 'student';
+}
+
 function normalizeUserProfile(profile = {}, fallback = {}) {
-  const roles = Array.isArray(profile.roles) && profile.roles.length ? profile.roles : [profile.role || fallback.role || 'student'];
-  const activeRole = profile.activeRole || profile.role || fallback.role || roles[0] || 'student';
+  const rawRoles = Array.isArray(profile.roles) && profile.roles.length ? profile.roles : [profile.role || fallback.role || 'student'];
+  const roles = rawRoles.map((role) => normalizeRole(role));
+  const activeRole = normalizeRole(profile.activeRole || profile.role || fallback.role || roles[0] || 'student');
 
   return {
     ...fallback,

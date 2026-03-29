@@ -1,56 +1,51 @@
-import { Link, NavLink } from 'react-router-dom';
-import { CalendarDays, History, Home, Search, UserCircle2 } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
+import { BookOpen, CalendarClock, ClipboardList, Home, Settings, UserCircle2, Users, Wallet } from 'lucide-react';
 
 function navConfig(role) {
   if (role === 'tutor') {
     return [
-      { to: '/app/tutor', label: 'Home', icon: Home },
-      { to: '/app/tutor/available-requests', label: 'Search', icon: Search },
-      { to: '/app/tutor/sessions', label: 'Schedule', icon: CalendarDays },
-      { to: '/app/tutor/payments', label: 'History', icon: History },
+      { to: '/app/tutor', label: 'Dashboard', icon: Home },
+      { to: '/app/tutor/available-requests', label: 'Available Requests', icon: Users },
+      { to: '/app/tutor/my-classes', label: 'My Classes', icon: BookOpen },
+      { to: '/app/tutor/sessions', label: 'Sessions', icon: CalendarClock },
+      { to: '/app/tutor/payments', label: 'Payments', icon: Wallet },
+      { to: '/app/onboarding?role=tutor', label: 'Complete Profile', icon: ClipboardList },
       { to: '/app/profile', label: 'Profile', icon: UserCircle2 },
+      { to: '/app/settings', label: 'Settings', icon: Settings },
     ];
   }
 
   return [
-    { to: '/app/student', label: 'Home', icon: Home },
-    { to: '/app/student/requests', label: 'Search', icon: Search },
-    { to: '/app/student/sessions', label: 'Schedule', icon: CalendarDays },
-    { to: '/app/student/wallet', label: 'History', icon: History },
+    { to: '/app/student', label: 'Dashboard', icon: Home },
+    { to: '/app/student/request-class', label: 'Request Class', icon: ClipboardList },
+    { to: '/app/student/requests', label: 'My Requests', icon: CalendarClock },
+    { to: '/app/student/sessions', label: 'My Sessions', icon: BookOpen },
+    { to: '/app/student/wallet', label: 'Wallet', icon: Wallet },
+    { to: '/app/onboarding?role=student', label: 'Complete Profile', icon: ClipboardList },
     { to: '/app/profile', label: 'Profile', icon: UserCircle2 },
+    { to: '/app/settings', label: 'Settings', icon: Settings },
   ];
 }
 
 export default function AppBottomNav({ role = 'student' }) {
   const links = navConfig(role);
-  const quickAction = role === 'tutor' ? '/app/tutor/available-requests' : '/app/student/request-class';
 
   return (
-    <div className="fixed inset-x-0 bottom-3 z-40 mx-auto w-[min(92vw,420px)] md:hidden">
-      <div className="relative rounded-[26px] border border-zinc-200 bg-white/95 px-5 py-3 shadow-lg backdrop-blur">
-        <div className="grid grid-cols-5 items-center gap-3">
-          {links.map(({ to, icon: Icon, label }, index) => (
-            <NavLink
-              key={to}
-              to={to}
-              className={({ isActive }) =>
-                `flex flex-col items-center gap-1 text-[10px] font-semibold ${isActive ? 'text-zinc-900' : 'text-zinc-400'}`
-              }
-            >
-              {index === 2 ? <span className="h-11" /> : null}
-              <Icon className="h-5 w-5" />
-              <span>{label}</span>
-            </NavLink>
-          ))}
-        </div>
-
-        <Link
-          to={quickAction}
-          className="absolute left-1/2 top-0 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-2xl bg-black text-white shadow-xl"
-          aria-label="Quick Request Action"
-        >
-          <span className="text-3xl font-light leading-none">+</span>
-        </Link>
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white md:hidden">
+      <div className="flex items-center gap-1 overflow-x-auto px-2 py-2">
+        {links.map(({ to, icon: Icon, label }) => (
+          <NavLink
+            key={to}
+            to={to}
+            aria-label={label}
+            title={label}
+            className={({ isActive }) =>
+              `flex h-11 min-w-11 items-center justify-center rounded-xl border ${isActive ? 'border-zinc-900 bg-zinc-900 text-white' : 'border-transparent text-zinc-500 hover:bg-zinc-100'}`
+            }
+          >
+            <Icon className="h-5 w-5" />
+          </NavLink>
+        ))}
       </div>
     </div>
   );

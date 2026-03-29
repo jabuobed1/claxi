@@ -72,46 +72,13 @@ function getBearerToken(req) {
   return authHeader.substring('Bearer '.length).trim();
 }
 
-async function verifyPaystackTransaction(reference, paystackSecretKey) {
-  const response = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
-    method: 'GET',
-    headers: {
-      Authorization: `Bearer ${paystackSecretKey}`,
-      'Content-Type': 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Paystack verify failed (${response.status}): ${text}`);
-  }
-
-  return response.json();
-}
-
-async function refundPaystackTransaction(reference, paystackSecretKey) {
-  const response = await fetch('https://api.paystack.co/refund', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${paystackSecretKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ transaction: reference }),
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Paystack refund failed (${response.status}): ${text}`);
-  }
-
-  return response.json();
-}
-
 exports.verifyPaystack = onRequest({ cors: true, secrets: [PAYSTACK_SECRET_KEY] }, async (req, res) => {
   if (req.method !== 'POST') {
     res.status(405).json({ success: false, message: 'Method not allowed' });
     return;
   }
+
+  logger.info('verifyPaystack request body received.', { body: req.body || null });
 
   const paystackSecretKey = PAYSTACK_SECRET_KEY.value();
   if (!paystackSecretKey) {
@@ -135,34 +102,63 @@ exports.verifyPaystack = onRequest({ cors: true, secrets: [PAYSTACK_SECRET_KEY] 
     return;
   }
 
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
   const uid = decodedToken.uid;
-  const reference = req.body?.reference?.toString().trim();
+  const providedUserId = body.userId?.toString().trim();
+  const nickname = body.nickname?.toString().trim();
+  const reference = body.reference?.toString().trim();
+
+  logger.info('verifyPaystack reference received.', { reference, uid, providedUserId });
 
   if (!reference) {
     res.status(400).json({ success: false, message: 'Missing transaction reference.' });
     return;
   }
 
-  try {
-    const verification = await verifyPaystackTransaction(reference, paystackSecretKey);
-    const transactionData = verification?.data;
+  if (providedUserId && providedUserId !== uid) {
+    res.status(400).json({ success: false, message: 'Invalid userId supplied.' });
+    return;
+  }
 
-    if (transactionData?.status !== 'success') {
-      res.status(400).json({ success: false, message: 'Transaction verification failed.' });
+  try {
+    const verificationResponse = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${paystackSecretKey}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const verificationPayload = await verificationResponse.json().catch(() => null);
+    logger.info('Paystack verify response status.', {
+      status: verificationResponse.status,
+      ok: verificationResponse.ok,
+      reference,
+      responseStatus: verificationPayload?.status,
+      message: verificationPayload?.message,
+    });
+
+    if (!verificationResponse.ok) {
+      const verifyError = new Error('Paystack verification request failed.');
+      verifyError.response = { data: verificationPayload || `HTTP ${verificationResponse.status}` };
+      throw verifyError;
+    }
+
+    const transactionData = verificationPayload?.data;
+    const authorization = transactionData?.authorization;
+
+    if (!transactionData || transactionData.status !== 'success') {
+      res.status(400).json({ success: false, message: 'Transaction verification failed or transaction is not successful.' });
       return;
     }
 
-    const authorization = transactionData.authorization || {};
-    const authorizationCode = authorization.authorization_code;
-    const reusable = authorization.reusable === true;
+    if (!authorization?.authorization_code) {
+      res.status(400).json({ success: false, message: 'Authorization details not available for this transaction.' });
+      return;
+    }
 
-    if (!authorizationCode || !reusable) {
-      res.status(400).json({
-        success: false,
-        message: !authorizationCode
-          ? 'Authorization details not available for this card.'
-          : 'Card is not reusable. Please use a reusable card.',
-      });
+    if (authorization.reusable !== true) {
+      res.status(400).json({ success: false, message: 'Card is not reusable. Please use a reusable card.' });
       return;
     }
 
@@ -170,15 +166,16 @@ exports.verifyPaystack = onRequest({ cors: true, secrets: [PAYSTACK_SECRET_KEY] 
     const userSnap = await usersRef.get();
     const existingMethods = Array.isArray(userSnap.data()?.paymentMethods) ? userSnap.data().paymentMethods : [];
 
-    const duplicateMethod = existingMethods.find((method) => method.paystackAuthorizationCode === authorizationCode);
+    const duplicateMethod = existingMethods.find((method) => method.paystackAuthorizationCode === authorization.authorization_code);
 
-    const paymentMethod = duplicateMethod || {
+    const safeCardRecord = duplicateMethod || {
       id: randomUUID(),
-      nickname: `${authorization.brand || 'Card'} •••• ${authorization.last4 || '----'}`,
+      nickname: nickname || `${authorization.brand || 'Card'} •••• ${authorization.last4 || '----'}`,
       brand: authorization.brand || 'Card',
       last4: authorization.last4 || '----',
-      paystackAuthorizationCode: authorizationCode,
-      reusable,
+      paystackAuthorizationCode: authorization.authorization_code,
+      signature: authorization.signature || null,
+      reusable: true,
       isDefault: existingMethods.length === 0,
       createdAt: new Date().toISOString(),
     };
@@ -186,7 +183,7 @@ exports.verifyPaystack = onRequest({ cors: true, secrets: [PAYSTACK_SECRET_KEY] 
     if (!duplicateMethod) {
       await usersRef.set(
         {
-          paymentMethods: [...existingMethods, paymentMethod],
+          paymentMethods: [...existingMethods, safeCardRecord],
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         },
         { merge: true },
@@ -194,36 +191,63 @@ exports.verifyPaystack = onRequest({ cors: true, secrets: [PAYSTACK_SECRET_KEY] 
     }
 
     let refundSucceeded = false;
-    let refundErrorMessage = null;
+    let refundMessage = null;
 
     try {
-      await refundPaystackTransaction(reference, paystackSecretKey);
+      const refundResponse = await fetch('https://api.paystack.co/refund', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${paystackSecretKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ transaction: reference }),
+      });
+
+      const refundPayload = await refundResponse.json().catch(() => null);
+      logger.info('Paystack refund response status.', {
+        status: refundResponse.status,
+        ok: refundResponse.ok,
+        reference,
+        message: refundPayload?.message,
+      });
+
+      if (!refundResponse.ok) {
+        const refundError = new Error('Paystack refund request failed.');
+        refundError.response = { data: refundPayload || `HTTP ${refundResponse.status}` };
+        throw refundError;
+      }
+
       refundSucceeded = true;
     } catch (refundError) {
-      refundErrorMessage = 'Card saved, but refund is still processing. Please contact support if not reversed shortly.';
+      refundMessage = 'Card saved, but refund is still processing. Please contact support if not reversed shortly.';
       logger.error('Paystack refund failed after successful authorization.', {
         reference,
         uid,
-        error: refundError.message,
+        error: refundError.response?.data || refundError.message,
       });
     }
 
     res.status(200).json({
       success: true,
       card: {
-        id: paymentMethod.id,
-        nickname: paymentMethod.nickname,
-        brand: paymentMethod.brand,
-        last4: paymentMethod.last4,
-        reusable: paymentMethod.reusable,
-        isDefault: paymentMethod.isDefault,
-        createdAt: paymentMethod.createdAt,
+        id: safeCardRecord.id,
+        nickname: safeCardRecord.nickname,
+        brand: safeCardRecord.brand,
+        last4: safeCardRecord.last4,
+        reusable: safeCardRecord.reusable,
+        isDefault: safeCardRecord.isDefault,
+        signature: safeCardRecord.signature,
+        createdAt: safeCardRecord.createdAt,
       },
       refunded: refundSucceeded,
-      refundMessage: refundErrorMessage,
+      refundMessage,
     });
   } catch (error) {
-    logger.error('verifyPaystack flow failed.', { reference, uid, error: error.message });
+    logger.error('verifyPaystack flow failed.', {
+      reference,
+      uid,
+      error: error.response?.data || error.message,
+    });
     res.status(500).json({ success: false, message: 'Unable to verify card right now. Please try again.' });
   }
 });

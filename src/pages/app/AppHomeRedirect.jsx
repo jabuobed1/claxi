@@ -3,8 +3,7 @@ import { useAuth } from '../../hooks/useAuth';
 
 export default function AppHomeRedirect() {
   const { user } = useAuth();
-
-  const activeRole = user?.activeRole || user?.role;
+  const activeRole = String(user?.activeRole || user?.role || 'student').toLowerCase();
 
   if (activeRole === 'tutor') {
     return <Navigate to="/app/tutor" replace />;
