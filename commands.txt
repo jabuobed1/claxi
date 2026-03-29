@@ -7,7 +7,7 @@ Run:
 
 git status
 git add .
-git commit -m "Commit to update repo for Codex - 1."
+git commit -m "Commit before pull - 1."
 git push origin main
 
 (This ensures Codex sees your latest work from GitHub)
@@ -23,3 +23,9 @@ Run:
 git status
 git fetch origin
 git pull origin main
+
+
+Publishing to hosting
+
+npm run build
+firebase deploy --only hosting:claxi
