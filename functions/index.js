@@ -72,6 +72,22 @@ function getBearerToken(req) {
   return authHeader.substring('Bearer '.length).trim();
 }
 
+function getSafeSecretPreview(value) {
+  if (!value || typeof value !== 'string') {
+    return {
+      exists: false,
+      prefix: null,
+      length: 0,
+    };
+  }
+
+  return {
+    exists: true,
+    prefix: value.slice(0, 10),
+    length: value.length,
+  };
+}
+
 exports.verifyPaystack = onRequest({ cors: true, secrets: [PAYSTACK_SECRET_KEY] }, async (req, res) => {
   if (req.method !== 'POST') {
     res.status(405).json({ success: false, message: 'Method not allowed' });
@@ -81,6 +97,14 @@ exports.verifyPaystack = onRequest({ cors: true, secrets: [PAYSTACK_SECRET_KEY] 
   logger.info('verifyPaystack request body received.', { body: req.body || null });
 
   const paystackSecretKey = PAYSTACK_SECRET_KEY.value();
+  const paystackSecretPreview = getSafeSecretPreview(paystackSecretKey);
+
+  logger.info('Paystack secret loaded.', {
+    exists: paystackSecretPreview.exists,
+    prefix: paystackSecretPreview.prefix,
+    length: paystackSecretPreview.length,
+  });
+
   if (!paystackSecretKey) {
     logger.error('PAYSTACK_SECRET_KEY missing.');
     res.status(500).json({ success: false, message: 'Payment configuration is unavailable.' });
@@ -97,7 +121,9 @@ exports.verifyPaystack = onRequest({ cors: true, secrets: [PAYSTACK_SECRET_KEY] 
   try {
     decodedToken = await admin.auth().verifyIdToken(token);
   } catch (error) {
-    logger.warn('Failed to verify Firebase auth token.', error);
+    logger.warn('Failed to verify Firebase auth token.', {
+      error: error.message,
+    });
     res.status(401).json({ success: false, message: 'Unauthorized request.' });
     return;
   }
@@ -108,7 +134,12 @@ exports.verifyPaystack = onRequest({ cors: true, secrets: [PAYSTACK_SECRET_KEY] 
   const nickname = body.nickname?.toString().trim();
   const reference = body.reference?.toString().trim();
 
-  logger.info('verifyPaystack reference received.', { reference, uid, providedUserId });
+  logger.info('verifyPaystack reference received.', {
+    uid,
+    providedUserId,
+    reference,
+    nickname: nickname || null,
+  });
 
   if (!reference) {
     res.status(400).json({ success: false, message: 'Missing transaction reference.' });
@@ -121,52 +152,84 @@ exports.verifyPaystack = onRequest({ cors: true, secrets: [PAYSTACK_SECRET_KEY] 
   }
 
   try {
-    const verificationResponse = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${paystackSecretKey}`,
-        'Content-Type': 'application/json',
+    const verificationResponse = await fetch(
+      `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${paystackSecretKey}`,
+          'Content-Type': 'application/json',
+        },
       },
-    });
+    );
 
     const verificationPayload = await verificationResponse.json().catch(() => null);
+
     logger.info('Paystack verify response status.', {
       status: verificationResponse.status,
       ok: verificationResponse.ok,
       reference,
       responseStatus: verificationPayload?.status,
       message: verificationPayload?.message,
+      errorCode: verificationPayload?.code || null,
+      errorType: verificationPayload?.type || null,
     });
 
     if (!verificationResponse.ok) {
-      const verifyError = new Error('Paystack verification request failed.');
-      verifyError.response = { data: verificationPayload || `HTTP ${verificationResponse.status}` };
+      const verifyError = new Error(`Paystack verify failed (${verificationResponse.status})`);
+      verifyError.response = {
+        data: verificationPayload || `HTTP ${verificationResponse.status}`,
+      };
       throw verifyError;
     }
 
     const transactionData = verificationPayload?.data;
     const authorization = transactionData?.authorization;
 
+    logger.info('Paystack verified transaction payload summary.', {
+      reference,
+      transactionStatus: transactionData?.status || null,
+      hasAuthorization: !!authorization,
+      authorizationReusable: authorization?.reusable === true,
+      authorizationBrand: authorization?.brand || null,
+      authorizationLast4: authorization?.last4 || null,
+      amount: transactionData?.amount || null,
+      currency: transactionData?.currency || null,
+    });
+
     if (!transactionData || transactionData.status !== 'success') {
-      res.status(400).json({ success: false, message: 'Transaction verification failed or transaction is not successful.' });
+      res.status(400).json({
+        success: false,
+        message: 'Transaction verification failed or transaction is not successful.',
+      });
       return;
     }
 
     if (!authorization?.authorization_code) {
-      res.status(400).json({ success: false, message: 'Authorization details not available for this transaction.' });
+      res.status(400).json({
+        success: false,
+        message: 'Authorization details not available for this transaction.',
+      });
       return;
     }
 
     if (authorization.reusable !== true) {
-      res.status(400).json({ success: false, message: 'Card is not reusable. Please use a reusable card.' });
+      res.status(400).json({
+        success: false,
+        message: 'Card is not reusable. Please use a reusable card.',
+      });
       return;
     }
 
     const usersRef = db.collection('users').doc(uid);
     const userSnap = await usersRef.get();
-    const existingMethods = Array.isArray(userSnap.data()?.paymentMethods) ? userSnap.data().paymentMethods : [];
+    const existingMethods = Array.isArray(userSnap.data()?.paymentMethods)
+      ? userSnap.data().paymentMethods
+      : [];
 
-    const duplicateMethod = existingMethods.find((method) => method.paystackAuthorizationCode === authorization.authorization_code);
+    const duplicateMethod = existingMethods.find(
+      (method) => method.paystackAuthorizationCode === authorization.authorization_code,
+    );
 
     const safeCardRecord = duplicateMethod || {
       id: randomUUID(),
@@ -190,6 +253,17 @@ exports.verifyPaystack = onRequest({ cors: true, secrets: [PAYSTACK_SECRET_KEY] 
       );
     }
 
+    logger.info('Card saved to Firestore.', {
+      uid,
+      reference,
+      duplicateMethod: !!duplicateMethod,
+      cardId: safeCardRecord.id,
+      brand: safeCardRecord.brand,
+      last4: safeCardRecord.last4,
+      reusable: safeCardRecord.reusable,
+      isDefault: safeCardRecord.isDefault,
+    });
+
     let refundSucceeded = false;
     let refundMessage = null;
 
@@ -204,16 +278,22 @@ exports.verifyPaystack = onRequest({ cors: true, secrets: [PAYSTACK_SECRET_KEY] 
       });
 
       const refundPayload = await refundResponse.json().catch(() => null);
+
       logger.info('Paystack refund response status.', {
         status: refundResponse.status,
         ok: refundResponse.ok,
         reference,
+        responseStatus: refundPayload?.status,
         message: refundPayload?.message,
+        errorCode: refundPayload?.code || null,
+        errorType: refundPayload?.type || null,
       });
 
       if (!refundResponse.ok) {
-        const refundError = new Error('Paystack refund request failed.');
-        refundError.response = { data: refundPayload || `HTTP ${refundResponse.status}` };
+        const refundError = new Error(`Paystack refund failed (${refundResponse.status})`);
+        refundError.response = {
+          data: refundPayload || `HTTP ${refundResponse.status}`,
+        };
         throw refundError;
       }
 
@@ -248,75 +328,120 @@ exports.verifyPaystack = onRequest({ cors: true, secrets: [PAYSTACK_SECRET_KEY] 
       uid,
       error: error.response?.data || error.message,
     });
-    res.status(500).json({ success: false, message: 'Unable to verify card right now. Please try again.' });
+
+    res.status(500).json({
+      success: false,
+      message: 'Unable to verify card right now. Please try again.',
+    });
   }
 });
 
-exports.sendEmailFromQueue = onDocumentCreated({
-  document: 'emailEvents/{eventId}',
-  secrets: [RESEND_API_KEY, EMAIL_FROM],
-}, async (event) => {
-  const data = event.data?.data();
-  if (!data) {
-    return;
-  }
+exports.sendEmailFromQueue = onDocumentCreated(
+  {
+    document: 'emailEvents/{eventId}',
+    secrets: [RESEND_API_KEY, EMAIL_FROM],
+  },
+  async (event) => {
+    const data = event.data?.data();
+    if (!data) {
+      logger.warn('sendEmailFromQueue received empty event data.', {
+        eventId: event.params.eventId,
+      });
+      return;
+    }
 
-  const eventRef = db.collection('emailEvents').doc(event.params.eventId);
-  const resendApiKey = RESEND_API_KEY.value();
+    const eventRef = db.collection('emailEvents').doc(event.params.eventId);
+    const resendApiKey = RESEND_API_KEY.value();
+    const emailFrom = EMAIL_FROM.value() || 'noreply@claxi.app';
 
-  if (!resendApiKey) {
-    logger.warn('RESEND_API_KEY missing. Skipping email send.');
-    await eventRef.set(
-      {
-        status: 'skipped',
-        reason: 'missing_resend_api_key',
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      },
-      { merge: true },
-    );
-    return;
-  }
+    const resendPreview = getSafeSecretPreview(resendApiKey);
 
-  const resend = new Resend(resendApiKey);
-  const emailFrom = EMAIL_FROM.value() || 'noreply@claxi.app';
-  const emailPayload = buildEmailPayload(data.eventType, data.payload);
-
-  if (!emailPayload) {
-    await eventRef.set(
-      {
-        status: 'ignored',
-        reason: 'unsupported_event_type',
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      },
-      { merge: true },
-    );
-    return;
-  }
-
-  try {
-    const response = await resend.emails.send({
-      from: emailFrom,
-      ...emailPayload,
+    logger.info('Email secret/config loaded.', {
+      resendKeyExists: resendPreview.exists,
+      resendKeyPrefix: resendPreview.prefix,
+      resendKeyLength: resendPreview.length,
+      emailFrom,
+      eventId: event.params.eventId,
+      eventType: data.eventType || null,
     });
 
-    await eventRef.set(
-      {
-        status: 'sent',
+    if (!resendApiKey) {
+      logger.warn('RESEND_API_KEY missing. Skipping email send.');
+      await eventRef.set(
+        {
+          status: 'skipped',
+          reason: 'missing_resend_api_key',
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+      return;
+    }
+
+    const resend = new Resend(resendApiKey);
+    const emailPayload = buildEmailPayload(data.eventType, data.payload);
+
+    if (!emailPayload) {
+      logger.warn('Unsupported email event type.', {
+        eventId: event.params.eventId,
+        eventType: data.eventType || null,
+      });
+
+      await eventRef.set(
+        {
+          status: 'ignored',
+          reason: 'unsupported_event_type',
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+      return;
+    }
+
+    logger.info('Prepared email payload summary.', {
+      eventId: event.params.eventId,
+      eventType: data.eventType,
+      to: emailPayload.to,
+      subject: emailPayload.subject,
+      from: emailFrom,
+    });
+
+    try {
+      const response = await resend.emails.send({
+        from: emailFrom,
+        ...emailPayload,
+      });
+
+      logger.info('Email sent successfully.', {
+        eventId: event.params.eventId,
         provider: 'resend',
         providerMessageId: response.data?.id || null,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      },
-      { merge: true },
-    );
-  } catch (error) {
-    logger.error('Failed to send email', error);
-    await eventRef.set(
-      {
-        status: 'failed',
-        errorMessage: error.message,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      },
-      { merge: true },
-    );
-  }
-});
+      });
+
+      await eventRef.set(
+        {
+          status: 'sent',
+          provider: 'resend',
+          providerMessageId: response.data?.id || null,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+    } catch (error) {
+      logger.error('Failed to send email.', {
+        eventId: event.params.eventId,
+        error: error.message,
+        response: error.response?.data || null,
+      });
+
+      await eventRef.set(
+        {
+          status: 'failed',
+          errorMessage: error.message,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+    }
+  },
+);
