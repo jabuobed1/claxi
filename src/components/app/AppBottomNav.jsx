@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { BookOpen, CalendarClock, ClipboardList, Home, Settings, UserCircle2, Users, Wallet } from 'lucide-react';
+import { BookOpen, CalendarClock, ClipboardList, Home, Plus, Settings, UserCircle2, Users, Wallet } from 'lucide-react';
 
 function navConfig(role) {
   if (role === 'tutor') {
@@ -29,23 +29,28 @@ function navConfig(role) {
 
 export default function AppBottomNav({ role = 'student' }) {
   const links = navConfig(role);
+  const centerIndex = Math.floor(links.length / 2);
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white md:hidden">
-      <div className="flex items-center gap-1 overflow-x-auto px-2 py-2">
-        {links.map(({ to, icon: Icon, label }) => (
-          <NavLink
-            key={to}
-            to={to}
-            aria-label={label}
-            title={label}
-            className={({ isActive }) =>
-              `flex h-11 min-w-11 items-center justify-center rounded-xl border ${isActive ? 'border-zinc-900 bg-zinc-900 text-white' : 'border-transparent text-zinc-500 hover:bg-zinc-100'}`
-            }
-          >
-            <Icon className="h-5 w-5" />
-          </NavLink>
-        ))}
+    <div className="pointer-events-none fixed inset-x-0 bottom-4 z-40 px-3 md:hidden">
+      <div className="pointer-events-auto mx-auto flex w-full max-w-2xl items-center gap-1 overflow-x-auto rounded-[28px] border border-zinc-200/80 bg-white/95 px-2 py-2 shadow-[0_12px_40px_rgba(15,23,42,0.14)] backdrop-blur">
+        {links.map(({ to, icon: Icon, label }, index) => {
+          const DisplayIcon = index === centerIndex ? Plus : Icon;
+
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              aria-label={label}
+              title={label}
+              className={({ isActive }) =>
+                `flex h-11 min-w-11 items-center justify-center rounded-2xl border transition ${isActive ? 'border-zinc-900 bg-zinc-900 text-white' : 'border-transparent text-zinc-500 hover:bg-zinc-100'}`
+              }
+            >
+              <DisplayIcon className="h-5 w-5" />
+            </NavLink>
+          );
+        })}
       </div>
     </div>
   );
