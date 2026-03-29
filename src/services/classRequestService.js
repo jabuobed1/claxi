@@ -9,13 +9,19 @@ import { getTutorCandidatesForRequest } from './userService';
 const MOCK_REQUESTS_KEY = 'claxi_mock_requests';
 const MOCK_SESSIONS_KEY = 'claxi_mock_sessions';
 
+let isUpdatingRequests = false;
+let isUpdatingSessions = false;
+
 function getMockRequests() {
   return JSON.parse(localStorage.getItem(MOCK_REQUESTS_KEY) || '[]');
 }
 
 function setMockRequests(items) {
+  if (isUpdatingRequests) return;
+  isUpdatingRequests = true;
   localStorage.setItem(MOCK_REQUESTS_KEY, JSON.stringify(items));
   window.dispatchEvent(new StorageEvent('storage'));
+  isUpdatingRequests = false;
 }
 
 function getMockSessions() {
@@ -23,8 +29,11 @@ function getMockSessions() {
 }
 
 function setMockSessions(items) {
+  if (isUpdatingSessions) return;
+  isUpdatingSessions = true;
   localStorage.setItem(MOCK_SESSIONS_KEY, JSON.stringify(items));
   window.dispatchEvent(new StorageEvent('storage'));
+  isUpdatingSessions = false;
 }
 
 function withMockSnapshot(filterFn, callback) {

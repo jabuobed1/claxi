@@ -72,13 +72,6 @@ export default function LandingPage() {
               <Link to="/terms" className="underline">Terms of Service</Link> and{' '}
               <Link to="/privacy-policy" className="underline">Privacy Policy</Link>.
             </p>
-          </motion.div>
-
-            <p className="mt-4 text-xs text-zinc-500">
-              By continuing, you agree to our{' '}
-              <Link to="/terms" className="font-semibold underline text-zinc-700">Terms of Service</Link> and{' '}
-              <Link to="/privacy-policy" className="font-semibold underline text-zinc-700">Privacy Policy</Link>.
-            </p>
 
             <div className="mt-10 rounded-[28px] border border-zinc-200 bg-zinc-50 p-6">
               <div className="grid gap-4 md:grid-cols-3">

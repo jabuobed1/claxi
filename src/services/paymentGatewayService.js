@@ -8,8 +8,10 @@ export async function chargeCard({ amount, card }) {
     };
   }
 
-  const marker = `${card.nickname || ''} ${card.paystackAuthorizationCode || ''}`.toLowerCase();
-  const shouldDecline = marker.includes('decline') || marker.includes('fail');
+  // In production, this would make an API call to your backend
+  // which would then use the Paystack API to charge the card using the authorization code
+  const shouldDecline = card.paystackAuthorizationCode?.toLowerCase().includes('decline') ||
+                       card.paystackAuthorizationCode?.toLowerCase().includes('fail');
 
   if (shouldDecline) {
     return {
