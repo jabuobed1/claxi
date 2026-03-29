@@ -17,11 +17,11 @@ export const statusConfig = {
   },
   [REQUEST_STATUSES.MATCHING]: {
     label: 'Matching Tutors',
-    className: 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30',
+    className: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30',
   },
   [REQUEST_STATUSES.OFFERED]: {
     label: 'Tutor Offer Sent',
-    className: 'bg-sky-500/10 text-sky-300 border-sky-500/30',
+    className: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30',
   },
   [REQUEST_STATUSES.ACCEPTED]: {
     label: 'Accepted',
@@ -33,7 +33,7 @@ export const statusConfig = {
   },
   [REQUEST_STATUSES.IN_PROGRESS]: {
     label: 'In Progress',
-    className: 'bg-sky-500/10 text-sky-400 border-sky-500/30',
+    className: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
   },
   [REQUEST_STATUSES.COMPLETED]: {
     label: 'Completed',

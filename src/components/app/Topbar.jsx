@@ -13,7 +13,7 @@ export default function Topbar({ name, role, onMenuClick }) {
             <Menu className="h-5 w-5" />
           </button>
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-black text-white shadow">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand text-white shadow">
               <span className="text-lg font-black">C</span>
             </div>
             <div>
@@ -28,7 +28,7 @@ export default function Topbar({ name, role, onMenuClick }) {
             <Bell className="h-5 w-5" />
             <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-rose-500" />
           </button>
-          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow">
+          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-brand to-brand-dark text-white shadow">
             <UserCircle2 className="h-5 w-5" />
           </div>
         </div>

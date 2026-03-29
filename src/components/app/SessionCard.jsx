@@ -31,7 +31,7 @@ export default function SessionCard({ session, role = 'student', action }) {
           href={session.meetingLink}
           target="_blank"
           rel="noreferrer"
-          className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-indigo-500 hover:text-indigo-600"
+          className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-brand hover:text-brand-dark"
         >
           <LinkIcon className="h-4 w-4" />
           Open meeting link
@@ -41,7 +41,7 @@ export default function SessionCard({ session, role = 'student', action }) {
       )}
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <Link to={`/app/session/${session.id}`} className="rounded-2xl bg-black px-4 py-2 text-sm font-bold text-white">
+        <Link to={`/app/session/${session.id}`} className="rounded-2xl bg-brand px-4 py-2 text-sm font-bold text-white hover:bg-brand-dark">
           {session.status === 'in_progress' ? 'Rejoin Call' : 'Open Session Room'}
         </Link>
         {action ? <div>{action}</div> : null}
