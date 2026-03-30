@@ -7,7 +7,7 @@ Run:
 
 git status
 git add .
-git commit -m "Commit before pull - 7."
+git commit -m "Commit after secret keys changes - 1."
 git push origin main
 
 (This ensures Codex sees your latest work from GitHub)
@@ -35,7 +35,7 @@ firebase deploy --only functions
 firebase use default
 
 firebase functions:secrets:set PAYSTACK_SECRET_KEY
-sk_test_961355c4bbaa17f553ed104ebccf3c740be4d72b
+sk_test_78e53b2599674e902b109d905c72190c0c4bb7ea
 firebase functions:secrets:set RESEND_API_KEY
 firebase functions:secrets:set EMAIL_FROM
 no-reply@examify-mail.bakayise.com
