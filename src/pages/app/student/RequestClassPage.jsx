@@ -3,64 +3,40 @@ import { Link, useNavigate } from 'react-router-dom';
 import PageHeader from '../../../components/ui/PageHeader';
 import SectionCard from '../../../components/ui/SectionCard';
 import FormField from '../../../components/ui/FormField';
-import SelectField from '../../../components/ui/SelectField';
 import { useAuth } from '../../../hooks/useAuth';
-import { meetingProviderOptions } from '../../../constants/meetingProviders';
-import { createClassRequest } from '../../../services/classRequestService';
 import { getStudentOnboardingStatus } from '../../../utils/onboarding';
+import { LESSON_DURATION_OPTIONS } from '../../../utils/pricing';
 
 const initialForm = {
-  subject: 'Mathematics',
   topic: '',
   description: '',
-  preferredDate: '',
-  preferredTime: '',
-  duration: '60 mins',
-  meetingProviderPreference: 'any',
-  budget: '',
+  durationMinutes: 10,
 };
 
 export default function RequestClassPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState(initialForm);
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState('');
   const onboardingStatus = getStudentOnboardingStatus(user);
-
-  const onChange = (event) => {
-    const { name, value } = event.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setError('');
-    setIsSaving(true);
-
-    try {
-      await createClassRequest({
-        ...form,
-        subject: 'Mathematics',
-        mode: 'online',
-        studentId: user.uid,
-        studentName: user.fullName || user.displayName || user.email,
-        studentEmail: user.email,
-      });
-      navigate('/app/student/requests');
-    } catch (submissionError) {
-      setError(submissionError.message || 'Unable to submit request right now.');
-    } finally {
-      setIsSaving(false);
-    }
+    navigate('/app/student/request', {
+      state: {
+        topic: form.topic,
+        description: form.description,
+        durationMinutes: Number(form.durationMinutes),
+        cardId: user?.paymentMethods?.find((card) => card.isDefault)?.id || user?.paymentMethods?.[0]?.id || '',
+      },
+    });
   };
 
   if (!onboardingStatus.complete) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Request a Class" description="Complete onboarding before requesting a math session." />
+        <PageHeader title="Class Scheduler" description="Complete onboarding before requesting a math session." />
         <SectionCard>
-          <p className="text-sm text-amber-200">{onboardingStatus.message}</p>
+          <p className="text-sm text-amber-700">{onboardingStatus.message}</p>
           <Link to="/app/onboarding?role=student" className="mt-4 inline-flex rounded-2xl bg-brand px-4 py-2 text-sm font-bold text-white">
             Complete profile
           </Link>
@@ -71,50 +47,29 @@ export default function RequestClassPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Request a Class" description="Fill in details and tutors will receive this request in real time." />
+      <PageHeader title="Class Scheduler" description="Set up your request details before confirming." />
 
       <SectionCard>
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="grid gap-5 md:grid-cols-1">
-            <FormField label="Topic / Title" name="topic" value={form.topic} onChange={onChange} placeholder="Derivatives and limits" required />
-          </div>
-
+          <FormField label="Topic / Title" name="topic" value={form.topic} onChange={(event) => setForm((prev) => ({ ...prev, topic: event.target.value }))} required />
           <FormField
             label="Description"
             as="textarea"
             rows={4}
             name="description"
             value={form.description}
-            onChange={onChange}
-            placeholder="Share your goals, pain points, and specific chapters."
+            onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
             required
           />
+          <label className="block text-sm font-semibold text-zinc-700">
+            Duration
+            <select value={form.durationMinutes} onChange={(event) => setForm((prev) => ({ ...prev, durationMinutes: Number(event.target.value) }))} className="mt-2 w-full rounded-2xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900">
+              {LESSON_DURATION_OPTIONS.map((minutes) => <option key={minutes} value={minutes}>{minutes} minutes</option>)}
+            </select>
+          </label>
 
-          <div className="grid gap-5 md:grid-cols-2">
-            <FormField label="Preferred date" name="preferredDate" type="date" value={form.preferredDate} onChange={onChange} required />
-            <FormField label="Preferred time" name="preferredTime" type="time" value={form.preferredTime} onChange={onChange} required />
-          </div>
-
-          <div className="grid gap-5 md:grid-cols-3">
-            <FormField label="Duration" name="duration" value={form.duration} onChange={onChange} placeholder="60 mins" required />
-            <SelectField
-              label="Meeting provider"
-              name="meetingProviderPreference"
-              value={form.meetingProviderPreference}
-              onChange={onChange}
-              options={meetingProviderOptions}
-            />
-            <FormField label="Budget (optional)" name="budget" value={form.budget} onChange={onChange} placeholder="$20-40/hr" />
-          </div>
-
-          {error ? <p className="text-sm text-rose-400">{error}</p> : null}
-
-          <button
-            type="submit"
-            disabled={isSaving}
-            className="inline-flex rounded-2xl bg-brand px-5 py-3 text-sm font-bold text-white transition hover:bg-brand-dark disabled:opacity-50"
-          >
-            {isSaving ? 'Submitting...' : 'Post Request'}
+          <button type="submit" className="inline-flex rounded-2xl bg-brand px-5 py-3 text-sm font-bold text-white transition hover:bg-brand-dark">
+            Continue to request
           </button>
         </form>
       </SectionCard>

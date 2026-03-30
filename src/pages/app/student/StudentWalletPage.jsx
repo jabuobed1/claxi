@@ -5,6 +5,7 @@ import SelectField from '../../../components/ui/SelectField';
 import FormField from '../../../components/ui/FormField';
 import { useAuth } from '../../../hooks/useAuth';
 import { addMoneyToWallet, getOutstandingAmount } from '../../../services/walletService';
+import PaymentMethodsManager from '../../../components/app/PaymentMethodsManager';
 
 export default function StudentWalletPage() {
   const { user, setUser } = useAuth();
@@ -22,11 +23,7 @@ export default function StudentWalletPage() {
 
     try {
       setIsLoading(true);
-      const result = await addMoneyToWallet({
-        user,
-        amount: Number(amount),
-        cardId,
-      });
+      const result = await addMoneyToWallet({ user, amount: Number(amount), cardId });
 
       setUser((prev) => ({ ...prev, ...result.profile }));
       setMessage(`Wallet funded successfully. Txn: ${result.charge.transactionId}`);
@@ -40,31 +37,20 @@ export default function StudentWalletPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Student Wallet" description="Use your wallet to settle outstanding balances when card auto-charge fails." />
+      <PageHeader title="Payment" description="Manage your wallet and payment methods in one place." />
 
       <SectionCard title="Wallet balance">
-        <p className={`text-3xl font-black ${walletBalance < 0 ? 'text-rose-300' : 'text-emerald-300'}`}>
-          R{walletBalance.toFixed(2)}
-        </p>
+        <p className={`text-3xl font-black ${walletBalance < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>R{walletBalance.toFixed(2)}</p>
         {outstanding > 0 ? (
-          <p className="mt-2 text-sm text-amber-200">Outstanding debt: R{outstanding.toFixed(2)}. Add funds to clear the balance.</p>
+          <p className="mt-2 text-sm text-amber-700">Outstanding debt: R{outstanding.toFixed(2)}. Add funds to clear the balance.</p>
         ) : (
-          <p className="mt-2 text-sm text-zinc-400">No outstanding debt.</p>
+          <p className="mt-2 text-sm text-zinc-600">No outstanding debt.</p>
         )}
       </SectionCard>
 
-      <SectionCard title="Add money to wallet" subtitle="Charges your selected card through the payment flow.">
+      <SectionCard title="Add money to wallet" subtitle="Charge your selected card and credit your wallet.">
         <form className="grid gap-4 md:grid-cols-2" onSubmit={topUp}>
-          <FormField
-            label="Amount (R)"
-            name="amount"
-            type="number"
-            min="1"
-            step="0.01"
-            value={amount}
-            onChange={(event) => setAmount(event.target.value)}
-            required
-          />
+          <FormField label="Amount (R)" name="amount" type="number" min="1" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} required />
           <SelectField
             label="Payment card"
             name="cardId"
@@ -80,8 +66,12 @@ export default function StudentWalletPage() {
               {isLoading ? 'Processing...' : 'Add funds'}
             </button>
           </div>
-          {message ? <p className="md:col-span-2 text-sm text-emerald-300">{message}</p> : null}
+          {message ? <p className="md:col-span-2 text-sm text-zinc-700">{message}</p> : null}
         </form>
+      </SectionCard>
+
+      <SectionCard title="Payment cards">
+        <PaymentMethodsManager user={user} setUser={setUser} onMessage={setMessage} />
       </SectionCard>
     </div>
   );

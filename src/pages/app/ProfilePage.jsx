@@ -1,9 +1,11 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import SectionCard from '../../components/ui/SectionCard';
 import PageHeader from '../../components/ui/PageHeader';
+import FormField from '../../components/ui/FormField';
 import { useAuth } from '../../hooks/useAuth';
 import { getStudentOnboardingStatus, getTutorOnboardingStatus } from '../../utils/onboarding';
+import { getUserProfile, updateUserProfile } from '../../services/userService';
 
 export default function ProfilePage() {
   const { user, logout, deleteAccount, setUser } = useAuth();
@@ -13,6 +15,29 @@ export default function ProfilePage() {
   const [confirmText, setConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [message, setMessage] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [form, setForm] = useState({
+    fullName: '',
+    phoneNumber: '',
+    bio: '',
+    subjects: '',
+    availability: '',
+  });
+
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    getUserProfile(user.uid).then((profile) => {
+      const profileData = profile || user;
+      setForm({
+        fullName: profileData.fullName || profileData.displayName || '',
+        phoneNumber: profileData.phoneNumber || '',
+        bio: profileData.bio || '',
+        subjects: (profileData.subjects || []).join(', '),
+        availability: profileData.availability || '',
+      });
+    });
+  }, [user]);
 
   const handleLogout = async () => {
     await logout();
@@ -37,69 +62,79 @@ export default function ProfilePage() {
     }
   };
 
+  const onSubmit = async (event) => {
+    event.preventDefault();
+    if (!user?.uid) return;
+
+    setIsSaving(true);
+    setMessage('');
+    const profile = await updateUserProfile(user.uid, {
+      fullName: form.fullName,
+      displayName: form.fullName,
+      phoneNumber: form.phoneNumber,
+      bio: form.bio,
+      availability: form.availability,
+      subjects: form.subjects
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean),
+    });
+
+    setUser((prev) => ({ ...prev, ...profile }));
+    setMessage('Profile details saved.');
+    setIsSaving(false);
+  };
+
   return (
     <div className="space-y-6">
-      <PageHeader title="Profile" description="Account identity synced with Firebase Auth and Firestore users collection." />
+      <PageHeader title="Profile & Settings" description="Manage your account, profile details, and onboarding progress in one place." />
+
+      {!studentStatus.complete || (user?.roles || []).includes('tutor') && !tutorStatus.complete ? (
+        <SectionCard title="Complete profile">
+          <p className="text-sm text-zinc-700">Finish required onboarding details before requesting classes or teaching online.</p>
+          <Link to={`/app/onboarding?role=${(user?.activeRole || user?.role || 'student').toLowerCase()}`} className="mt-3 inline-flex rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white">
+            Open complete profile
+          </Link>
+        </SectionCard>
+      ) : null}
+
+      <SectionCard>
+        <form onSubmit={onSubmit} className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <FormField label="Full name" name="fullName" value={form.fullName} onChange={(event) => setForm((prev) => ({ ...prev, fullName: event.target.value }))} required />
+            <FormField label="Phone number" name="phoneNumber" value={form.phoneNumber} onChange={(event) => setForm((prev) => ({ ...prev, phoneNumber: event.target.value }))} />
+          </div>
+          <FormField label="Bio" name="bio" as="textarea" rows={3} value={form.bio} onChange={(event) => setForm((prev) => ({ ...prev, bio: event.target.value }))} />
+          {(user?.activeRole || user?.role) === 'tutor' ? (
+            <>
+              <FormField label="Subjects (comma separated)" name="subjects" value={form.subjects} onChange={(event) => setForm((prev) => ({ ...prev, subjects: event.target.value }))} placeholder="Math, Physics" />
+              <FormField label="Availability" name="availability" value={form.availability} onChange={(event) => setForm((prev) => ({ ...prev, availability: event.target.value }))} placeholder="Weekdays after 5pm" />
+            </>
+          ) : null}
+
+          <button type="submit" disabled={isSaving} className="rounded-2xl bg-brand px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
+            {isSaving ? 'Saving...' : 'Save profile'}
+          </button>
+        </form>
+      </SectionCard>
 
       <SectionCard action={<button type="button" onClick={handleLogout} className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-100">Log out</button>}>
-        <dl className="grid gap-6 sm:grid-cols-2">
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-zinc-500">Full name</dt>
-            <dd className="mt-1 text-lg font-semibold text-zinc-900">{user?.fullName || user?.displayName || 'No name set'}</dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-zinc-500">Email</dt>
-            <dd className="mt-1 text-lg font-semibold text-zinc-900">{user?.email}</dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-zinc-500">Role</dt>
-            <dd className="mt-1 text-lg font-semibold capitalize text-zinc-900">{user?.role}</dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-zinc-500">Phone number</dt>
-            <dd className="mt-1 text-sm text-zinc-700">{user?.phoneNumber || 'Not set'}</dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-zinc-500">Student onboarding</dt>
-            <dd className="mt-1 text-sm text-zinc-700">{studentStatus.complete ? 'Complete' : studentStatus.message}</dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-zinc-500">Tutor onboarding</dt>
-            <dd className="mt-1 text-sm text-zinc-700">{tutorStatus.complete ? 'Complete' : tutorStatus.message}</dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-zinc-500">Saved cards</dt>
-            <dd className="mt-1 text-sm text-zinc-700">{user?.paymentMethods?.length || 0}</dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-zinc-500">Wallet balance</dt>
-            <dd className="mt-1 text-sm text-zinc-700">R{Number(user?.wallet?.balance || 0).toFixed(2)}</dd>
-          </div>
-          <div className="sm:col-span-2">
-            <dt className="text-xs uppercase tracking-wide text-zinc-500">User ID</dt>
-            <dd className="mt-1 break-all text-sm text-zinc-700">{user?.uid}</dd>
-          </div>
+        <dl className="grid gap-6 sm:grid-cols-2 text-zinc-800">
+          <div><dt className="text-xs uppercase tracking-wide text-zinc-500">Email</dt><dd className="mt-1 text-lg font-semibold">{user?.email}</dd></div>
+          <div><dt className="text-xs uppercase tracking-wide text-zinc-500">Role</dt><dd className="mt-1 text-lg font-semibold capitalize">{user?.activeRole || user?.role}</dd></div>
+          <div><dt className="text-xs uppercase tracking-wide text-zinc-500">Student onboarding</dt><dd className="mt-1 text-sm">{studentStatus.complete ? 'Complete' : studentStatus.message}</dd></div>
+          <div><dt className="text-xs uppercase tracking-wide text-zinc-500">Tutor onboarding</dt><dd className="mt-1 text-sm">{tutorStatus.complete ? 'Complete' : tutorStatus.message}</dd></div>
         </dl>
       </SectionCard>
 
       <SectionCard title="Delete account" subtitle="This permanently removes your profile and access.">
         <div className="space-y-3">
           <p className="text-sm text-rose-600">Type DELETE below to confirm permanent account deletion.</p>
-          <input
-            value={confirmText}
-            onChange={(event) => setConfirmText(event.target.value)}
-            className="w-full max-w-sm rounded-2xl border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-900"
-            placeholder="Type DELETE"
-          />
-          <button
-            type="button"
-            onClick={removeAccount}
-            disabled={isDeleting}
-            className="rounded-2xl border border-rose-500/40 px-4 py-2 text-sm font-bold text-rose-600 disabled:opacity-50"
-          >
+          <input value={confirmText} onChange={(event) => setConfirmText(event.target.value)} className="w-full max-w-sm rounded-2xl border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-900" placeholder="Type DELETE" />
+          <button type="button" onClick={removeAccount} disabled={isDeleting} className="rounded-2xl border border-rose-500/40 px-4 py-2 text-sm font-bold text-rose-600 disabled:opacity-50">
             {isDeleting ? 'Deleting account...' : 'Delete my account'}
           </button>
-          {message ? <p className="text-sm text-rose-600">{message}</p> : null}
+          {message ? <p className="text-sm text-zinc-700">{message}</p> : null}
         </div>
       </SectionCard>
     </div>

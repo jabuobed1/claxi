@@ -18,7 +18,7 @@ function buildDefaultProfile({ uid, email, displayName, role }) {
     availability: '',
     onlineStatus: 'offline',
     studentProfile: {
-      grade: '',
+      grade: null,
       curriculum: '',
       discoverySource: '',
     },
@@ -119,8 +119,14 @@ function scoreTutorForTopic(tutor = {}, topic = '') {
   const topicRatings = tutor?.tutorProfile?.topicRatings || {};
   const topicScore = Number(topicRatings[topicKey] || 0);
   const overall = Number(tutor?.tutorProfile?.overallRating || 0);
+  const recentActivityBoost = tutor?.lastActiveAt
+    ? Math.max(0, 10 - Math.floor((Date.now() - new Date(tutor.lastActiveAt).getTime()) / (1000 * 60 * 5)))
+    : 0;
+  const completedSessions = Number(tutor?.tutorProfile?.completedSessions || 0);
+  const reliabilityBoost = Math.min(8, Math.floor(completedSessions / 5));
   const sessionLoadPenalty = tutor?.activeSessionId ? 100 : 0;
-  return topicScore * 2 + overall - sessionLoadPenalty;
+
+  return topicScore * 2.5 + overall * 2 + recentActivityBoost + reliabilityBoost - sessionLoadPenalty;
 }
 
 export async function getTutorCandidatesForRequest({ topic }) {
