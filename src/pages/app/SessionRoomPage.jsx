@@ -138,7 +138,7 @@ export default function SessionRoomPage() {
         {session.status === 'completed' && session.paymentStatus === 'wallet_debt_recorded' ? (
           <p className="mt-2 text-sm text-amber-200">
             Card charge was declined. Outstanding balance moved to wallet debt.
-            <Link to="/app/student/wallet" className="ml-1 underline">Pay from wallet</Link>
+            <Link to="/app/student/payment" className="ml-1 underline">Pay from wallet</Link>
           </p>
         ) : null}
       </SectionCard>

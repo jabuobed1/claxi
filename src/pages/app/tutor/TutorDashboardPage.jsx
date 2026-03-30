@@ -1,101 +1,96 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpenCheck, CalendarClock, Inbox } from 'lucide-react';
 import PageHeader from '../../../components/ui/PageHeader';
-import StatCard from '../../../components/ui/StatCard';
 import SectionCard from '../../../components/ui/SectionCard';
-import LoadingState from '../../../components/ui/LoadingState';
-import EmptyState from '../../../components/ui/EmptyState';
-import RequestCard from '../../../components/app/RequestCard';
-import NotificationFeed from '../../../components/app/NotificationFeed';
-import OnboardingStatusBanner from '../../../components/app/OnboardingStatusBanner';
 import { useAuth } from '../../../hooks/useAuth';
-import { useTutorAcceptedRequests, useTutorAvailableRequests } from '../../../hooks/useClassRequests';
-import { useTutorSessions } from '../../../hooks/useSessions';
-import { useNotifications } from '../../../hooks/useNotifications';
+import { useTutorAvailableRequests } from '../../../hooks/useClassRequests';
 import { getTutorOnboardingStatus } from '../../../utils/onboarding';
 import { updateUserProfile } from '../../../services/userService';
+import { acceptClassRequest, declineClassRequest } from '../../../services/classRequestService';
 
 export default function TutorDashboardPage() {
   const { user, setUser } = useAuth();
-  const { requests: availableRequests, isLoading: isAvailableLoading } = useTutorAvailableRequests(user?.uid);
-  const { classes } = useTutorAcceptedRequests(user?.uid);
-  const { sessions } = useTutorSessions(user?.uid);
-  const { notifications } = useNotifications(user?.uid);
+  const { requests } = useTutorAvailableRequests(user?.uid);
   const onboardingStatus = getTutorOnboardingStatus(user);
   const isOnline = user?.onlineStatus === 'online';
-  const upcoming = sessions.filter((session) => ['accepted', 'waiting_student', 'in_progress'].includes(session.status));
-  const payoutTotal = sessions
-    .filter((session) => session.status === 'completed')
-    .reduce((sum, session) => sum + Number(session.payoutBreakdown?.tutorAmount || 0), 0);
+  const [now, setNow] = useState(Date.now());
+  const [activeRequestId, setActiveRequestId] = useState('');
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const toggleOnlineStatus = async () => {
-    if (!onboardingStatus.complete) {
-      return;
-    }
-
-    const profile = await updateUserProfile(user.uid, {
-      onlineStatus: isOnline ? 'offline' : 'online',
-    });
+    if (!onboardingStatus.complete) return;
+    const profile = await updateUserProfile(user.uid, { onlineStatus: isOnline ? 'offline' : 'online' });
     setUser((prev) => ({ ...prev, ...profile }));
+  };
+
+  const respond = async (requestId, response) => {
+    setActiveRequestId(requestId);
+    if (response === 'accept') {
+      await acceptClassRequest({
+        requestId,
+        tutorId: user.uid,
+        tutorName: user.fullName || user.displayName || user.email,
+        tutorEmail: user.email,
+      });
+    } else {
+      await declineClassRequest({ requestId, tutorId: user.uid });
+    }
+    setActiveRequestId('');
   };
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Tutor Dashboard"
-        description="Monitor incoming demand and run your accepted sessions."
-        action={
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={toggleOnlineStatus}
-              className={`rounded-2xl px-4 py-2.5 text-sm font-bold ${
-                onboardingStatus.complete
-                  ? isOnline
-                    ? 'bg-emerald-600 text-white'
-                    : 'border border-zinc-600 bg-zinc-900 text-zinc-200'
-                  : 'cursor-not-allowed border border-amber-500/30 bg-amber-500/10 text-amber-100'
-              }`}
-            >
-              {onboardingStatus.complete ? (isOnline ? 'Go Offline' : 'Go Online') : 'Complete profile to go online'}
-            </button>
-            <Link to="/app/tutor/available-requests" className="rounded-2xl bg-brand px-4 py-2.5 text-sm font-bold text-white">
-              View Incoming Requests
-            </Link>
-          </div>
-        }
-      />
+      <PageHeader title="Tutor Home" description="Go online to receive one request at a time and accept within 10 seconds." />
 
-      <OnboardingStatusBanner user={user} role="tutor" />
-
-      <div className="grid gap-4 md:grid-cols-4">
-        <StatCard title="Available Requests" value={availableRequests.length} icon={Inbox} />
-        <StatCard title="Accepted Classes" value={classes.length} icon={BookOpenCheck} tone="sky" />
-        <StatCard title="Upcoming Sessions" value={upcoming.length} icon={CalendarClock} tone="zinc" />
-        <StatCard title="Earnings" value={`R${payoutTotal.toFixed(2)}`} icon={CalendarClock} tone="zinc" />
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <SectionCard title="Live request feed" subtitle="New student requests appear here in real time.">
-            {isAvailableLoading ? (
-              <LoadingState message="Loading incoming requests..." />
-            ) : availableRequests.length ? (
-              <div className="space-y-4">
-                {availableRequests.slice(0, 3).map((request) => (
-                  <RequestCard key={request.id} request={request} />
-                ))}
-              </div>
-            ) : (
-              <EmptyState title="No pending requests" description="You're all caught up for now." />
-            )}
-          </SectionCard>
+      {!onboardingStatus.complete ? (
+        <div className="rounded-2xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          {onboardingStatus.message} <Link className="font-semibold underline" to="/app/onboarding?role=tutor">Complete profile</Link>
         </div>
+      ) : null}
 
-        <SectionCard title="Notifications" subtitle="Live updates across your classes.">
-          <NotificationFeed notifications={notifications} />
+      <SectionCard>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={toggleOnlineStatus}
+            className={`rounded-2xl px-4 py-2 text-sm font-bold text-white ${isOnline ? 'bg-rose-600' : 'bg-emerald-600'}`}
+          >
+            {isOnline ? 'Go Offline' : 'Go Online'}
+          </button>
+          <Link to="/app/tutor/available-requests" className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold text-zinc-700">
+            Open full request list
+          </Link>
+        </div>
+      </SectionCard>
+
+      {isOnline ? (
+        <SectionCard title="Incoming requests">
+          {requests.length ? (
+            <div className="space-y-3">
+              {requests.map((request) => {
+                const secondsLeft = Math.max(0, Math.ceil(((request.offerExpiresAt || 0) - now) / 1000));
+                return (
+                  <div key={request.id} className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                    <p className="font-semibold text-zinc-900">{request.topic}</p>
+                    <p className="text-sm text-zinc-600">{request.description || 'New class request'}</p>
+                    <p className="mt-1 text-xs font-semibold text-amber-700">{secondsLeft}s remaining</p>
+                    <div className="mt-3 flex gap-2">
+                      <button disabled={activeRequestId === request.id} onClick={() => respond(request.id, 'accept')} className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white">Accept</button>
+                      <button disabled={activeRequestId === request.id} onClick={() => respond(request.id, 'decline')} className="rounded-xl border border-zinc-300 px-3 py-2 text-xs font-semibold text-zinc-700">Decline</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-zinc-600">No requests yet. Stay online to receive offers.</p>
+          )}
         </SectionCard>
-      </div>
+      ) : null}
     </div>
   );
 }

@@ -1,168 +1,137 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { CalendarClock, ClipboardList, PlayCircle } from 'lucide-react';
-import PageHeader from '../../../components/ui/PageHeader';
-import StatCard from '../../../components/ui/StatCard';
-import SectionCard from '../../../components/ui/SectionCard';
-import RequestCard from '../../../components/app/RequestCard';
-import EmptyState from '../../../components/ui/EmptyState';
-import LoadingState from '../../../components/ui/LoadingState';
-import NotificationFeed from '../../../components/app/NotificationFeed';
+import { useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Clock3, CreditCard, Paperclip, Send } from 'lucide-react';
 import OnboardingStatusBanner from '../../../components/app/OnboardingStatusBanner';
 import { useAuth } from '../../../hooks/useAuth';
-import { useStudentRequests } from '../../../hooks/useClassRequests';
-import { useStudentSessions } from '../../../hooks/useSessions';
-import { useNotifications } from '../../../hooks/useNotifications';
 import { getStudentOnboardingStatus } from '../../../utils/onboarding';
-import { createClassRequest } from '../../../services/classRequestService';
+import { getLessonPrice, LESSON_DURATION_OPTIONS } from '../../../utils/pricing';
 
 export default function StudentDashboardPage() {
   const { user } = useAuth();
-  const { requests, isLoading } = useStudentRequests(user?.uid);
-  const { sessions } = useStudentSessions(user?.uid);
-  const { notifications } = useNotifications(user?.uid);
+  const navigate = useNavigate();
+  const textareaRef = useRef(null);
   const [topic, setTopic] = useState('');
-  const [imageAttachment, setImageAttachment] = useState('');
-  const [isSending, setIsSending] = useState(false);
+  const [durationMinutes, setDurationMinutes] = useState(10);
+  const [cardId, setCardId] = useState(user?.paymentMethods?.find((card) => card.isDefault)?.id || user?.paymentMethods?.[0]?.id || '');
+  const [attachment, setAttachment] = useState(null);
 
   const onboardingStatus = getStudentOnboardingStatus(user);
-  const walletBalance = Number(user?.wallet?.balance || 0);
-  const activeRequests = requests.filter((request) => ['pending', 'matching', 'offered', 'accepted', 'waiting_student', 'in_progress'].includes(request.status));
-  const upcoming = sessions.filter((session) =>
-    ['accepted', 'waiting_student', 'in_progress'].includes(session.status),
-  );
+  const selectedPrice = getLessonPrice(durationMinutes);
+  const canSend = onboardingStatus.complete && Boolean(topic.trim()) && Boolean(cardId) && Boolean(durationMinutes);
 
-  const quickRequest = async (event) => {
-    event.preventDefault();
-    if (!topic.trim() || !onboardingStatus.complete) {
-      return;
-    }
-
-    setIsSending(true);
-    try {
-      await createClassRequest({
-        topic: topic.trim(),
-        description: topic.trim(),
-        preferredDate: '',
-        preferredTime: '',
-        duration: 'Flexible',
-        meetingProviderPreference: 'any',
-        mode: 'online',
-        imageAttachment,
-        studentId: user.uid,
-        studentName: user.fullName || user.displayName || user.email,
-        studentEmail: user.email,
-      });
-      setTopic('');
-      setImageAttachment('');
-    } finally {
-      setIsSending(false);
-    }
+  const onTopicChange = (event) => {
+    setTopic(event.target.value);
+    if (!textareaRef.current) return;
+    textareaRef.current.style.height = 'auto';
+    textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 220)}px`;
   };
 
-  const handleFileChange = (event) => {
+  const onFileChange = (event) => {
     const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
+    if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = () => setImageAttachment(reader.result?.toString() || '');
-    reader.readAsDataURL(file);
+    const isImage = file.type.startsWith('image/');
+    const isPdf = file.type === 'application/pdf';
+    if (!isImage && !isPdf) return;
+    setAttachment(file);
+  };
+
+  const goToRequestStatus = () => {
+    if (!canSend) return;
+
+    navigate('/app/student/request', {
+      state: {
+        topic: topic.trim(),
+        description: topic.trim(),
+        durationMinutes,
+        cardId,
+        attachment,
+      },
+    });
   };
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Student Dashboard"
-        description="Track your class requests in real time and launch sessions quickly."
-        action={
-          onboardingStatus.complete ? (
-            <Link
-              to="/app/student/request-class"
-              className="inline-flex rounded-2xl bg-brand px-4 py-2.5 text-sm font-bold text-white transition hover:bg-brand-dark"
-            >
-              Request New Class
+    <div className="flex min-h-[calc(100vh-13rem)] flex-col overflow-hidden">
+      {!onboardingStatus.complete ? (
+        <div className="mb-4">
+          <OnboardingStatusBanner user={user} role="student" />
+          <div className="mt-3 rounded-2xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+            <p>{onboardingStatus.message}</p>
+            <Link to="/app/onboarding?role=student" className="mt-2 inline-flex rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white">
+              Complete profile
             </Link>
-          ) : (
-            <Link
-              to="/app/onboarding?role=student"
-              className="inline-flex rounded-2xl border border-amber-400/40 bg-amber-500/10 px-4 py-2.5 text-sm font-bold text-amber-200 transition hover:bg-amber-500/20"
-            >
-              Complete profile to request
-            </Link>
-          )
-        }
-      />
-
-      <OnboardingStatusBanner user={user} role="student" />
-
-
-      {walletBalance < 0 ? (
-        <SectionCard title="Wallet balance due" subtitle="Auto-charge failed for a previous session.">
-          <p className="text-sm text-amber-200">Outstanding wallet debt: R{Math.abs(walletBalance).toFixed(2)}</p>
-          <Link to="/app/student/wallet" className="mt-3 inline-flex rounded-2xl bg-brand px-4 py-2 text-sm font-bold text-white">
-            Add money to wallet
-          </Link>
-        </SectionCard>
+          </div>
+        </div>
       ) : null}
 
-      <SectionCard title="Need help right now?" subtitle="Enter the topic and we immediately notify online tutors.">
-        <form className="space-y-3" onSubmit={quickRequest}>
-          <input
-            value={topic}
-            onChange={(event) => setTopic(event.target.value)}
-            placeholder="What topic do you need help with?"
-            className="w-full rounded-2xl border border-zinc-700 bg-zinc-950/70 px-4 py-3 text-sm text-white outline-none focus:border-brand"
-            disabled={!onboardingStatus.complete || isSending}
-            required
-          />
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="cursor-pointer rounded-2xl border border-zinc-600 px-3 py-2 text-xs font-semibold text-zinc-200">
-              Add photo
-              <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
-            </label>
-            {imageAttachment ? <span className="text-xs text-emerald-300">Photo attached</span> : null}
-            <button
-              type="submit"
-              disabled={!onboardingStatus.complete || isSending}
-              className="rounded-2xl bg-brand px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
-            >
-              {isSending ? 'Sending to tutors...' : 'Request now'}
-            </button>
+      <div className="flex flex-1 items-center justify-center">
+        <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl p-[1.5px]">
+          <div className="rainbow-border absolute -inset-[60%]" />
+          <div className="relative rounded-3xl border border-white/40 bg-white/10 p-4 backdrop-blur-md md:p-5">
+            <textarea
+              ref={textareaRef}
+              value={topic}
+              onChange={onTopicChange}
+              placeholder="What do you want to learn today?"
+              rows={3}
+              className="max-h-[220px] min-h-[92px] w-full resize-none overflow-y-auto rounded-2xl bg-transparent px-4 py-3 text-sm text-zinc-900 placeholder-zinc-600 outline-none"
+            />
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <label className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-zinc-300 bg-white/60 px-2.5 py-2 text-zinc-700 hover:bg-white/80">
+                <Paperclip className="h-4 w-4" />
+                <span className="text-xs font-semibold">+</span>
+                <input type="file" accept="application/pdf,image/*" onChange={onFileChange} className="hidden" />
+              </label>
+
+              <label className="inline-flex items-center gap-1 rounded-xl border border-zinc-300 bg-white/60 px-2 py-2 text-zinc-700 md:pl-3">
+                <CreditCard className="h-4 w-4" />
+                <select
+                  value={cardId}
+                  onChange={(event) => setCardId(event.target.value)}
+                  className="bg-transparent text-xs text-zinc-700 outline-none"
+                >
+                  <option value="">Select</option>
+                  {(user?.paymentMethods || []).map((card) => (
+                    <option key={card.id} value={card.id}>
+                      {card.nickname} •••• {card.last4} {card.isDefault ? '(Default)' : ''}
+                    </option>
+                  ))}
+                </select>
+                <span className="hidden text-xs text-zinc-700 md:inline">Card</span>
+              </label>
+
+              <label className="inline-flex items-center gap-1 rounded-xl border border-zinc-300 bg-white/60 px-2 py-2 text-zinc-700 md:pl-3">
+                <Clock3 className="h-4 w-4" />
+                <select
+                  value={durationMinutes}
+                  onChange={(event) => setDurationMinutes(Number(event.target.value))}
+                  className="bg-transparent text-xs text-zinc-700 outline-none"
+                >
+                  {LESSON_DURATION_OPTIONS.map((minutes) => (
+                    <option key={minutes} value={minutes}>
+                      {minutes}
+                    </option>
+                  ))}
+                </select>
+                <span className="hidden text-xs text-zinc-700 md:inline">minutes</span>
+              </label>
+
+              <button
+                type="button"
+                onClick={goToRequestStatus}
+                disabled={!canSend}
+                className={`ml-auto inline-flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-bold text-white transition ${canSend ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-zinc-400'}`}
+              >
+                <Send className="h-3.5 w-3.5" />
+                Request • R{selectedPrice}
+              </button>
+            </div>
+
+            {attachment ? <p className="mt-2 text-xs text-emerald-700">Attached: {attachment.name}</p> : null}
+            {!user?.paymentMethods?.length ? <p className="mt-2 text-xs text-amber-700">Add a payment card from Payment page first.</p> : null}
           </div>
-        </form>
-      </SectionCard>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <StatCard title="Total Requests" value={requests.length} icon={ClipboardList} />
-        <StatCard title="Active Requests" value={activeRequests.length} icon={PlayCircle} tone="sky" />
-        <StatCard title="Upcoming Sessions" value={upcoming.length} icon={CalendarClock} tone="zinc" />
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <SectionCard title="Latest activity" subtitle="Automatically synced using Firestore listeners.">
-            {isLoading ? (
-              <LoadingState message="Loading requests..." />
-            ) : requests.length ? (
-              <div className="space-y-4">
-                {requests.slice(0, 3).map((request) => (
-                  <RequestCard key={request.id} request={request} />
-                ))}
-              </div>
-            ) : (
-              <EmptyState
-                title="No class requests yet"
-                description="Create your first class request and tutors will see it instantly."
-              />
-            )}
-          </SectionCard>
         </div>
-
-        <SectionCard title="Notifications" subtitle="Instant updates for accepts and scheduling.">
-          <NotificationFeed notifications={notifications} />
-        </SectionCard>
       </div>
     </div>
   );
