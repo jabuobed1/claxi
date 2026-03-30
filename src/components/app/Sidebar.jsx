@@ -1,33 +1,22 @@
 import { Link, NavLink } from 'react-router-dom';
-import {
-  BookOpen,
-  CalendarClock,
-  ClipboardList,
-  Home,
-  Settings,
-  UserCircle2,
-  Users,
-} from 'lucide-react';
+import { BookOpen, CalendarClock, Home, UserCircle2, Wallet } from 'lucide-react';
 
-const baseClass =
-  'flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold transition-colors';
+const baseClass = 'flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold transition-colors';
 
 const linksByRole = {
   student: [
-    { to: '/app/student', label: 'Dashboard', icon: Home },
-    { to: '/app/student/request-class', label: 'Request Class', icon: ClipboardList },
-    { to: '/app/student/requests', label: 'My Requests', icon: CalendarClock },
-    { to: '/app/student/sessions', label: 'My Sessions', icon: BookOpen },
-    { to: '/app/student/wallet', label: 'Wallet', icon: CalendarClock },
-    { to: '/app/onboarding?role=student', label: 'Complete Profile', icon: ClipboardList },
+    { to: '/app/student', label: 'Home', icon: Home },
+    { to: '/app/student/request-class', label: 'Schedule', icon: CalendarClock },
+    { to: '/app/student/sessions', label: 'Classes', icon: BookOpen },
+    { to: '/app/student/payment', label: 'Payment', icon: Wallet },
+    { to: '/app/profile', label: 'Profile', icon: UserCircle2 },
   ],
   tutor: [
-    { to: '/app/tutor', label: 'Dashboard', icon: Home },
-    { to: '/app/tutor/available-requests', label: 'Available Requests', icon: Users },
-    { to: '/app/tutor/my-classes', label: 'My Classes', icon: BookOpen },
-    { to: '/app/tutor/sessions', label: 'Sessions', icon: CalendarClock },
-    { to: '/app/tutor/payments', label: 'Payments', icon: CalendarClock },
-    { to: '/app/onboarding?role=tutor', label: 'Complete Profile', icon: ClipboardList },
+    { to: '/app/tutor', label: 'Home', icon: Home },
+    { to: '/app/tutor/available-requests', label: 'Schedule', icon: CalendarClock },
+    { to: '/app/tutor/my-classes', label: 'Classes', icon: BookOpen },
+    { to: '/app/tutor/payments', label: 'Payment', icon: Wallet },
+    { to: '/app/profile', label: 'Profile', icon: UserCircle2 },
   ],
 };
 
@@ -39,8 +28,8 @@ export default function Sidebar({ role }) {
       <Link to="/app" className="mb-6 flex items-center gap-2 px-2">
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-black font-black text-white">C</div>
         <div>
-          <p className="text-sm text-zinc-500">Claxi</p>
-          <p className="text-xs uppercase text-zinc-400">{role}</p>
+          <p className="text-sm text-zinc-600">Claxi</p>
+          <p className="text-xs uppercase text-zinc-500">{role}</p>
         </div>
       </Link>
 
@@ -50,42 +39,14 @@ export default function Sidebar({ role }) {
             key={to}
             to={to}
             className={({ isActive }) =>
-              `${baseClass} ${
-                isActive ? 'bg-black text-white' : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
-              }`
+              `${baseClass} ${isActive ? 'bg-black text-white' : 'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900'}`
             }
           >
             <Icon className="h-4 w-4" />
             {label}
           </NavLink>
         ))}
-
-        <NavLink
-          to="/app/profile"
-          className={({ isActive }) =>
-            `${baseClass} ${
-              isActive ? 'bg-black text-white' : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
-            }`
-          }
-        >
-          <UserCircle2 className="h-4 w-4" />
-          Profile
-        </NavLink>
-
-        <NavLink
-          to="/app/settings"
-          className={({ isActive }) =>
-            `${baseClass} ${
-              isActive ? 'bg-black text-white' : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
-            }`
-          }
-        >
-          <Settings className="h-4 w-4" />
-          Settings
-        </NavLink>
       </nav>
-
-      
     </aside>
   );
 }

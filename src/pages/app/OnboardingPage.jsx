@@ -5,45 +5,13 @@ import SectionCard from '../../components/ui/SectionCard';
 import FormField from '../../components/ui/FormField';
 import { useAuth } from '../../hooks/useAuth';
 import { updateUserProfile } from '../../services/userService';
-import { removePaymentMethod, setDefaultPaymentMethod } from '../../services/paymentMethodService';
-import { initializeCardAuthorization, verifyCardAuthorization } from '../../services/paystackService';
 import { uploadUserFile } from '../../services/storageService';
 import {
   getStudentOnboardingStatus,
   getTutorOnboardingStatus,
   TUTOR_VERIFICATION_STATUSES,
 } from '../../utils/onboarding';
-
-function CardList({ cards, onSetDefault, onRemove }) {
-  if (!cards.length) {
-    return <p className="text-sm text-zinc-500">No cards added yet.</p>;
-  }
-
-  return (
-    <div className="space-y-2">
-      {cards.map((card) => (
-        <div key={card.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
-          <div>
-            <p className="text-sm font-semibold text-zinc-900">{card.nickname}</p>
-            <p className="text-xs text-zinc-500">{card.brand} •••• {card.last4}</p>
-          </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => onSetDefault(card.id)}
-              className="rounded-xl border border-zinc-300 px-3 py-1.5 text-xs font-semibold text-zinc-700"
-            >
-              {card.isDefault ? 'Primary' : 'Set Primary'}
-            </button>
-            <button type="button" onClick={() => onRemove(card.id)} className="rounded-xl border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-600">
-              Remove
-            </button>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
+import PaymentMethodsManager from '../../components/app/PaymentMethodsManager';
 
 export default function OnboardingPage() {
   const { user, setUser } = useAuth();
@@ -51,7 +19,6 @@ export default function OnboardingPage() {
   const queryRole = searchParams.get('role');
   const role = queryRole === 'tutor' ? 'tutor' : 'student';
   const [statusMessage, setStatusMessage] = useState('');
-  const [isAuthorizingCard, setIsAuthorizingCard] = useState(false);
   const [isSavingTutorProfile, setIsSavingTutorProfile] = useState(false);
 
   const studentStatus = useMemo(() => getStudentOnboardingStatus(user), [user]);
@@ -63,7 +30,7 @@ export default function OnboardingPage() {
 
     const profile = await updateUserProfile(user.uid, {
       studentProfile: {
-        grade: formData.get('grade')?.toString().trim() || '',
+        grade: Number(formData.get('grade')) || null,
         curriculum: formData.get('curriculum')?.toString().trim() || '',
         discoverySource: formData.get('discoverySource')?.toString().trim() || '',
       },
@@ -124,57 +91,6 @@ export default function OnboardingPage() {
     }
   };
 
-  const addCard = async () => {
-    setIsAuthorizingCard(true);
-
-    try {
-      await initializeCardAuthorization({
-        email: user.email,
-        onSuccess: async (response) => {
-          try {
-            const result = await verifyCardAuthorization(response.reference, { userId: user.uid });
-            setUser((prev) => {
-              const existingMethods = Array.isArray(prev?.paymentMethods) ? prev.paymentMethods : [];
-              const alreadyExists = existingMethods.some((method) => method.id === result.card.id);
-              return {
-                ...prev,
-                paymentMethods: alreadyExists ? existingMethods : [...existingMethods, result.card],
-              };
-            });
-
-            setStatusMessage(
-              result.refunded
-                ? `Card ending in ${result.card.last4} added successfully. Your R1 authorization has been refunded.`
-                : result.refundMessage || `Card ending in ${result.card.last4} was added. Refund is still processing.`,
-            );
-          } catch (error) {
-            setStatusMessage(error.message || 'We could not verify and save this card. Please try again.');
-          } finally {
-            setIsAuthorizingCard(false);
-          }
-        },
-        onClose: () => {
-          setStatusMessage('Card authorization cancelled.');
-          setIsAuthorizingCard(false);
-        },
-      });
-    } catch (error) {
-      setStatusMessage(`Failed to initialize payment: ${error.message}`);
-      setIsAuthorizingCard(false);
-    }
-  };
-
-  const handleSetDefault = async (cardId) => {
-    const next = await setDefaultPaymentMethod(user, cardId);
-    setUser((prev) => ({ ...prev, ...next }));
-    setStatusMessage('Primary card updated.');
-  };
-
-  const handleRemoveCard = async (cardId) => {
-    const next = await removePaymentMethod(user, cardId);
-    setUser((prev) => ({ ...prev, ...next }));
-    setStatusMessage('Card removed.');
-  };
 
   return (
     <div className="space-y-6">
@@ -186,7 +102,7 @@ export default function OnboardingPage() {
         <>
           <SectionCard title="Student setup" subtitle={studentStatus.message}>
             <form className="grid gap-4 md:grid-cols-3" onSubmit={saveStudentProfile}>
-              <FormField label="Grade" name="grade" defaultValue={user?.studentProfile?.grade || ''} placeholder="Grade 11" required />
+              <FormField label="Grade" name="grade" type="number" min="1" max="12" defaultValue={user?.studentProfile?.grade ?? ''} placeholder="11" required />
               <FormField label="Curriculum" name="curriculum" defaultValue={user?.studentProfile?.curriculum || ''} placeholder="CAPS" required />
               <FormField
                 label="How did you hear about us?"
@@ -202,23 +118,7 @@ export default function OnboardingPage() {
           </SectionCard>
 
           <SectionCard title="Payment methods (Paystack)">
-            <div className="space-y-4">
-              <button
-                type="button"
-                onClick={addCard}
-                disabled={isAuthorizingCard}
-                className="rounded-2xl bg-brand px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand/90 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isAuthorizingCard ? 'Authorizing card…' : 'Add a Card'}
-              </button>
-              <p className="text-sm text-zinc-500">
-                We charge R1 to securely authorize your card, then immediately refund it after verification.
-              </p>
-            </div>
-
-            <div className="mt-4">
-              <CardList cards={user?.paymentMethods || []} onSetDefault={handleSetDefault} onRemove={handleRemoveCard} />
-            </div>
+            <PaymentMethodsManager user={user} setUser={setUser} onMessage={setStatusMessage} />
           </SectionCard>
         </>
       ) : (

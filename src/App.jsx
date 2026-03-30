@@ -7,17 +7,15 @@ import ProtectedRoute from './components/app/ProtectedRoute';
 import AppHomeRedirect from './pages/app/AppHomeRedirect';
 import StudentDashboardPage from './pages/app/student/StudentDashboardPage';
 import RequestClassPage from './pages/app/student/RequestClassPage';
-import StudentRequestsPage from './pages/app/student/StudentRequestsPage';
 import StudentSessionsPage from './pages/app/student/StudentSessionsPage';
 import StudentWalletPage from './pages/app/student/StudentWalletPage';
+import StudentRequestStatusPage from './pages/app/student/StudentRequestStatusPage';
 import TutorDashboardPage from './pages/app/tutor/TutorDashboardPage';
 import AvailableRequestsPage from './pages/app/tutor/AvailableRequestsPage';
 import MyClassesPage from './pages/app/tutor/MyClassesPage';
 import TutorSessionsPage from './pages/app/tutor/TutorSessionsPage';
 import ProfilePage from './pages/app/ProfilePage';
-import SettingsPage from './pages/app/SettingsPage';
 import OnboardingPage from './pages/app/OnboardingPage';
-import TutorPaymentsPage from './pages/app/tutor/TutorPaymentsPage';
 import SessionRoomPage from './pages/app/SessionRoomPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsPage from './pages/TermsPage';
@@ -42,7 +40,6 @@ export default function App() {
         >
           <Route index element={<AppHomeRedirect />} />
           <Route path="profile" element={<ProfilePage />} />
-          <Route path="settings" element={<SettingsPage />} />
           <Route path="onboarding" element={<OnboardingPage />} />
           <Route path="session/:id" element={<SessionRoomPage />} />
 
@@ -55,18 +52,18 @@ export default function App() {
             }
           />
           <Route
-            path="student/request-class"
+            path="student/request"
             element={
               <ProtectedRoute allowedRoles={['student']}>
-                <RequestClassPage />
+                <StudentRequestStatusPage />
               </ProtectedRoute>
             }
           />
           <Route
-            path="student/requests"
+            path="student/request-class"
             element={
               <ProtectedRoute allowedRoles={['student']}>
-                <StudentRequestsPage />
+                <RequestClassPage />
               </ProtectedRoute>
             }
           />
@@ -79,7 +76,7 @@ export default function App() {
             }
           />
           <Route
-            path="student/wallet"
+            path="student/payment"
             element={
               <ProtectedRoute allowedRoles={['student']}>
                 <StudentWalletPage />
@@ -123,7 +120,7 @@ export default function App() {
             path="tutor/payments"
             element={
               <ProtectedRoute allowedRoles={['tutor']}>
-                <TutorPaymentsPage />
+                <StudentWalletPage />
               </ProtectedRoute>
             }
           />
