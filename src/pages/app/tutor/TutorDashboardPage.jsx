@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Power } from 'lucide-react';
 import PageHeader from '../../../components/ui/PageHeader';
 import SectionCard from '../../../components/ui/SectionCard';
 import { useAuth } from '../../../hooks/useAuth';
@@ -44,7 +45,7 @@ export default function TutorDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Tutor Home" description="Go online to receive one request at a time and accept within 10 seconds." />
+      <PageHeader title="Tutor Home" description="Go online to view requests and respond quickly." />
 
       {!onboardingStatus.complete ? (
         <div className="rounded-2xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
@@ -53,17 +54,22 @@ export default function TutorDashboardPage() {
       ) : null}
 
       <SectionCard>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={toggleOnlineStatus}
-            className={`rounded-2xl px-4 py-2 text-sm font-bold text-white ${isOnline ? 'bg-rose-600' : 'bg-emerald-600'}`}
-          >
-            {isOnline ? 'Go Offline' : 'Go Online'}
-          </button>
-          <Link to="/app/tutor/available-requests" className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold text-zinc-700">
-            Open full request list
-          </Link>
+        <div className="rounded-3xl border border-emerald-200 bg-white p-4 md:p-6">
+          <p className="text-2xl font-black text-zinc-900">Go online to view requests</p>
+          <p className="mt-1 text-sm text-zinc-500">When you are online, new requests will appear below in real time.</p>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={toggleOnlineStatus}
+              className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-bold text-white ${isOnline ? 'bg-rose-600' : 'bg-emerald-600'}`}
+            >
+              <Power className="h-4 w-4" />
+              {isOnline ? 'Go Offline' : 'Go Online'}
+            </button>
+            <Link to="/app/tutor/available-requests" className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-semibold text-zinc-700">
+              Open full request list
+            </Link>
+          </div>
         </div>
       </SectionCard>
 
