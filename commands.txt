@@ -7,7 +7,7 @@ Run:
 
 git status
 git add .
-git commit -m "Commit after making UI and flow changes - 30.03.2026 - 1."
+git commit -m "Commit before Codex changes - 31.03.2026 - 1."
 git push origin main
 
 (This ensures Codex sees your latest work from GitHub)

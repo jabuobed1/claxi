@@ -48,7 +48,7 @@ export default function LandingPage() {
 
             <p className="text-xs font-bold uppercase tracking-[0.3em] text-brand">Student Portal</p>
             <h1 className="mt-4 max-w-3xl text-5xl font-black leading-[0.95] text-zinc-900 md:text-7xl">
-              Elegant, modern tutoring that helps you move faster in <span className="text-brand">Math</span>.
+              Effective on request sessions <span className="text-brand">Math</span>.
             </h1>
             <p className="mt-6 max-w-2xl text-lg text-zinc-600">
               Discover verified tutors, request a session in minutes, and learn with confidence through a polished, reliable flow.
@@ -61,9 +61,9 @@ export default function LandingPage() {
                   Request Class Now
                 </CTAButton>
               </Link>
-              <Link to="/signup">
+              <Link to="/login">
                 <CTAButton variant="secondary">
-                  Become a Tutor
+                  Login
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </CTAButton>
               </Link>
