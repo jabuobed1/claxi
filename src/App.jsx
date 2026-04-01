@@ -23,6 +23,7 @@ import AdminTutorsPage from './pages/app/admin/AdminTutorsPage';
 import AdminPaymentsPage from './pages/app/admin/AdminPaymentsPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsPage from './pages/TermsPage';
+import StudentRequestsPage from './pages/app/student/StudentRequestsPage';
 
 export default function App() {
   return (
@@ -84,6 +85,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={['student']}>
                 <StudentWalletPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="student/requests"
+            element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <StudentRequestsPage />
               </ProtectedRoute>
             }
           />

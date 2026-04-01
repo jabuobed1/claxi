@@ -233,7 +233,7 @@ exports.verifyPaystack = onRequest({ cors: true, secrets: [PAYSTACK_SECRET_KEY] 
 
     const safeCardRecord = duplicateMethod || {
       id: randomUUID(),
-      nickname: nickname || `${authorization.brand || 'Card'} •••• ${authorization.last4 || '----'}`,
+      nickname: nickname || `${(authorization.brand || 'Card').charAt(0).toUpperCase() + (authorization.brand || 'Card').slice(1)} •••• ${authorization.last4 || '----'}`,
       brand: authorization.brand || 'Card',
       last4: authorization.last4 || '----',
       paystackAuthorizationCode: authorization.authorization_code,

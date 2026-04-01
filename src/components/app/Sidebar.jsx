@@ -20,7 +20,7 @@ export default function Sidebar({ role, onNavigate, mobile = false }) {
     <aside className="flex h-full w-full flex-col rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm">
       <div className="mb-6 flex items-center justify-between px-2">
         <Link to="/app" onClick={onNavigate} className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-black font-black text-white">C</div>
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand font-black text-white">C</div>
           <div>
             <p className="text-sm text-zinc-600">Claxi</p>
             <p className="text-xs uppercase text-zinc-500">{role}</p>
@@ -41,7 +41,7 @@ export default function Sidebar({ role, onNavigate, mobile = false }) {
             end={Boolean(end)}
             onClick={onNavigate}
             className={({ isActive }) =>
-              `${baseClass} ${isActive ? 'bg-black text-white' : 'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900'}`
+              `${baseClass} ${isActive ? 'bg-brand text-white' : 'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900'}`
             }
           >
             <Icon className="h-4 w-4" />

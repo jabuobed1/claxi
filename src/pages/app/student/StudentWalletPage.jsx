@@ -52,13 +52,13 @@ export default function StudentWalletPage() {
         <form className="grid gap-4 md:grid-cols-2" onSubmit={topUp}>
           <FormField label="Amount (R)" name="amount" type="number" min="1" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} required />
           <SelectField
-            label="Payment card"
+            label="Payment Card"
             name="cardId"
             value={cardId}
             onChange={(event) => setCardId(event.target.value)}
             options={(user?.paymentMethods || []).map((card) => ({
               value: card.id,
-              label: `${card.nickname} •••• ${card.last4}${card.isDefault ? ' (Primary)' : ''}`,
+              label: `${card.nickname.charAt(0).toUpperCase() + card.nickname.slice(1)} ${card.isDefault ? ' (Primary)' : ''}`,
             }))}
           />
           <div className="md:col-span-2">

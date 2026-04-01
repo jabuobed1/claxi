@@ -24,7 +24,7 @@ export default function StudentRequestsPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="My Requests" description="Live status updates from Firestore keep your request feed current." />
+      <PageHeader title="My Requests" description="Here's a list of all your sessions." />
 
       <div className="flex flex-wrap gap-2">
         {filters.map((filter) => (
@@ -57,7 +57,7 @@ export default function StudentRequestsPage() {
             title="No requests for this filter"
             description="Post a request and tutors will be able to accept it right away."
             action={
-              <Link to="/app/student/request-class" className="rounded-2xl bg-brand px-4 py-2 text-sm font-bold text-white">
+              <Link to="/app/student" className="rounded-2xl bg-brand px-4 py-2 text-sm font-bold text-white">
                 Request Class
               </Link>
             }

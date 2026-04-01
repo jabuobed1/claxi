@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Clock3, CreditCard, Paperclip, Send } from 'lucide-react';
+import { Clock3, CreditCard, Paperclip, Send, X, FileText, ImageIcon } from 'lucide-react';
 import OnboardingStatusBanner from '../../../components/app/OnboardingStatusBanner';
 import { useAuth } from '../../../hooks/useAuth';
 import { createClassRequest } from '../../../services/classRequestService';
@@ -14,31 +14,54 @@ export default function StudentDashboardPage() {
   const textareaRef = useRef(null);
   const [topic, setTopic] = useState('');
   const [durationMinutes, setDurationMinutes] = useState(10);
-  const [cardId, setCardId] = useState(user?.paymentMethods?.find((card) => card.isDefault)?.id || user?.paymentMethods?.[0]?.id || '');
-  const [attachment, setAttachment] = useState(null);
+  const [cardId, setCardId] = useState(
+    user?.paymentMethods?.find((card) => card.isDefault)?.id || user?.paymentMethods?.[0]?.id || ''
+  );
+  const [attachments, setAttachments] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   const onboardingStatus = getStudentOnboardingStatus(user);
   const selectedPrice = getLessonPrice(durationMinutes);
-  const hasRequestContent = Boolean(topic.trim()) || Boolean(attachment);
+  const hasRequestContent = Boolean(topic.trim()) || attachments.length > 0;
   const canSend = onboardingStatus.complete && hasRequestContent && Boolean(cardId) && Boolean(durationMinutes);
 
-  const onTopicChange = (event) => {
-    setTopic(event.target.value);
+  const resizeTextarea = () => {
     if (!textareaRef.current) return;
     textareaRef.current.style.height = 'auto';
     textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 220)}px`;
   };
 
-  const onFileChange = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const onTopicChange = (event) => {
+    setTopic(event.target.value);
+    resizeTextarea();
+  };
 
-    const isImage = file.type.startsWith('image/');
-    const isPdf = file.type === 'application/pdf';
-    if (!isImage && !isPdf) return;
-    setAttachment(file);
+  const onFileChange = (event) => {
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
+
+    const validFiles = files.filter((file) => {
+      const isImage = file.type.startsWith('image/');
+      const isPdf = file.type === 'application/pdf';
+      return isImage || isPdf;
+    });
+
+    if (!validFiles.length) return;
+
+    setAttachments((prev) => {
+      const existingKeys = new Set(prev.map((file) => `${file.name}-${file.size}-${file.lastModified}`));
+      const newFiles = validFiles.filter(
+        (file) => !existingKeys.has(`${file.name}-${file.size}-${file.lastModified}`)
+      );
+      return [...prev, ...newFiles];
+    });
+
+    event.target.value = '';
+  };
+
+  const removeAttachment = (indexToRemove) => {
+    setAttachments((prev) => prev.filter((_, index) => index !== indexToRemove));
   };
 
   const goToRequestStatus = async () => {
@@ -48,23 +71,29 @@ export default function StudentDashboardPage() {
     setIsSubmitting(true);
 
     try {
-      const requestText = topic.trim() || `Help me with attached file: ${attachment?.name || 'attachment'}`;
-      let uploadedAttachment = null;
+      const requestText =
+        topic.trim() || `Help me with attached file${attachments.length > 1 ? 's' : ''}: ${attachments.map((file) => file.name).join(', ')}`;
 
-      if (attachment) {
-        const uploadResult = await uploadUserFile({
-          userId: user.uid,
-          file: attachment,
-          pathPrefix: 'request-attachments',
-        });
+      let uploadedAttachments = [];
 
-        uploadedAttachment = {
-          fileName: attachment.name,
-          contentType: attachment.type || '',
-          size: Number(attachment.size || 0),
-          path: uploadResult.objectPath,
-          downloadUrl: uploadResult.downloadUrl,
-        };
+      if (attachments.length) {
+        uploadedAttachments = await Promise.all(
+          attachments.map(async (file) => {
+            const uploadResult = await uploadUserFile({
+              userId: user.uid,
+              file,
+              pathPrefix: 'request-attachments',
+            });
+
+            return {
+              fileName: file.name,
+              contentType: file.type || '',
+              size: Number(file.size || 0),
+              path: uploadResult.objectPath,
+              downloadUrl: uploadResult.downloadUrl,
+            };
+          })
+        );
       }
 
       const requestId = await createClassRequest({
@@ -75,8 +104,9 @@ export default function StudentDashboardPage() {
         duration: `${durationMinutes} mins`,
         meetingProviderPreference: 'any',
         mode: 'online',
-        imageAttachment: attachment?.name || '',
-        attachment: uploadedAttachment,
+        imageAttachment: uploadedAttachments.map((file) => file.fileName).join(', '),
+        attachment: uploadedAttachments[0] || null,
+        attachments: uploadedAttachments,
         studentId: user.uid,
         studentName: user.fullName || user.displayName || user.email,
         studentEmail: user.email,
@@ -97,89 +127,163 @@ export default function StudentDashboardPage() {
     }
   };
 
+  const displayName = user?.fullName || user?.displayName || 'Student';
+
   return (
-    <div className="flex min-h-[calc(100vh-13rem)] flex-col overflow-hidden">
+    <div className="relative flex min-h-[calc(100vh-13rem)] flex-col overflow-hidden bg-transparent">
       {!onboardingStatus.complete ? (
         <div className="mb-4">
           <OnboardingStatusBanner user={user} role="student" />
           <div className="mt-3 rounded-2xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
             <p>{onboardingStatus.message}</p>
-            <Link to="/app/onboarding?role=student" className="mt-2 inline-flex rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white">
+            <Link
+              to="/app/onboarding?role=student"
+              className="mt-2 inline-flex rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white"
+            >
               Complete profile
             </Link>
           </div>
         </div>
       ) : null}
 
-      <div className="flex flex-1 items-center justify-center">
-        <div className="w-full max-w-3xl overflow-hidden rounded-3xl border border-emerald-200 bg-white p-4 shadow-sm md:p-6">
-          <p className="text-3xl font-black tracking-tight text-zinc-900">What request do you want?</p>
-          <p className="mt-1 text-sm text-zinc-500">How can we help you?</p>
+      <div className="relative flex flex-1 flex-col px-4 pt-4 md:px-6 md:pt-6">
+        <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col">
+          <div className="overflow-hidden rounded-[2rem] border border-white/60 bg-white/70 p-6 backdrop-blur-xl md:p-10">
+            <div className="max-w-3xl">
+              <div className="mb-4 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-700">
+                Smart class requests
+              </div>
 
-          <div className="mt-4 rounded-3xl border border-emerald-200 bg-emerald-50/40 p-3 md:p-4">
-            <textarea
-              ref={textareaRef}
-              value={topic}
-              onChange={onTopicChange}
-              placeholder="Type what you need help with..."
-              rows={3}
-              className="max-h-[220px] min-h-[92px] w-full resize-none overflow-y-auto rounded-2xl border border-emerald-100 bg-white px-4 py-3 text-sm text-zinc-900 placeholder-zinc-500 outline-none"
-            />
+              <h1 className="text-3xl font-black leading-tight tracking-tight text-zinc-950 md:text-3xl">
+                Hello{' '}
+                <span className="bg-gradient-to-r from-emerald-500 via-teal-500 to-blue-500 bg-clip-text text-transparent">
+                  {displayName}
+                </span>
+                , request anything you would like help with.
+              </h1>
 
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <label className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-emerald-200 bg-white px-2.5 py-2 text-zinc-700">
-                <Paperclip className="h-4 w-4" />
-                <span className="text-xs font-semibold">Attach</span>
-                <input type="file" accept="application/pdf,image/*" onChange={onFileChange} className="hidden" />
-              </label>
-
-              <label className="inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-white px-2 py-2 text-zinc-700 md:pl-3">
-                <CreditCard className="h-4 w-4" />
-                <select
-                  value={cardId}
-                  onChange={(event) => setCardId(event.target.value)}
-                  className="bg-transparent text-xs text-zinc-700 outline-none"
-                >
-                  <option value="">Select card</option>
-                  {(user?.paymentMethods || []).map((card) => (
-                    <option key={card.id} value={card.id}>
-                      {card.nickname} •••• {card.last4} {card.isDefault ? '(Default)' : ''}
-                    </option>
-                  ))}
-                </select>
-                <span className="hidden text-xs text-zinc-700 md:inline">Card</span>
-              </label>
-
-              <label className="inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-white px-2 py-2 text-zinc-700 md:pl-3">
-                <Clock3 className="h-4 w-4" />
-                <select
-                  value={durationMinutes}
-                  onChange={(event) => setDurationMinutes(Number(event.target.value))}
-                  className="bg-transparent text-xs text-zinc-700 outline-none"
-                >
-                  {LESSON_DURATION_OPTIONS.map((minutes) => (
-                    <option key={minutes} value={minutes}>
-                      {minutes}
-                    </option>
-                  ))}
-                </select>
-                <span className="hidden text-xs text-zinc-700 md:inline">minutes</span>
-              </label>
-
-              <button
-                type="button"
-                onClick={goToRequestStatus}
-                disabled={!canSend || isSubmitting}
-                className={`ml-auto inline-flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-bold text-white transition ${canSend ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-zinc-400'}`}
-              >
-                <Send className="h-3.5 w-3.5" />
-                {isSubmitting ? 'Requesting...' : `Request • R${selectedPrice}`}
-              </button>
+              <p className="mt-4 max-w-2xl text-sm leading-6 text-zinc-600 md:text-base">
+                Describe or upload the question you need help with.
+              </p>
             </div>
+          </div>
 
-            {attachment ? <p className="mt-2 text-xs text-emerald-700">Attached: {attachment.name}</p> : null}
-            {!user?.paymentMethods?.length ? <p className="mt-2 text-xs text-amber-700">Add a payment card from Payment page first.</p> : null}
-            {error ? <p className="mt-2 text-xs text-rose-700">{error}</p> : null}
+          <div className="flex-1" />
+
+          <div className="sticky bottom-0 z-20 mt-8 pb-1 md:pb-1">
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white via-white/90 to-transparent" />
+
+            <div className="relative rounded-[2rem] bg-transparent p-1 md:p-1">
+              <div className="rounded-[1.5rem] border border-zinc-200/80 bg-white px-4 py-3 shadow-inner md:px-5 md:py-4">
+                {attachments.length > 0 ? (
+                  <div className="mb-3 flex flex-wrap gap-2">
+                    {attachments.map((file, index) => {
+                      const isImage = file.type.startsWith('image/');
+                      return (
+                        <div
+                          key={`${file.name}-${file.size}-${file.lastModified}-${index}`}
+                          className="inline-flex max-w-full items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800"
+                        >
+                          {isImage ? <ImageIcon className="h-3.5 w-3.5 shrink-0" /> : <FileText className="h-3.5 w-3.5 shrink-0" />}
+                          <span className="max-w-[180px] truncate font-medium md:max-w-[260px]">{file.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeAttachment(index)}
+                            className="inline-flex h-4 w-4 items-center justify-center rounded-full text-emerald-700 transition hover:bg-emerald-100"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
+
+                <textarea
+                  ref={textareaRef}
+                  value={topic}
+                  onChange={onTopicChange}
+                  placeholder="Ask for a class, explain the topic, or upload files..."
+                  rows={1}
+                  className="max-h-[220px] min-h-[28px] w-full resize-none overflow-y-auto bg-transparent py-1 text-sm leading-7 text-zinc-900 placeholder:text-zinc-400 outline-none md:text-[15px]"
+                />
+              </div>
+
+              <div className="mt-3 flex flex-col gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 text-zinc-700 transition hover:border-emerald-300 hover:bg-emerald-50">
+                    <Paperclip className="h-4 w-4 shrink-0" />
+                    <span className="hidden text-xs font-semibold sm:inline">Add files</span>
+                    <input
+                      type="file"
+                      accept="application/pdf,image/*"
+                      multiple
+                      onChange={onFileChange}
+                      className="hidden"
+                    />
+                  </label>
+
+                  <label className="inline-flex h-11 min-w-[52px] items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 text-zinc-700 transition hover:border-emerald-300 hover:bg-emerald-50 sm:min-w-[180px]">
+                    <CreditCard className="h-4 w-4 shrink-0" />
+                    <span className="hidden text-xs font-semibold text-zinc-500 sm:inline">Card</span>
+                    <select
+                      value={cardId}
+                      onChange={(event) => setCardId(event.target.value)}
+                      className="w-auto max-w-[130px] bg-transparent text-xs text-zinc-800 outline-none sm:max-w-none"
+                    >
+                      <option value="">Select</option>
+                      {(user?.paymentMethods || []).map((card) => (
+                        <option key={card.id} value={card.id}>
+                          {card.nickname.charAt(0).toUpperCase() + card.nickname.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="inline-flex h-11 min-w-[52px] items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 text-zinc-700 transition hover:border-emerald-300 hover:bg-emerald-50 sm:min-w-[155px]">
+                    <Clock3 className="h-4 w-4 shrink-0" />
+                    <span className="hidden text-xs font-semibold text-zinc-500 sm:inline">Minutes</span>
+                    <select
+                      value={durationMinutes}
+                      onChange={(event) => setDurationMinutes(Number(event.target.value))}
+                      className="bg-transparent text-xs text-zinc-800 outline-none"
+                    >
+                      {LESSON_DURATION_OPTIONS.map((minutes) => (
+                        <option key={minutes} value={minutes}>
+                          {minutes}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={goToRequestStatus}
+                  disabled={!canSend || isSubmitting}
+                  className={`inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-sm font-bold text-white transition md:h-14 md:text-[15px] ${
+                    canSend
+                      ? 'bg-emerald-600 hover:bg-emerald-700'
+                      : 'bg-zinc-400'
+                  }`}
+                >
+                  <Send className="h-4 w-4" />
+                  {isSubmitting ? 'Requesting...' : `Request Class • R${selectedPrice}`}
+                </button>
+              </div>
+
+              {!user?.paymentMethods?.length ? (
+                <p className="mt-2 text-xs text-amber-700">
+                  Add a payment card from Payment page first.
+                </p>
+              ) : null}
+
+              {error ? (
+                <p className="mt-2 text-xs text-rose-700">
+                  {error}
+                </p>
+              ) : null}
+            </div>
           </div>
         </div>
       </div>

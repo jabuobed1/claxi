@@ -152,7 +152,7 @@ export async function getTutorCandidatesForRequest({ topic }) {
     .filter((tutor) => {
       const tutorProfile = tutor.tutorProfile || {};
       const isVerified = tutorProfile.verificationStatus === 'verified';
-      const teachesMath = (tutor.subjects || []).includes('mathematics');
+      const teachesMath = (tutor.subjects || []).includes('Mathematics');
       return isVerified && teachesMath && !tutor.activeSessionId;
     })
     .sort((a, b) => scoreTutorForTopic(b, topic) - scoreTutorForTopic(a, topic));

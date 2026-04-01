@@ -12,7 +12,7 @@ export default function AppShell() {
   return (
     <div className="min-h-screen bg-[#f4f5f7] px-3 py-3 text-zinc-900 md:px-6 md:py-6">
       <div className="mx-auto grid max-w-7xl gap-4 md:grid-cols-[260px_1fr]">
-        <div className="hidden md:block">
+        <div className="hidden md:block md:sticky md:top-6 md:h-[calc(100vh-3rem)]">
           <Sidebar role={activeRole} />
         </div>
 
@@ -27,7 +27,7 @@ export default function AppShell() {
       </div>
 
       {isNavOpen ? (
-        <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 z-50" role="dialog" aria-modal="true">
           <button
             type="button"
             className="absolute inset-0 bg-black/40"

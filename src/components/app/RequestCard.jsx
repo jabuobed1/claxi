@@ -4,49 +4,74 @@ import StatusBadge from '../ui/StatusBadge';
 
 export default function RequestCard({ request, action }) {
   return (
-    <article className="rounded-[26px] border border-zinc-200 bg-white p-5 shadow-sm transition-all hover:shadow-md">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">{request.subject}</p>
-          <h3 className="text-3xl font-black text-zinc-900">{request.topic}</h3>
+    <article className="min-w-0 max-w-full overflow-hidden rounded-[26px] border border-zinc-200 bg-white p-5 shadow-sm transition-all hover:shadow-md">
+      <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="break-words text-xs uppercase tracking-[0.2em] text-zinc-400">
+            {request.subject}
+          </p>
+          <h3 className="break-words text-3xl font-black text-zinc-900">
+            {request.topic}
+          </h3>
         </div>
-        <StatusBadge status={request.status} />
+
+        <div className="max-w-full shrink-0">
+          <StatusBadge status={request.status} />
+        </div>
       </div>
 
-      <p className="mt-3 text-base text-zinc-500">{request.description}</p>
+      <p className="mt-3 whitespace-normal break-words text-base text-zinc-500">
+        {request.description}
+      </p>
+
       {request.attachment?.fileName || request.imageAttachment ? (
-        <p className="mt-2 text-xs text-brand">
-          Attachment: {request.attachment?.downloadUrl ? (
-            <a href={request.attachment.downloadUrl} target="_blank" rel="noreferrer" className="underline">
+        <div className="mt-2 min-w-0 max-w-full text-xs text-brand">
+          <span className="mr-1 font-semibold">Attachment:</span>
+          {request.attachment?.downloadUrl ? (
+            <a
+              href={request.attachment.downloadUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="break-all underline"
+            >
               {request.attachment.fileName || 'Open file'}
             </a>
           ) : (
-            request.attachment?.fileName || request.imageAttachment
+            <span className="break-words">
+              {request.attachment?.fileName || request.imageAttachment}
+            </span>
           )}
-        </p>
+        </div>
       ) : null}
 
-      <div className="mt-4 grid gap-2 text-sm text-zinc-600 sm:grid-cols-2">
-        <p className="flex items-center gap-2">
-          <Clock3 className="h-4 w-4 text-zinc-400" />
-          {request.preferredDate || 'ASAP'} • {request.preferredTime || 'Now'} • {request.duration || 'Flexible'}
+      <div className="mt-4 grid min-w-0 gap-2 text-sm text-zinc-600 sm:grid-cols-2">
+        <p className="flex min-w-0 items-start gap-2 break-words">
+          <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400" />
+          <span className="min-w-0 break-words">
+            {request.preferredDate || 'ASAP'} • {request.preferredTime || 'Now'} • {request.duration || 'Flexible'}
+          </span>
         </p>
-        <p className="text-zinc-500">Provider pref: {getMeetingProviderLabel(request.meetingProviderPreference)}</p>
+
+        <p className="min-w-0 break-words text-zinc-500">
+          Provider pref: {getMeetingProviderLabel(request.meetingProviderPreference)}
+        </p>
+
         {request.budget ? (
-          <p className="flex items-center gap-2">
-            <DollarSign className="h-4 w-4 text-zinc-400" />
-            Budget: {request.budget}
+          <p className="flex min-w-0 items-start gap-2 break-words">
+            <DollarSign className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400" />
+            <span className="min-w-0 break-words">Budget: {request.budget}</span>
           </p>
         ) : null}
+
         {request.tutorName ? (
-          <p className="flex items-center gap-2">
-            <UserCircle2 className="h-4 w-4 text-zinc-400" />
-            Tutor: {request.tutorName}
+          <p className="flex min-w-0 items-start gap-2 break-words">
+            <UserCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400" />
+            <span className="min-w-0 break-words">Tutor: {request.tutorName}</span>
           </p>
         ) : null}
       </div>
 
-      {action ? <div className="mt-4">{action}</div> : null}
+      {action ? <div className="mt-4 min-w-0">{action}</div> : null}
     </article>
   );
 }

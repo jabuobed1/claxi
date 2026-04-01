@@ -1,25 +1,18 @@
 import { Bell, Menu, UserCircle2 } from 'lucide-react';
 
-export default function Topbar({ name, role, onOpenNav }) {
+export default function Topbar({ onOpenNav }) {
   return (
-    <header className="mb-6 rounded-3xl border border-zinc-200 bg-white px-4 py-3 shadow-sm md:px-6">
+    <header className="mb-6 rounded-3xl bg-transparent px-4 py-3 md:px-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={onOpenNav}
-            className="rounded-2xl border border-zinc-200 p-2 text-zinc-600 md:hidden"
+            className="rounded-full border border-zinc-200 h-11 w-11 text-zinc-600 flex items-center justify-center md:hidden"
             aria-label="Open navigation"
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="h-6 w-6" />
           </button>
-          <div className="hidden h-11 w-11 items-center justify-center rounded-xl bg-brand text-white shadow md:flex">
-            <span className="text-lg font-black">C</span>
-          </div>
-          <div>
-            <p className="text-2xl font-black text-zinc-900">Claxi</p>
-            <p className="text-xs uppercase tracking-[0.25em] text-zinc-400">{role} portal</p>
-          </div>
         </div>
 
         <div className="flex items-center gap-3">
@@ -32,7 +25,6 @@ export default function Topbar({ name, role, onOpenNav }) {
           </div>
         </div>
       </div>
-      <p className="mt-2 text-sm text-zinc-500">Welcome back, {name}</p>
     </header>
   );
 }

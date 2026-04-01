@@ -22,8 +22,7 @@ export function getRoleNavigation(role) {
 
   return [
     { to: '/app/student', label: 'Home', icon: Home, end: true },
-    { to: '/app/student/request-class', label: 'Schedule', icon: CalendarClock },
-    { to: '/app/student/sessions', label: 'Classes', icon: BookOpen },
+    { to: '/app/student/requests', label: 'My Classes', icon: BookOpen },
     { to: '/app/student/payment', label: 'Payment', icon: Wallet },
   ];
 }
