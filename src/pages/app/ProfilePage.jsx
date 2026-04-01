@@ -3,9 +3,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import SectionCard from '../../components/ui/SectionCard';
 import PageHeader from '../../components/ui/PageHeader';
 import FormField from '../../components/ui/FormField';
+import MultiSelectDropdown from '../../components/ui/MultiSelectDropdown';
 import { useAuth } from '../../hooks/useAuth';
 import { getStudentOnboardingStatus, getTutorOnboardingStatus } from '../../utils/onboarding';
 import { getUserProfile, updateUserProfile } from '../../services/userService';
+import { DEFAULT_SUBJECTS, SUBJECT_OPTIONS, normalizeSubjectList } from '../../constants/subjects';
 
 export default function ProfilePage() {
   const { user, logout, deleteAccount, setUser } = useAuth();
@@ -20,7 +22,7 @@ export default function ProfilePage() {
     fullName: '',
     phoneNumber: '',
     bio: '',
-    subjects: '',
+    subjects: DEFAULT_SUBJECTS,
     availability: '',
   });
 
@@ -33,7 +35,7 @@ export default function ProfilePage() {
         fullName: profileData.fullName || profileData.displayName || '',
         phoneNumber: profileData.phoneNumber || '',
         bio: profileData.bio || '',
-        subjects: (profileData.subjects || []).join(', '),
+        subjects: normalizeSubjectList(profileData.subjects || DEFAULT_SUBJECTS),
         availability: profileData.availability || '',
       });
     });
@@ -74,10 +76,7 @@ export default function ProfilePage() {
       phoneNumber: form.phoneNumber,
       bio: form.bio,
       availability: form.availability,
-      subjects: form.subjects
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean),
+      subjects: normalizeSubjectList(form.subjects).length ? normalizeSubjectList(form.subjects) : DEFAULT_SUBJECTS,
     });
 
     setUser((prev) => ({ ...prev, ...profile }));
@@ -105,9 +104,16 @@ export default function ProfilePage() {
             <FormField label="Phone number" name="phoneNumber" value={form.phoneNumber} onChange={(event) => setForm((prev) => ({ ...prev, phoneNumber: event.target.value }))} />
           </div>
           <FormField label="Bio" name="bio" as="textarea" rows={3} value={form.bio} onChange={(event) => setForm((prev) => ({ ...prev, bio: event.target.value }))} />
+          <MultiSelectDropdown
+            label="Subjects"
+            name="subjects"
+            options={SUBJECT_OPTIONS}
+            value={form.subjects}
+            onChange={(subjects) => setForm((prev) => ({ ...prev, subjects }))}
+            helperText="Currently only Mathematics is available."
+          />
           {(user?.activeRole || user?.role) === 'tutor' ? (
             <>
-              <FormField label="Subjects (comma separated)" name="subjects" value={form.subjects} onChange={(event) => setForm((prev) => ({ ...prev, subjects: event.target.value }))} placeholder="Math, Physics" />
               <FormField label="Availability" name="availability" value={form.availability} onChange={(event) => setForm((prev) => ({ ...prev, availability: event.target.value }))} placeholder="Weekdays after 5pm" />
             </>
           ) : null}

@@ -3,10 +3,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Clock3, CreditCard, Paperclip, Send, X, FileText, ImageIcon } from 'lucide-react';
 import OnboardingStatusBanner from '../../../components/app/OnboardingStatusBanner';
 import { useAuth } from '../../../hooks/useAuth';
+import { useStudentRequests } from '../../../hooks/useClassRequests';
 import { createClassRequest } from '../../../services/classRequestService';
 import { uploadUserFile } from '../../../services/storageService';
 import { getStudentOnboardingStatus } from '../../../utils/onboarding';
 import { getLessonPrice, LESSON_DURATION_OPTIONS } from '../../../utils/pricing';
+import { REQUEST_STATUSES } from '../../../utils/requestStatus';
 
 export default function StudentDashboardPage() {
   const { user } = useAuth();
@@ -20,11 +22,25 @@ export default function StudentDashboardPage() {
   const [attachments, setAttachments] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const { requests } = useStudentRequests(user?.uid);
 
   const onboardingStatus = getStudentOnboardingStatus(user);
   const selectedPrice = getLessonPrice(durationMinutes);
   const hasRequestContent = Boolean(topic.trim()) || attachments.length > 0;
   const canSend = onboardingStatus.complete && hasRequestContent && Boolean(cardId) && Boolean(durationMinutes);
+  const activeOrOngoingRequest = requests.find((request) =>
+    [
+      REQUEST_STATUSES.PENDING,
+      REQUEST_STATUSES.MATCHING,
+      REQUEST_STATUSES.OFFERED,
+      REQUEST_STATUSES.ACCEPTED,
+      REQUEST_STATUSES.WAITING_STUDENT,
+      REQUEST_STATUSES.IN_PROGRESS,
+      REQUEST_STATUSES.IN_SESSION,
+      REQUEST_STATUSES.NO_TUTOR_AVAILABLE,
+    ].includes(request.status),
+  );
+  const latestRequest = requests[0] || null;
 
   const resizeTextarea = () => {
     if (!textareaRef.current) return;
@@ -113,7 +129,7 @@ export default function StudentDashboardPage() {
         selectedCardId: cardId,
       });
 
-      navigate('/app/student/request', {
+      navigate(`/app/student/request/${requestId}`, {
         state: {
           requestId,
           topic: requestText,
@@ -167,6 +183,24 @@ export default function StudentDashboardPage() {
               </p>
             </div>
           </div>
+
+          {activeOrOngoingRequest || latestRequest ? (
+            <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 text-sm text-emerald-900">
+              <p className="font-semibold">Recent and active sessions</p>
+              {activeOrOngoingRequest ? (
+                <p className="mt-1">
+                  Active request: <span className="font-semibold">{activeOrOngoingRequest.topic || 'Mathematics request'}</span> ({activeOrOngoingRequest.status}).
+                  <Link to={`/app/student/request/${activeOrOngoingRequest.id}`} className="ml-1 underline">Open status</Link>
+                </p>
+              ) : null}
+              {latestRequest ? (
+                <p className="mt-1">
+                  Last request: <span className="font-semibold">{latestRequest.topic || 'Mathematics request'}</span>.
+                  <Link to={`/app/student/requests/${latestRequest.id}`} className="ml-1 underline">View details</Link>
+                </p>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="flex-1" />
 

@@ -1,4 +1,5 @@
 import { getFirebaseClients } from '../firebase/config';
+import { DEFAULT_SUBJECTS } from '../constants/subjects';
 
 function buildDefaultProfile({ uid, email, displayName, role }) {
   const normalizedRole = role || 'student';
@@ -13,7 +14,7 @@ function buildDefaultProfile({ uid, email, displayName, role }) {
     roles: normalizedRole === 'tutor' ? ['tutor'] : ['student'],
     profilePhoto: '',
     phoneNumber: '',
-    subjects: normalizedRole === 'tutor' ? ['mathematics'] : ['mathematics'],
+    subjects: DEFAULT_SUBJECTS,
     bio: '',
     availability: '',
     onlineStatus: 'offline',
@@ -26,7 +27,6 @@ function buildDefaultProfile({ uid, email, displayName, role }) {
       highestGradeResultUrl: '',
       mathScore: null,
       gradesToTutor: [],
-      topics: [],
       verificationStatus: 'pending',
       payout: {
         bankName: '',
@@ -114,22 +114,30 @@ export async function getUserProfile(uid) {
 }
 
 
-function scoreTutorForTopic(tutor = {}, topic = '') {
-  const topicKey = topic.toLowerCase();
-  const topicRatings = tutor?.tutorProfile?.topicRatings || {};
-  const topicScore = Number(topicRatings[topicKey] || 0);
-  const overall = Number(tutor?.tutorProfile?.overallRating || 0);
-  const recentActivityBoost = tutor?.lastActiveAt
-    ? Math.max(0, 10 - Math.floor((Date.now() - new Date(tutor.lastActiveAt).getTime()) / (1000 * 60 * 5)))
-    : 0;
-  const completedSessions = Number(tutor?.tutorProfile?.completedSessions || 0);
-  const reliabilityBoost = Math.min(8, Math.floor(completedSessions / 5));
-  const sessionLoadPenalty = tutor?.activeSessionId ? 100 : 0;
+function resolveTutorScore(tutor = {}) {
+  const rating = Number(tutor?.tutorProfile?.overallRating ?? tutor?.rating ?? 0) || 0;
+  const recent24h = Number(
+    tutor?.tutorProfile?.completedSessionsLast24Hours
+      ?? tutor?.tutorProfile?.completedLast24h
+      ?? tutor?.stats?.completedSessionsLast24Hours
+      ?? 0,
+  ) || 0;
+  const totalSessions = Number(
+    tutor?.tutorProfile?.completedSessionsTotal
+      ?? tutor?.tutorProfile?.completedSessions
+      ?? tutor?.stats?.completedSessionsTotal
+      ?? 0,
+  ) || 0;
 
-  return topicScore * 2.5 + overall * 2 + recentActivityBoost + reliabilityBoost - sessionLoadPenalty;
+  return {
+    rating,
+    recent24h,
+    totalSessions,
+    composite: (rating * 10000) + (recent24h * 100) + totalSessions,
+  };
 }
 
-export async function getTutorCandidatesForRequest({ topic }) {
+export async function getTutorCandidatesForRequest({ subject }) {
   const clients = await getFirebaseClients();
 
   if (!clients) {
@@ -152,10 +160,11 @@ export async function getTutorCandidatesForRequest({ topic }) {
     .filter((tutor) => {
       const tutorProfile = tutor.tutorProfile || {};
       const isVerified = tutorProfile.verificationStatus === 'verified';
-      const teachesMath = (tutor.subjects || []).includes('Mathematics');
-      return isVerified && teachesMath && !tutor.activeSessionId;
+      const normalizedSubjects = (tutor.subjects || []).map((item) => String(item || '').trim().toLowerCase());
+      const requestSubject = String(subject || 'Mathematics').trim().toLowerCase();
+      return isVerified && normalizedSubjects.includes(requestSubject) && !tutor.activeSessionId;
     })
-    .sort((a, b) => scoreTutorForTopic(b, topic) - scoreTutorForTopic(a, topic));
+    .sort((a, b) => resolveTutorScore(b).composite - resolveTutorScore(a).composite);
 }
 
 

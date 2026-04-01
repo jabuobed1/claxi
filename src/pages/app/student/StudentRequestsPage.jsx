@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import PageHeader from '../../../components/ui/PageHeader';
 import SectionCard from '../../../components/ui/SectionCard';
 import EmptyState from '../../../components/ui/EmptyState';
@@ -8,9 +8,10 @@ import RequestCard from '../../../components/app/RequestCard';
 import { useAuth } from '../../../hooks/useAuth';
 import { useStudentRequests } from '../../../hooks/useClassRequests';
 
-const filters = ['all', 'pending', 'accepted', 'scheduled', 'in_progress', 'completed', 'canceled'];
+const filters = ['all', 'pending', 'matching', 'offered', 'accepted', 'in_progress', 'completed', 'expired', 'canceled'];
 
 export default function StudentRequestsPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { requests, isLoading } = useStudentRequests(user?.uid);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -49,7 +50,14 @@ export default function StudentRequestsPage() {
         ) : filtered.length ? (
           <div className="space-y-4">
             {filtered.map((request) => (
-              <RequestCard key={request.id} request={request} />
+              <button
+                key={request.id}
+                type="button"
+                onClick={() => navigate(`/app/student/requests/${request.id}`)}
+                className="block w-full text-left"
+              >
+                <RequestCard request={request} />
+              </button>
             ))}
           </div>
         ) : (

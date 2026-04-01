@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  subscribeToRequestById,
   subscribeToStudentRequests,
   subscribeToTutorAcceptedRequests,
   subscribeToTutorAvailableRequests,
@@ -27,6 +28,27 @@ export function useStudentRequests(studentId) {
   }, [studentId]);
 
   return { requests, isLoading };
+}
+
+export function useStudentRequest(requestId) {
+  const [request, setRequest] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!requestId) {
+      setRequest(null);
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    const unsub = subscribeToRequestById(requestId, (item) => {
+      setRequest(item);
+      setIsLoading(false);
+    });
+    return () => unsub?.();
+  }, [requestId]);
+
+  return { request, isLoading };
 }
 
 export function useTutorAvailableRequests(tutorId) {

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from '../components/app/Sidebar';
 import Topbar from '../components/app/Topbar';
+import TutorOfferOverlay from '../components/app/TutorOfferOverlay';
 import { useAuth } from '../hooks/useAuth';
 
 export default function AppShell() {
@@ -17,6 +18,7 @@ export default function AppShell() {
         </div>
 
         <div>
+          {activeRole === 'tutor' ? <TutorOfferOverlay /> : null}
           <Topbar
             name={user?.fullName || user?.displayName || 'Claxi User'}
             role={activeRole}

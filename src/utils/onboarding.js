@@ -62,7 +62,7 @@ export function getTutorOnboardingStatus(user) {
   const hasQualification = Boolean(tutorProfile.highestGradeResultUrl && typeof tutorProfile.mathScore === 'number');
   const qualified = hasQualification && tutorProfile.mathScore >= 60;
   const hasPayout = Boolean(tutorProfile.payout?.bankName && tutorProfile.payout?.accountNumber && tutorProfile.payout?.accountHolder);
-  const hasProfile = Boolean(user?.profilePhoto && tutorProfile.gradesToTutor?.length && tutorProfile.topics?.length);
+  const hasProfile = Boolean(user?.profilePhoto && tutorProfile.gradesToTutor?.length && (user?.subjects || []).length);
 
   if (qualified && hasPayout && hasProfile) {
     return {
@@ -96,7 +96,7 @@ export function getTutorOnboardingStatus(user) {
     complete: false,
     step: TUTOR_PROFILE_STEPS.PROFILE,
     title: 'Complete tutor profile',
-    message: 'Add profile photo, grades, and topics to finish setup.',
+      message: 'Add profile photo, grades, and subjects to finish setup.',
   };
 }
 

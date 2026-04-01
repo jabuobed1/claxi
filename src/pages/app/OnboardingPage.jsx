@@ -1,11 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import PageHeader from '../../components/ui/PageHeader';
 import SectionCard from '../../components/ui/SectionCard';
 import FormField from '../../components/ui/FormField';
+import MultiSelectDropdown from '../../components/ui/MultiSelectDropdown';
 import { useAuth } from '../../hooks/useAuth';
 import { updateUserProfile } from '../../services/userService';
 import { uploadUserFile } from '../../services/storageService';
+import { DEFAULT_SUBJECTS, SUBJECT_OPTIONS, normalizeSubjectList } from '../../constants/subjects';
 import {
   getStudentOnboardingStatus,
   getTutorOnboardingStatus,
@@ -20,6 +22,14 @@ export default function OnboardingPage() {
   const role = queryRole === 'tutor' ? 'tutor' : 'student';
   const [statusMessage, setStatusMessage] = useState('');
   const [isSavingTutorProfile, setIsSavingTutorProfile] = useState(false);
+  const [studentSubjects, setStudentSubjects] = useState(normalizeSubjectList(user?.subjects || DEFAULT_SUBJECTS));
+  const [tutorSubjects, setTutorSubjects] = useState(normalizeSubjectList(user?.subjects || DEFAULT_SUBJECTS));
+
+  useEffect(() => {
+    const nextSubjects = normalizeSubjectList(user?.subjects || DEFAULT_SUBJECTS);
+    setStudentSubjects(nextSubjects);
+    setTutorSubjects(nextSubjects);
+  }, [user?.subjects]);
 
   const studentStatus = useMemo(() => getStudentOnboardingStatus(user), [user]);
   const tutorStatus = useMemo(() => getTutorOnboardingStatus(user), [user]);
@@ -34,6 +44,7 @@ export default function OnboardingPage() {
         curriculum: formData.get('curriculum')?.toString().trim() || '',
         discoverySource: formData.get('discoverySource')?.toString().trim() || '',
       },
+      subjects: studentSubjects.length ? studentSubjects : DEFAULT_SUBJECTS,
     });
 
     setUser((prev) => ({ ...prev, ...profile }));
@@ -71,7 +82,6 @@ export default function OnboardingPage() {
           highestGradeResultUrl: resultUpload.downloadUrl,
           mathScore,
           gradesToTutor: (formData.get('gradesToTutor')?.toString() || '').split(',').map((item) => item.trim()).filter(Boolean),
-          topics: (formData.get('topics')?.toString() || '').split(',').map((item) => item.trim()).filter(Boolean),
           verificationStatus: mathScore >= 60 ? TUTOR_VERIFICATION_STATUSES.VERIFIED : TUTOR_VERIFICATION_STATUSES.REJECTED,
           payout: {
             bankName: formData.get('bankName')?.toString().trim() || '',
@@ -79,7 +89,7 @@ export default function OnboardingPage() {
             accountHolder: formData.get('accountHolder')?.toString().trim() || '',
           },
         },
-        subjects: ['mathematics'],
+        subjects: tutorSubjects.length ? tutorSubjects : DEFAULT_SUBJECTS,
       });
 
       setUser((prev) => ({ ...prev, ...profile }));
@@ -112,6 +122,17 @@ export default function OnboardingPage() {
                 required
               />
               <div className="md:col-span-3">
+                <MultiSelectDropdown
+                  label="Subjects"
+                  name="studentSubjects"
+                  options={SUBJECT_OPTIONS}
+                  value={studentSubjects}
+                  onChange={setStudentSubjects}
+                  helperText="Currently only Mathematics is available."
+                  required
+                />
+              </div>
+              <div className="md:col-span-3">
                 <button type="submit" className="rounded-2xl bg-brand px-4 py-2 text-sm font-bold text-white">Save student profile</button>
               </div>
             </form>
@@ -140,13 +161,17 @@ export default function OnboardingPage() {
               placeholder="Grade 8, Grade 9"
               required
             />
-            <FormField
-              label="Math topics (comma separated)"
-              name="topics"
-              defaultValue={(user?.tutorProfile?.topics || []).join(', ')}
-              placeholder="Algebra, Trigonometry"
-              required
-            />
+            <div className="md:col-span-2">
+              <MultiSelectDropdown
+                label="Subjects"
+                name="tutorSubjects"
+                options={SUBJECT_OPTIONS}
+                value={tutorSubjects}
+                onChange={setTutorSubjects}
+                helperText="Currently only Mathematics is available."
+                required
+              />
+            </div>
             <FormField label="Bank name" name="bankName" defaultValue={user?.tutorProfile?.payout?.bankName || ''} required />
             <FormField label="Account number" name="accountNumber" defaultValue={user?.tutorProfile?.payout?.accountNumber || ''} required />
             <FormField label="Account holder" name="accountHolder" defaultValue={user?.tutorProfile?.payout?.accountHolder || ''} required />
