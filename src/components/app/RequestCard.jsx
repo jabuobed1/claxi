@@ -14,7 +14,17 @@ export default function RequestCard({ request, action }) {
       </div>
 
       <p className="mt-3 text-base text-zinc-500">{request.description}</p>
-      {request.imageAttachment ? <p className="mt-2 text-xs text-brand">Image attached</p> : null}
+      {request.attachment?.fileName || request.imageAttachment ? (
+        <p className="mt-2 text-xs text-brand">
+          Attachment: {request.attachment?.downloadUrl ? (
+            <a href={request.attachment.downloadUrl} target="_blank" rel="noreferrer" className="underline">
+              {request.attachment.fileName || 'Open file'}
+            </a>
+          ) : (
+            request.attachment?.fileName || request.imageAttachment
+          )}
+        </p>
+      ) : null}
 
       <div className="mt-4 grid gap-2 text-sm text-zinc-600 sm:grid-cols-2">
         <p className="flex items-center gap-2">

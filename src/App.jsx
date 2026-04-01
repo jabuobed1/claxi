@@ -14,9 +14,13 @@ import TutorDashboardPage from './pages/app/tutor/TutorDashboardPage';
 import AvailableRequestsPage from './pages/app/tutor/AvailableRequestsPage';
 import MyClassesPage from './pages/app/tutor/MyClassesPage';
 import TutorSessionsPage from './pages/app/tutor/TutorSessionsPage';
+import TutorPaymentsPage from './pages/app/tutor/TutorPaymentsPage';
 import ProfilePage from './pages/app/ProfilePage';
 import OnboardingPage from './pages/app/OnboardingPage';
 import SessionRoomPage from './pages/app/SessionRoomPage';
+import AdminDashboardPage from './pages/app/admin/AdminDashboardPage';
+import AdminTutorsPage from './pages/app/admin/AdminTutorsPage';
+import AdminPaymentsPage from './pages/app/admin/AdminPaymentsPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsPage from './pages/TermsPage';
 
@@ -120,7 +124,32 @@ export default function App() {
             path="tutor/payments"
             element={
               <ProtectedRoute allowedRoles={['tutor']}>
-                <StudentWalletPage />
+                <TutorPaymentsPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="admin"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="admin/tutors"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminTutorsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="admin/payments"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminPaymentsPage />
               </ProtectedRoute>
             }
           />

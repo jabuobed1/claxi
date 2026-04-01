@@ -1,5 +1,5 @@
 import { getFirebaseClients } from '../firebase/config';
-import { REQUEST_STATUSES } from '../utils/requestStatus';
+import { REQUEST_STATUS, SESSION_STATUS, PAYMENT_STATUS, canTransitionSession, deriveRequestStatusFromSession } from '../constants/lifecycle';
 import { BILLING_RULES } from '../utils/onboarding';
 import { createNotification } from './notificationService';
 import { EMAIL_EVENT_TYPES, queueEmailEvent } from './emailEventService';
@@ -9,6 +9,7 @@ import { applyWalletDebt } from './walletService';
 import { getUserProfile } from './userService';
 
 const MOCK_SESSIONS_KEY = 'claxi_mock_sessions';
+const MOCK_REQUESTS_KEY = 'claxi_mock_requests';
 
 function getMockSessions() {
   return JSON.parse(localStorage.getItem(MOCK_SESSIONS_KEY) || '[]');
@@ -19,11 +20,37 @@ function setMockSessions(items) {
   window.dispatchEvent(new StorageEvent('storage'));
 }
 
+function getMockRequests() {
+  return JSON.parse(localStorage.getItem(MOCK_REQUESTS_KEY) || '[]');
+}
+
+function setMockRequests(items) {
+  localStorage.setItem(MOCK_REQUESTS_KEY, JSON.stringify(items));
+  window.dispatchEvent(new StorageEvent('storage'));
+}
+
 function withMockSnapshot(filterFn, callback) {
   const emit = () => callback(getMockSessions().filter(filterFn));
   emit();
   window.addEventListener('storage', emit);
   return () => window.removeEventListener('storage', emit);
+}
+
+function syncMockRequestStatus(requestId, sessionStatus) {
+  const nextRequestStatus = deriveRequestStatusFromSession(sessionStatus);
+  if (!nextRequestStatus) return;
+
+  const nextRequests = getMockRequests().map((request) =>
+    request.id === requestId
+      ? {
+          ...request,
+          status: nextRequestStatus,
+          updatedAt: new Date().toISOString(),
+        }
+      : request,
+  );
+
+  setMockRequests(nextRequests);
 }
 
 export function subscribeToStudentSessions(studentId, callback) {
@@ -93,8 +120,10 @@ export async function updateSession(sessionId, updates) {
 
   if (!clients) {
     const existing = getMockSessions().find((item) => item.id === sessionId);
-    if (!existing) {
-      throw new Error('Session not found.');
+    if (!existing) throw new Error('Session not found.');
+
+    if (updates.status && !canTransitionSession(existing.status, updates.status)) {
+      throw new Error(`Invalid session transition: ${existing.status} -> ${updates.status}`);
     }
 
     const next = getMockSessions().map((item) =>
@@ -108,6 +137,11 @@ export async function updateSession(sessionId, updates) {
     );
 
     setMockSessions(next);
+
+    if (updates.status && updates.requestId) {
+      syncMockRequestStatus(updates.requestId, updates.status);
+    }
+
     return next.find((item) => item.id === sessionId);
   }
 
@@ -115,6 +149,14 @@ export async function updateSession(sessionId, updates) {
   const { doc, serverTimestamp, updateDoc, getDoc, writeBatch } = firestoreModule;
 
   const sessionRef = doc(db, 'sessions', sessionId);
+  const sessionSnap = await getDoc(sessionRef);
+  if (!sessionSnap.exists()) throw new Error('Session not found.');
+
+  const existing = sessionSnap.data();
+  if (updates.status && !canTransitionSession(existing.status, updates.status)) {
+    throw new Error(`Invalid session transition: ${existing.status} -> ${updates.status}`);
+  }
+
   const batch = writeBatch(db);
 
   batch.update(sessionRef, {
@@ -123,11 +165,14 @@ export async function updateSession(sessionId, updates) {
   });
 
   if (updates.status && updates.requestId) {
-    const requestRef = doc(db, 'classRequests', updates.requestId);
-    batch.update(requestRef, {
-      status: updates.status,
-      updatedAt: serverTimestamp(),
-    });
+    const nextRequestStatus = deriveRequestStatusFromSession(updates.status);
+    if (nextRequestStatus) {
+      const requestRef = doc(db, 'classRequests', updates.requestId);
+      batch.update(requestRef, {
+        status: nextRequestStatus,
+        updatedAt: serverTimestamp(),
+      });
+    }
   }
 
   await batch.commit();
@@ -139,7 +184,7 @@ export async function updateSession(sessionId, updates) {
 export async function joinSessionAsStudent(session, selectedCardId, selectedCardLast4) {
   return updateSession(session.id, {
     ...session,
-    status: REQUEST_STATUSES.IN_PROGRESS,
+    status: SESSION_STATUS.IN_PROGRESS,
     studentJoinedAt: Date.now(),
     billingStartedAt: Date.now(),
     selectedCardId,
@@ -159,16 +204,16 @@ export async function endSession(session) {
     card: selectedCard,
   });
 
-  let paymentStatus = 'paid';
+  let paymentStatus = PAYMENT_STATUS.PAID;
 
   if (!charge.ok) {
-    paymentStatus = 'wallet_debt_recorded';
+    paymentStatus = PAYMENT_STATUS.WALLET_DEBT_RECORDED;
     await applyWalletDebt(session.studentId, billing.totalAmount);
   }
 
   const updated = await updateSession(session.id, {
     ...session,
-    status: REQUEST_STATUSES.COMPLETED,
+    status: SESSION_STATUS.COMPLETED,
     endedAt: Date.now(),
     billedSeconds: billing.billedSeconds,
     totalAmount: billing.totalAmount,
@@ -227,5 +272,30 @@ export async function submitSessionRating(session, role, payload) {
   return updateSession(session.id, {
     ...session,
     ratings,
+  });
+}
+
+export { REQUEST_STATUS };
+
+export async function getPaymentExceptionsForAdmin() {
+  const clients = await getFirebaseClients();
+  if (!clients) {
+    return getMockSessions().filter((session) => session.paymentStatus === PAYMENT_STATUS.WALLET_DEBT_RECORDED);
+  }
+
+  const { db, firestoreModule } = clients;
+  const { collection, getDocs, query, where } = firestoreModule;
+  const q = query(collection(db, 'sessions'), where('paymentStatus', '==', PAYMENT_STATUS.WALLET_DEBT_RECORDED));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+}
+
+export async function markPaymentExceptionReviewed(session) {
+  return updateSession(session.id, {
+    ...session,
+    paymentExceptionReview: {
+      reviewedAt: Date.now(),
+      status: 'reviewed',
+    },
   });
 }

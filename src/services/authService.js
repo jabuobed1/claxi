@@ -6,6 +6,7 @@ const MOCK_USER_KEY = 'claxi_mock_user';
 
 function normalizeRole(role) {
   const normalized = String(role || '').toLowerCase();
+  if (normalized === 'admin') return 'admin';
   return normalized === 'tutor' ? 'tutor' : 'student';
 }
 

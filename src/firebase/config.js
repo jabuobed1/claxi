@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, signOut, deleteUser } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc, updateDoc, addDoc, collection, serverTimestamp, onSnapshot, query, where, orderBy, runTransaction } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, addDoc, collection, serverTimestamp, onSnapshot, query, where, orderBy, runTransaction, writeBatch } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 // Your web app's Firebase configuration
@@ -46,6 +46,7 @@ function initializeFirebase() {
       firestoreModule: {
         doc,
         getDoc,
+        getDocs,
         setDoc,
         updateDoc,
         addDoc,
@@ -56,6 +57,7 @@ function initializeFirebase() {
         where,
         orderBy,
         runTransaction,
+        writeBatch,
       },
       storageModule: {
         ref,

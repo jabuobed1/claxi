@@ -1,12 +1,13 @@
+import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from '../components/app/Sidebar';
 import Topbar from '../components/app/Topbar';
-import AppBottomNav from '../components/app/AppBottomNav';
 import { useAuth } from '../hooks/useAuth';
 
 export default function AppShell() {
   const { user } = useAuth();
   const activeRole = String(user?.activeRole || user?.role || 'student').toLowerCase();
+  const [isNavOpen, setIsNavOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-[#f4f5f7] px-3 py-3 text-zinc-900 md:px-6 md:py-6">
@@ -15,12 +16,29 @@ export default function AppShell() {
           <Sidebar role={activeRole} />
         </div>
 
-        <div className="pb-24 md:pb-0">
-          <Topbar name={user?.fullName || user?.displayName || 'Claxi User'} role={activeRole} />
+        <div>
+          <Topbar
+            name={user?.fullName || user?.displayName || 'Claxi User'}
+            role={activeRole}
+            onOpenNav={() => setIsNavOpen(true)}
+          />
           <Outlet />
         </div>
       </div>
-      <AppBottomNav role={activeRole} />
+
+      {isNavOpen ? (
+        <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/40"
+            aria-label="Close navigation"
+            onClick={() => setIsNavOpen(false)}
+          />
+          <div className="absolute left-3 top-3 bottom-3 w-[85%] max-w-xs">
+            <Sidebar role={activeRole} mobile onNavigate={() => setIsNavOpen(false)} />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
