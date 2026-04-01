@@ -1,6 +1,6 @@
 import { getFirebaseClients } from '../firebase/config';
 import { MEETING_PROVIDERS } from '../constants/meetingProviders';
-import { REQUEST_STATUSES } from '../utils/requestStatus';
+import { REQUEST_STATUS, SESSION_STATUS, canTransitionRequest } from '../constants/lifecycle';
 import { BILLING_RULES, PLATFORM_FEE_RATE, TUTOR_PAYOUT_RATE } from '../utils/onboarding';
 import { createNotification } from './notificationService';
 import { EMAIL_EVENT_TYPES, queueEmailEvent } from './emailEventService';
@@ -47,14 +47,22 @@ function computeTutorQueue(tutors = []) {
   return tutors.map((tutor) => tutor.uid);
 }
 
+function updateRequestStatusSafe(request, nextStatus) {
+  if (!canTransitionRequest(request.status, nextStatus)) {
+    return request;
+  }
+  return {
+    ...request,
+    status: nextStatus,
+  };
+}
+
 async function assignNextTutorOffer(requestId) {
   const clients = await getFirebaseClients();
 
   if (!clients) {
     const existing = getMockRequests().find((request) => request.id === requestId);
-    if (!existing) {
-      return null;
-    }
+    if (!existing) return null;
 
     const queue = existing.tutorQueue || [];
     const nextTutorId = queue[0] || null;
@@ -63,8 +71,7 @@ async function assignNextTutorOffer(requestId) {
       const next = getMockRequests().map((request) =>
         request.id === requestId
           ? {
-              ...request,
-              status: REQUEST_STATUSES.NO_TUTOR_AVAILABLE,
+              ...updateRequestStatusSafe(request, REQUEST_STATUS.NO_TUTOR_AVAILABLE),
               currentOfferTutorId: null,
               offerExpiresAt: null,
               updatedAt: new Date().toISOString(),
@@ -78,8 +85,7 @@ async function assignNextTutorOffer(requestId) {
     const next = getMockRequests().map((request) =>
       request.id === requestId
         ? {
-            ...request,
-            status: REQUEST_STATUSES.OFFERED,
+            ...updateRequestStatusSafe(request, REQUEST_STATUS.OFFERED),
             currentOfferTutorId: nextTutorId,
             tutorQueue: queue,
             offerExpiresAt: Date.now() + 10000,
@@ -96,21 +102,21 @@ async function assignNextTutorOffer(requestId) {
   const requestRef = doc(db, 'classRequests', requestId);
   const requestSnap = await getDoc(requestRef);
 
-  if (!requestSnap.exists()) {
-    return null;
-  }
+  if (!requestSnap.exists()) return null;
 
   const requestData = requestSnap.data();
   const queue = requestData.tutorQueue || [];
   const nextTutorId = queue[0] || null;
 
   if (!nextTutorId) {
-    await updateDoc(requestRef, {
-      status: REQUEST_STATUSES.NO_TUTOR_AVAILABLE,
-      currentOfferTutorId: null,
-      offerExpiresAt: null,
-      updatedAt: serverTimestamp(),
-    });
+    if (canTransitionRequest(requestData.status, REQUEST_STATUS.NO_TUTOR_AVAILABLE)) {
+      await updateDoc(requestRef, {
+        status: REQUEST_STATUS.NO_TUTOR_AVAILABLE,
+        currentOfferTutorId: null,
+        offerExpiresAt: null,
+        updatedAt: serverTimestamp(),
+      });
+    }
 
     await createNotification({
       userId: requestData.studentId,
@@ -123,12 +129,14 @@ async function assignNextTutorOffer(requestId) {
     return null;
   }
 
-  await updateDoc(requestRef, {
-    status: REQUEST_STATUSES.OFFERED,
-    currentOfferTutorId: nextTutorId,
-    offerExpiresAt: Date.now() + 10000,
-    updatedAt: serverTimestamp(),
-  });
+  if (canTransitionRequest(requestData.status, REQUEST_STATUS.OFFERED)) {
+    await updateDoc(requestRef, {
+      status: REQUEST_STATUS.OFFERED,
+      currentOfferTutorId: nextTutorId,
+      offerExpiresAt: Date.now() + 10000,
+      updatedAt: serverTimestamp(),
+    });
+  }
 
   await createNotification({
     userId: nextTutorId,
@@ -150,8 +158,7 @@ async function initializeTutorMatching(requestId, payload) {
     const next = getMockRequests().map((request) =>
       request.id === requestId
         ? {
-            ...request,
-            status: REQUEST_STATUSES.MATCHING,
+            ...updateRequestStatusSafe(request, REQUEST_STATUS.MATCHING),
             tutorQueue: queue,
             updatedAt: new Date().toISOString(),
           }
@@ -163,13 +170,18 @@ async function initializeTutorMatching(requestId, payload) {
   }
 
   const { db, firestoreModule } = clients;
-  const { doc, updateDoc, serverTimestamp } = firestoreModule;
+  const { doc, getDoc, updateDoc, serverTimestamp } = firestoreModule;
+  const requestRef = doc(db, 'classRequests', requestId);
+  const snap = await getDoc(requestRef);
+  if (!snap.exists()) return;
 
-  await updateDoc(doc(db, 'classRequests', requestId), {
-    status: REQUEST_STATUSES.MATCHING,
-    tutorQueue: queue,
-    updatedAt: serverTimestamp(),
-  });
+  if (canTransitionRequest(snap.data().status, REQUEST_STATUS.MATCHING)) {
+    await updateDoc(requestRef, {
+      status: REQUEST_STATUS.MATCHING,
+      tutorQueue: queue,
+      updatedAt: serverTimestamp(),
+    });
+  }
 
   await createNotification({
     userId: payload.studentId,
@@ -189,7 +201,7 @@ export async function createClassRequest(payload) {
     subject: 'Mathematics',
     mode: 'online',
     meetingProviderPreference: payload.meetingProviderPreference || MEETING_PROVIDERS.ANY,
-    status: REQUEST_STATUSES.PENDING,
+    status: REQUEST_STATUS.PENDING,
     tutorId: null,
     tutorName: null,
     tutorEmail: null,
@@ -197,6 +209,7 @@ export async function createClassRequest(payload) {
     currentOfferTutorId: null,
     offerExpiresAt: null,
     imageAttachment: payload.imageAttachment || '',
+    attachment: payload.attachment || null,
   };
 
   if (!clients) {
@@ -270,8 +283,7 @@ export function subscribeToStudentRequests(studentId, callback) {
     );
 
     unsub = onSnapshot(queryRef, async (snapshot) => {
-      const items = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
-      callback(items);
+      callback(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
     });
   });
 
@@ -288,12 +300,11 @@ export function subscribeToTutorAvailableRequests(tutorId, callback) {
         const current = getMockRequests();
 
         const updated = current.map((request) => {
-          if (request.status === REQUEST_STATUSES.OFFERED && request.offerExpiresAt && request.offerExpiresAt <= now) {
+          if (request.status === REQUEST_STATUS.OFFERED && request.offerExpiresAt && request.offerExpiresAt <= now) {
             const queue = (request.tutorQueue || []).filter((id) => id !== request.currentOfferTutorId);
             return {
-              ...request,
+              ...updateRequestStatusSafe(request, REQUEST_STATUS.MATCHING),
               tutorQueue: queue,
-              status: REQUEST_STATUSES.MATCHING,
               currentOfferTutorId: null,
               offerExpiresAt: null,
               updatedAt: new Date().toISOString(),
@@ -304,13 +315,11 @@ export function subscribeToTutorAvailableRequests(tutorId, callback) {
 
         setMockRequests(updated);
 
-        const mine = updated.filter(
-          (request) =>
-            request.status === REQUEST_STATUSES.OFFERED &&
-            request.currentOfferTutorId === tutorId,
+        callback(
+          updated.filter(
+            (request) => request.status === REQUEST_STATUS.OFFERED && request.currentOfferTutorId === tutorId,
+          ),
         );
-
-        callback(mine);
       };
 
       emit();
@@ -328,7 +337,7 @@ export function subscribeToTutorAvailableRequests(tutorId, callback) {
 
     const queryRef = query(
       collection(db, 'classRequests'),
-      where('status', '==', REQUEST_STATUSES.OFFERED),
+      where('status', '==', REQUEST_STATUS.OFFERED),
       where('currentOfferTutorId', '==', tutorId),
     );
 
@@ -380,19 +389,18 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
 
   if (!clients) {
     const existing = getMockRequests().find((item) => item.id === requestId);
-    if (!existing || existing.currentOfferTutorId !== tutorId) {
-      return;
-    }
+    if (!existing || existing.currentOfferTutorId !== tutorId) return;
 
     if (response === 'accept') {
       const next = getMockRequests().map((item) =>
         item.id === requestId
           ? {
-              ...item,
+              ...updateRequestStatusSafe(item, REQUEST_STATUS.ACCEPTED),
               tutorId,
               tutorName: tutorName || existing.tutorName || 'Tutor',
               tutorEmail: tutorEmail || existing.tutorEmail || '',
-              status: REQUEST_STATUSES.ACCEPTED,
+              currentOfferTutorId: null,
+              offerExpiresAt: null,
               updatedAt: new Date().toISOString(),
             }
           : item,
@@ -416,7 +424,7 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
         meetingProvider: existing.meetingProviderPreference || MEETING_PROVIDERS.ANY,
         meetingLink: '',
         notes: '',
-        status: REQUEST_STATUSES.WAITING_STUDENT,
+        status: SESSION_STATUS.WAITING_STUDENT,
         joinGraceEndsAt: Date.now() + 2 * 60 * 1000,
         callStartedAt: Date.now(),
         studentJoinedAt: null,
@@ -437,7 +445,6 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
         updatedAt: new Date().toISOString(),
       };
       setMockSessions([session, ...getMockSessions()]);
-
       return;
     }
 
@@ -445,9 +452,8 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
     const updated = getMockRequests().map((item) =>
       item.id === requestId
         ? {
-            ...item,
+            ...updateRequestStatusSafe(item, REQUEST_STATUS.MATCHING),
             tutorQueue: queue,
-            status: REQUEST_STATUSES.MATCHING,
             currentOfferTutorId: null,
             offerExpiresAt: null,
             updatedAt: new Date().toISOString(),
@@ -460,32 +466,28 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
   }
 
   const { db, firestoreModule } = clients;
-  const { doc, getDoc, runTransaction, collection, serverTimestamp } = firestoreModule;
+  const { doc, runTransaction, collection, serverTimestamp } = firestoreModule;
 
   await runTransaction(db, async (transaction) => {
     const requestRef = doc(db, 'classRequests', requestId);
     const requestSnap = await transaction.get(requestRef);
-
-    if (!requestSnap.exists()) {
-      throw new Error('Request not found.');
-    }
+    if (!requestSnap.exists()) throw new Error('Request not found.');
 
     const requestData = requestSnap.data();
-
-    if (requestData.currentOfferTutorId !== tutorId) {
-      return;
-    }
+    if (requestData.currentOfferTutorId !== tutorId) return;
 
     if (response === 'accept') {
-      transaction.update(requestRef, {
-        tutorId,
-        tutorName: tutorName || 'Tutor',
-        tutorEmail: tutorEmail || '',
-        status: REQUEST_STATUSES.ACCEPTED,
-        currentOfferTutorId: null,
-        offerExpiresAt: null,
-        updatedAt: serverTimestamp(),
-      });
+      if (canTransitionRequest(requestData.status, REQUEST_STATUS.ACCEPTED)) {
+        transaction.update(requestRef, {
+          tutorId,
+          tutorName: tutorName || 'Tutor',
+          tutorEmail: tutorEmail || '',
+          status: REQUEST_STATUS.ACCEPTED,
+          currentOfferTutorId: null,
+          offerExpiresAt: null,
+          updatedAt: serverTimestamp(),
+        });
+      }
 
       const sessionRef = doc(collection(db, 'sessions'));
       transaction.set(sessionRef, {
@@ -504,7 +506,7 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
         meetingProvider: requestData.meetingProviderPreference || MEETING_PROVIDERS.ANY,
         meetingLink: '',
         notes: '',
-        status: REQUEST_STATUSES.WAITING_STUDENT,
+        status: SESSION_STATUS.WAITING_STUDENT,
         joinGraceEndsAt: Date.now() + 2 * 60 * 1000,
         callStartedAt: Date.now(),
         studentJoinedAt: null,
@@ -526,13 +528,15 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
       });
     } else {
       const queue = (requestData.tutorQueue || []).filter((id) => id !== tutorId);
-      transaction.update(requestRef, {
-        tutorQueue: queue,
-        status: REQUEST_STATUSES.MATCHING,
-        currentOfferTutorId: null,
-        offerExpiresAt: null,
-        updatedAt: serverTimestamp(),
-      });
+      if (canTransitionRequest(requestData.status, REQUEST_STATUS.MATCHING)) {
+        transaction.update(requestRef, {
+          tutorQueue: queue,
+          status: REQUEST_STATUS.MATCHING,
+          currentOfferTutorId: null,
+          offerExpiresAt: null,
+          updatedAt: serverTimestamp(),
+        });
+      }
     }
   });
 

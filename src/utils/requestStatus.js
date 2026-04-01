@@ -1,13 +1,9 @@
+import { REQUEST_STATUS, SESSION_STATUS } from '../constants/lifecycle';
+
 export const REQUEST_STATUSES = {
-  PENDING: 'pending',
-  MATCHING: 'matching',
-  OFFERED: 'offered',
-  ACCEPTED: 'accepted',
-  WAITING_STUDENT: 'waiting_student',
-  IN_PROGRESS: 'in_progress',
-  COMPLETED: 'completed',
-  CANCELED: 'canceled',
-  NO_TUTOR_AVAILABLE: 'no_tutor_available',
+  ...REQUEST_STATUS,
+  WAITING_STUDENT: SESSION_STATUS.WAITING_STUDENT,
+  IN_PROGRESS: SESSION_STATUS.IN_PROGRESS,
 };
 
 export const statusConfig = {
@@ -46,5 +42,9 @@ export const statusConfig = {
   [REQUEST_STATUSES.NO_TUTOR_AVAILABLE]: {
     label: 'No Tutor Available',
     className: 'bg-rose-500/10 text-rose-300 border-rose-500/30',
+  },
+  [REQUEST_STATUSES.IN_SESSION]: {
+    label: 'In Session',
+    className: 'bg-sky-500/10 text-sky-300 border-sky-500/30',
   },
 };

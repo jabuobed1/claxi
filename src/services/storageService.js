@@ -7,7 +7,9 @@ export async function uploadUserFile({ userId, file, pathPrefix = 'uploads' }) {
 
   const clients = await getFirebaseClients();
   if (!clients?.storage || !clients?.storageModule) {
-    throw new Error('File uploads are unavailable because Firebase Storage is not configured.');
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const objectPath = `${pathPrefix}/${userId}/${Date.now()}-${safeName}`;
+    return { downloadUrl: '', objectPath };
   }
 
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');

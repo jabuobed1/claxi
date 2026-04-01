@@ -75,7 +75,7 @@ export function useTutorAcceptedRequests(tutorId) {
   const upcoming = useMemo(
     () =>
       classes.filter((item) =>
-        [REQUEST_STATUSES.ACCEPTED, REQUEST_STATUSES.WAITING_STUDENT, REQUEST_STATUSES.IN_PROGRESS].includes(item.status),
+        [REQUEST_STATUSES.ACCEPTED, REQUEST_STATUSES.WAITING_STUDENT, REQUEST_STATUSES.IN_PROGRESS, REQUEST_STATUSES.IN_SESSION].includes(item.status),
       ),
     [classes],
   );

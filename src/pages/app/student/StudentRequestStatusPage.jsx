@@ -10,6 +10,7 @@ function getStatusCopy(status) {
   if ([REQUEST_STATUSES.PENDING, REQUEST_STATUSES.MATCHING].includes(status)) return 'Searching for tutors';
   if (status === REQUEST_STATUSES.OFFERED) return 'Waiting for tutor to accept';
   if (status === REQUEST_STATUSES.ACCEPTED) return 'Tutor accepted, creating an online class link';
+  if (status === REQUEST_STATUSES.IN_SESSION) return 'Session has started';
   if (status === REQUEST_STATUSES.WAITING_STUDENT || status === REQUEST_STATUSES.IN_PROGRESS) return 'Class link is ready';
   if (status === REQUEST_STATUSES.NO_TUTOR_AVAILABLE) return 'No tutor accepted. Searching for another tutor';
   return 'Preparing your request';

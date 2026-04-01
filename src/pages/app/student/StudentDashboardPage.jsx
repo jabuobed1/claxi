@@ -4,6 +4,7 @@ import { Clock3, CreditCard, Paperclip, Send } from 'lucide-react';
 import OnboardingStatusBanner from '../../../components/app/OnboardingStatusBanner';
 import { useAuth } from '../../../hooks/useAuth';
 import { createClassRequest } from '../../../services/classRequestService';
+import { uploadUserFile } from '../../../services/storageService';
 import { getStudentOnboardingStatus } from '../../../utils/onboarding';
 import { getLessonPrice, LESSON_DURATION_OPTIONS } from '../../../utils/pricing';
 
@@ -48,6 +49,24 @@ export default function StudentDashboardPage() {
 
     try {
       const requestText = topic.trim() || `Help me with attached file: ${attachment?.name || 'attachment'}`;
+      let uploadedAttachment = null;
+
+      if (attachment) {
+        const uploadResult = await uploadUserFile({
+          userId: user.uid,
+          file: attachment,
+          pathPrefix: 'request-attachments',
+        });
+
+        uploadedAttachment = {
+          fileName: attachment.name,
+          contentType: attachment.type || '',
+          size: Number(attachment.size || 0),
+          path: uploadResult.objectPath,
+          downloadUrl: uploadResult.downloadUrl,
+        };
+      }
+
       const requestId = await createClassRequest({
         topic: requestText,
         description: topic.trim(),
@@ -57,6 +76,7 @@ export default function StudentDashboardPage() {
         meetingProviderPreference: 'any',
         mode: 'online',
         imageAttachment: attachment?.name || '',
+        attachment: uploadedAttachment,
         studentId: user.uid,
         studentName: user.fullName || user.displayName || user.email,
         studentEmail: user.email,
