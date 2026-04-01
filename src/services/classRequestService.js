@@ -8,6 +8,8 @@ import { getTutorCandidatesForRequest } from './userService';
 
 const MOCK_REQUESTS_KEY = 'claxi_mock_requests';
 const MOCK_SESSIONS_KEY = 'claxi_mock_sessions';
+const MATCHING_TIMEOUT_MS = 3 * 60 * 1000;
+const OFFER_TIMEOUT_MS = 10000;
 
 let isUpdatingRequests = false;
 let isUpdatingSessions = false;
@@ -47,6 +49,20 @@ function computeTutorQueue(tutors = []) {
   return tutors.map((tutor) => tutor.uid);
 }
 
+function normalizeTimestamp(value) {
+  if (!value) return 0;
+  if (typeof value === 'number') return value;
+  if (typeof value?.toMillis === 'function') return value.toMillis();
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function isRequestExpired(request) {
+  const createdAtMs = normalizeTimestamp(request.createdAt);
+  if (!createdAtMs) return false;
+  return Date.now() - createdAtMs >= MATCHING_TIMEOUT_MS;
+}
+
 function updateRequestStatusSafe(request, nextStatus) {
   if (!canTransitionRequest(request.status, nextStatus)) {
     return request;
@@ -63,6 +79,20 @@ async function assignNextTutorOffer(requestId) {
   if (!clients) {
     const existing = getMockRequests().find((request) => request.id === requestId);
     if (!existing) return null;
+    if (isRequestExpired(existing)) {
+      const next = getMockRequests().map((request) =>
+        request.id === requestId
+          ? {
+              ...updateRequestStatusSafe(request, REQUEST_STATUS.EXPIRED),
+              currentOfferTutorId: null,
+              offerExpiresAt: null,
+              updatedAt: new Date().toISOString(),
+            }
+          : request,
+      );
+      setMockRequests(next);
+      return null;
+    }
 
     const queue = existing.tutorQueue || [];
     const nextTutorId = queue[0] || null;
@@ -88,7 +118,8 @@ async function assignNextTutorOffer(requestId) {
             ...updateRequestStatusSafe(request, REQUEST_STATUS.OFFERED),
             currentOfferTutorId: nextTutorId,
             tutorQueue: queue,
-            offerExpiresAt: Date.now() + 10000,
+            offerExpiresAt: Date.now() + OFFER_TIMEOUT_MS,
+            retryOfferGranted: false,
             updatedAt: new Date().toISOString(),
           }
         : request,
@@ -105,6 +136,17 @@ async function assignNextTutorOffer(requestId) {
   if (!requestSnap.exists()) return null;
 
   const requestData = requestSnap.data();
+  if (isRequestExpired(requestData)) {
+    if (canTransitionRequest(requestData.status, REQUEST_STATUS.EXPIRED)) {
+      await updateDoc(requestRef, {
+        status: REQUEST_STATUS.EXPIRED,
+        currentOfferTutorId: null,
+        offerExpiresAt: null,
+        updatedAt: serverTimestamp(),
+      });
+    }
+    return null;
+  }
   const queue = requestData.tutorQueue || [];
   const nextTutorId = queue[0] || null;
 
@@ -133,7 +175,8 @@ async function assignNextTutorOffer(requestId) {
     await updateDoc(requestRef, {
       status: REQUEST_STATUS.OFFERED,
       currentOfferTutorId: nextTutorId,
-      offerExpiresAt: Date.now() + 10000,
+      offerExpiresAt: Date.now() + OFFER_TIMEOUT_MS,
+      retryOfferGranted: false,
       updatedAt: serverTimestamp(),
     });
   }
@@ -150,7 +193,7 @@ async function assignNextTutorOffer(requestId) {
 }
 
 async function initializeTutorMatching(requestId, payload) {
-  const candidates = await getTutorCandidatesForRequest({ topic: payload.topic });
+  const candidates = await getTutorCandidatesForRequest({ subject: payload.subject || 'Mathematics' });
   const queue = computeTutorQueue(candidates);
   const clients = await getFirebaseClients();
 
@@ -194,6 +237,101 @@ async function initializeTutorMatching(requestId, payload) {
   await assignNextTutorOffer(requestId);
 }
 
+async function refreshActiveMatchingRequests(studentId) {
+  const clients = await getFirebaseClients();
+  if (!clients) {
+    const requests = getMockRequests();
+    const updates = [];
+    const mutable = [...requests];
+    for (const request of requests) {
+      if (studentId && request.studentId !== studentId) continue;
+      if (request.tutorId) continue;
+      if (![REQUEST_STATUS.PENDING, REQUEST_STATUS.MATCHING, REQUEST_STATUS.OFFERED, REQUEST_STATUS.NO_TUTOR_AVAILABLE].includes(request.status)) continue;
+
+      if (isRequestExpired(request)) {
+        updates.push({
+          id: request.id,
+          status: REQUEST_STATUS.EXPIRED,
+          tutorQueue: [],
+          currentOfferTutorId: null,
+          offerExpiresAt: null,
+          updatedAt: new Date().toISOString(),
+        });
+        continue;
+      }
+
+      const candidates = await getTutorCandidatesForRequest({ subject: request.subject || 'Mathematics' });
+      const queue = computeTutorQueue(candidates);
+      const currentOfferTutorId = request.currentOfferTutorId && queue.includes(request.currentOfferTutorId)
+        ? request.currentOfferTutorId
+        : null;
+      updates.push({
+        id: request.id,
+        status: currentOfferTutorId ? request.status : REQUEST_STATUS.MATCHING,
+        tutorQueue: queue,
+        currentOfferTutorId,
+        offerExpiresAt: currentOfferTutorId ? request.offerExpiresAt : null,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+
+    if (!updates.length) return;
+    const byId = new Map(updates.map((item) => [item.id, item]));
+    const next = mutable.map((request) => (byId.has(request.id) ? { ...request, ...byId.get(request.id) } : request));
+    setMockRequests(next);
+    await Promise.all(
+      updates
+        .filter((item) => item.status === REQUEST_STATUS.MATCHING && !item.currentOfferTutorId)
+        .map((item) => assignNextTutorOffer(item.id)),
+    );
+    return;
+  }
+
+  const { db, firestoreModule } = clients;
+  const { collection, getDocs, query, where, doc, updateDoc, serverTimestamp } = firestoreModule;
+  const baseQuery = query(
+    collection(db, 'classRequests'),
+    where('status', 'in', [REQUEST_STATUS.PENDING, REQUEST_STATUS.MATCHING, REQUEST_STATUS.OFFERED, REQUEST_STATUS.NO_TUTOR_AVAILABLE]),
+  );
+  const snapshot = await getDocs(baseQuery);
+  for (const requestDoc of snapshot.docs) {
+    const request = { id: requestDoc.id, ...requestDoc.data() };
+    if (studentId && request.studentId !== studentId) continue;
+    if (request.tutorId) continue;
+    const requestRef = doc(db, 'classRequests', request.id);
+
+    if (isRequestExpired(request)) {
+      if (canTransitionRequest(request.status, REQUEST_STATUS.EXPIRED)) {
+        await updateDoc(requestRef, {
+          status: REQUEST_STATUS.EXPIRED,
+          tutorQueue: [],
+          currentOfferTutorId: null,
+          offerExpiresAt: null,
+          updatedAt: serverTimestamp(),
+        });
+      }
+      continue;
+    }
+
+    const candidates = await getTutorCandidatesForRequest({ subject: request.subject || 'Mathematics' });
+    const queue = computeTutorQueue(candidates);
+    const currentOfferTutorId = request.currentOfferTutorId && queue.includes(request.currentOfferTutorId)
+      ? request.currentOfferTutorId
+      : null;
+    await updateDoc(requestRef, {
+      tutorQueue: queue,
+      currentOfferTutorId,
+      offerExpiresAt: currentOfferTutorId ? request.offerExpiresAt || null : null,
+      status: currentOfferTutorId ? request.status : REQUEST_STATUS.MATCHING,
+      updatedAt: serverTimestamp(),
+    });
+
+    if (!currentOfferTutorId) {
+      await assignNextTutorOffer(request.id);
+    }
+  }
+}
+
 export async function createClassRequest(payload) {
   const clients = await getFirebaseClients();
   const requestBody = {
@@ -213,14 +351,27 @@ export async function createClassRequest(payload) {
   };
 
   if (!clients) {
+    const nowIso = new Date().toISOString();
+    const expirableStatuses = [REQUEST_STATUS.PENDING, REQUEST_STATUS.MATCHING, REQUEST_STATUS.OFFERED, REQUEST_STATUS.NO_TUTOR_AVAILABLE];
+    const expired = getMockRequests().map((item) =>
+      item.studentId === payload.studentId && expirableStatuses.includes(item.status)
+        ? {
+            ...updateRequestStatusSafe(item, REQUEST_STATUS.EXPIRED),
+            currentOfferTutorId: null,
+            offerExpiresAt: null,
+            updatedAt: nowIso,
+          }
+        : item,
+    );
+
     const request = {
       id: crypto.randomUUID(),
       ...requestBody,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: nowIso,
+      updatedAt: nowIso,
     };
 
-    setMockRequests([request, ...getMockRequests()]);
+    setMockRequests([request, ...expired]);
 
     await createNotification({
       userId: payload.studentId,
@@ -235,7 +386,22 @@ export async function createClassRequest(payload) {
   }
 
   const { db, firestoreModule } = clients;
-  const { addDoc, collection, serverTimestamp } = firestoreModule;
+  const { addDoc, collection, serverTimestamp, query, where, getDocs, updateDoc } = firestoreModule;
+
+  const existingSnap = await getDocs(
+    query(
+      collection(db, 'classRequests'),
+      where('studentId', '==', payload.studentId),
+      where('status', 'in', [REQUEST_STATUS.PENDING, REQUEST_STATUS.MATCHING, REQUEST_STATUS.OFFERED, REQUEST_STATUS.NO_TUTOR_AVAILABLE]),
+    ),
+  );
+
+  await Promise.all(existingSnap.docs.map((item) => updateDoc(item.ref, {
+    status: REQUEST_STATUS.EXPIRED,
+    currentOfferTutorId: null,
+    offerExpiresAt: null,
+    updatedAt: serverTimestamp(),
+  })));
 
   const docRef = await addDoc(collection(db, 'classRequests'), {
     ...requestBody,
@@ -266,10 +432,14 @@ export async function createClassRequest(payload) {
 
 export function subscribeToStudentRequests(studentId, callback) {
   let unsub = () => {};
+  let refreshInterval = null;
 
   getFirebaseClients().then((clients) => {
     if (!clients) {
       unsub = withMockSnapshot((item) => item.studentId === studentId, callback);
+      refreshInterval = setInterval(() => {
+        refreshActiveMatchingRequests(studentId);
+      }, 5000);
       return;
     }
 
@@ -285,13 +455,49 @@ export function subscribeToStudentRequests(studentId, callback) {
     unsub = onSnapshot(queryRef, async (snapshot) => {
       callback(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
     });
+    refreshInterval = setInterval(() => {
+      refreshActiveMatchingRequests(studentId);
+    }, 5000);
   });
 
-  return () => unsub();
+  return () => {
+    unsub();
+    if (refreshInterval) clearInterval(refreshInterval);
+  };
+}
+
+export function subscribeToRequestById(requestId, callback) {
+  let unsub = () => {};
+  let refreshInterval = null;
+  getFirebaseClients().then((clients) => {
+    if (!clients) {
+      const emit = () => callback(getMockRequests().find((item) => item.id === requestId) || null);
+      emit();
+      window.addEventListener('storage', emit);
+      unsub = () => window.removeEventListener('storage', emit);
+      refreshInterval = setInterval(() => {
+        refreshActiveMatchingRequests();
+      }, 5000);
+      return;
+    }
+    const { db, firestoreModule } = clients;
+    const { doc, onSnapshot } = firestoreModule;
+    unsub = onSnapshot(doc(db, 'classRequests', requestId), (snapshot) => {
+      callback(snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null);
+    });
+    refreshInterval = setInterval(() => {
+      refreshActiveMatchingRequests();
+    }, 5000);
+  });
+  return () => {
+    unsub();
+    if (refreshInterval) clearInterval(refreshInterval);
+  };
 }
 
 export function subscribeToTutorAvailableRequests(tutorId, callback) {
   let unsub = () => {};
+  let refreshInterval = null;
 
   getFirebaseClients().then((clients) => {
     if (!clients) {
@@ -302,8 +508,17 @@ export function subscribeToTutorAvailableRequests(tutorId, callback) {
         const updated = current.map((request) => {
           if (request.status === REQUEST_STATUS.OFFERED && request.offerExpiresAt && request.offerExpiresAt <= now) {
             const queue = (request.tutorQueue || []).filter((id) => id !== request.currentOfferTutorId);
+            const wasSingleTutor = (request.tutorQueue || []).length <= 1;
+            if (wasSingleTutor && !request.retryOfferGranted) {
+              return {
+                ...request,
+                retryOfferGranted: true,
+                offerExpiresAt: Date.now() + OFFER_TIMEOUT_MS,
+                updatedAt: new Date().toISOString(),
+              };
+            }
             return {
-              ...updateRequestStatusSafe(request, REQUEST_STATUS.MATCHING),
+              ...updateRequestStatusSafe(request, queue.length ? REQUEST_STATUS.MATCHING : REQUEST_STATUS.NO_TUTOR_AVAILABLE),
               tutorQueue: queue,
               currentOfferTutorId: null,
               offerExpiresAt: null,
@@ -324,6 +539,9 @@ export function subscribeToTutorAvailableRequests(tutorId, callback) {
 
       emit();
       const interval = setInterval(emit, 1000);
+      refreshInterval = setInterval(() => {
+        refreshActiveMatchingRequests();
+      }, 5000);
       window.addEventListener('storage', emit);
       unsub = () => {
         clearInterval(interval);
@@ -347,15 +565,31 @@ export function subscribeToTutorAvailableRequests(tutorId, callback) {
 
       for (const item of items) {
         if (item.offerExpiresAt && item.offerExpiresAt <= now) {
-          await handleTutorOfferResponse({ requestId: item.id, tutorId, response: 'timeout' });
+          const isSingleTutor = (item.tutorQueue || []).length <= 1;
+          if (isSingleTutor && !item.retryOfferGranted) {
+            const { doc, updateDoc, serverTimestamp } = firestoreModule;
+            await updateDoc(doc(db, 'classRequests', item.id), {
+              retryOfferGranted: true,
+              offerExpiresAt: Date.now() + OFFER_TIMEOUT_MS,
+              updatedAt: serverTimestamp(),
+            });
+          } else {
+            await handleTutorOfferResponse({ requestId: item.id, tutorId, response: 'timeout' });
+          }
         }
       }
 
       callback(items.filter((item) => !item.offerExpiresAt || item.offerExpiresAt > now));
     });
+    refreshInterval = setInterval(() => {
+      refreshActiveMatchingRequests();
+    }, 5000);
   });
 
-  return () => unsub();
+  return () => {
+    unsub();
+    if (refreshInterval) clearInterval(refreshInterval);
+  };
 }
 
 export function subscribeToTutorAcceptedRequests(tutorId, callback) {
@@ -452,7 +686,7 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
     const updated = getMockRequests().map((item) =>
       item.id === requestId
         ? {
-            ...updateRequestStatusSafe(item, REQUEST_STATUS.MATCHING),
+            ...updateRequestStatusSafe(item, queue.length ? REQUEST_STATUS.MATCHING : REQUEST_STATUS.NO_TUTOR_AVAILABLE),
             tutorQueue: queue,
             currentOfferTutorId: null,
             offerExpiresAt: null,
@@ -528,10 +762,11 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
       });
     } else {
       const queue = (requestData.tutorQueue || []).filter((id) => id !== tutorId);
-      if (canTransitionRequest(requestData.status, REQUEST_STATUS.MATCHING)) {
+      const nextStatus = queue.length ? REQUEST_STATUS.MATCHING : REQUEST_STATUS.NO_TUTOR_AVAILABLE;
+      if (canTransitionRequest(requestData.status, nextStatus)) {
         transaction.update(requestRef, {
           tutorQueue: queue,
-          status: REQUEST_STATUS.MATCHING,
+          status: nextStatus,
           currentOfferTutorId: null,
           offerExpiresAt: null,
           updatedAt: serverTimestamp(),

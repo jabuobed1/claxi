@@ -1,5 +1,4 @@
-import { useMemo } from 'react';
-import { Link, Navigate, useLocation } from 'react-router-dom';
+import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 import {
   ArrowRight,
   BookOpen,
@@ -12,8 +11,7 @@ import {
 } from 'lucide-react';
 import PageHeader from '../../../components/ui/PageHeader';
 import SectionCard from '../../../components/ui/SectionCard';
-import { useAuth } from '../../../hooks/useAuth';
-import { useStudentRequests } from '../../../hooks/useClassRequests';
+import { useStudentRequest } from '../../../hooks/useClassRequests';
 import { REQUEST_STATUSES } from '../../../utils/requestStatus';
 
 function getStatusCopy(status) {
@@ -25,6 +23,7 @@ function getStatusCopy(status) {
   if (status === REQUEST_STATUSES.NO_TUTOR_AVAILABLE) return 'No tutor accepted. Searching for another tutor';
   if (status === REQUEST_STATUSES.COMPLETED) return 'Your session is complete';
   if (status === REQUEST_STATUSES.CANCELED) return 'This request has been canceled';
+  if (status === REQUEST_STATUSES.EXPIRED) return 'Request expired because no tutor accepted in time';
   return 'Preparing your request';
 }
 
@@ -98,6 +97,15 @@ function getStatusMeta(status) {
       tone: 'rose',
       icon: XCircle,
       badge: 'This request is no longer active',
+    };
+  }
+
+  if (status === REQUEST_STATUSES.EXPIRED) {
+    return {
+      label: 'Expired',
+      tone: 'rose',
+      icon: XCircle,
+      badge: 'No tutor accepted within 3 minutes',
     };
   }
 
@@ -185,13 +193,11 @@ function getToneClasses(tone) {
 }
 
 export default function StudentRequestStatusPage() {
-  const { user } = useAuth();
+  const { requestId: requestIdParam } = useParams();
   const { state } = useLocation();
-  const { requests } = useStudentRequests(user?.uid);
   const durationMinutes = Number(state?.durationMinutes || 10);
-  const requestId = state?.requestId || '';
-
-  const request = useMemo(() => requests.find((item) => item.id === requestId), [requests, requestId]);
+  const requestId = requestIdParam || state?.requestId || '';
+  const { request } = useStudentRequest(requestId);
 
   if (!requestId) {
     return <Navigate to="/app/student" replace />;
