@@ -8,6 +8,7 @@ import { useTutorAvailableRequests } from '../../../hooks/useClassRequests';
 import { getTutorOnboardingStatus } from '../../../utils/onboarding';
 import { updateUserProfile } from '../../../services/userService';
 import { acceptClassRequest, declineClassRequest } from '../../../services/classRequestService';
+import { createZoomMeetingForRequest } from '../../../services/zoomService';
 
 export default function TutorDashboardPage() {
   const { user, setUser } = useAuth();
@@ -24,6 +25,7 @@ export default function TutorDashboardPage() {
 
   const toggleOnlineStatus = async () => {
     if (!onboardingStatus.complete) return;
+    if (!isOnline && !user?.tutorProfile?.zoom?.linked) return;
     const profile = await updateUserProfile(user.uid, { onlineStatus: isOnline ? 'offline' : 'online' });
     setUser((prev) => ({ ...prev, ...profile }));
   };
@@ -31,11 +33,18 @@ export default function TutorDashboardPage() {
   const respond = async (requestId, response) => {
     setActiveRequestId(requestId);
     if (response === 'accept') {
+      const request = requests.find((item) => item.id === requestId);
+      const meeting = await createZoomMeetingForRequest({
+        requestId,
+        topic: request?.topic || 'Claxi session',
+        durationMinutes: Number(request?.durationMinutes || request?.duration || 30),
+      });
       await acceptClassRequest({
         requestId,
         tutorId: user.uid,
         tutorName: user.fullName || user.displayName || user.email,
         tutorEmail: user.email,
+        meeting,
       });
     } else {
       await declineClassRequest({ requestId, tutorId: user.uid });
