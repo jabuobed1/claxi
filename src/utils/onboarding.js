@@ -7,6 +7,7 @@ export const TUTOR_PROFILE_STEPS = {
   QUALIFICATIONS: 'qualifications',
   PAYOUT: 'payout_setup',
   PROFILE: 'profile_setup',
+  ZOOM: 'zoom_linking',
 };
 
 export const TUTOR_VERIFICATION_STATUSES = {
@@ -63,8 +64,9 @@ export function getTutorOnboardingStatus(user) {
   const qualified = hasQualification && tutorProfile.mathScore >= 60;
   const hasPayout = Boolean(tutorProfile.payout?.bankName && tutorProfile.payout?.accountNumber && tutorProfile.payout?.accountHolder);
   const hasProfile = Boolean(user?.profilePhoto && tutorProfile.gradesToTutor?.length && (user?.subjects || []).length);
+  const hasZoomLinked = Boolean(tutorProfile.zoom?.linked && tutorProfile.zoom?.accountId);
 
-  if (qualified && hasPayout && hasProfile) {
+  if (qualified && hasPayout && hasProfile && hasZoomLinked) {
     return {
       complete: true,
       verificationStatus: tutorProfile.verificationStatus || TUTOR_VERIFICATION_STATUSES.PENDING,
@@ -89,6 +91,15 @@ export function getTutorOnboardingStatus(user) {
       step: TUTOR_PROFILE_STEPS.PAYOUT,
       title: 'Add payout details',
       message: 'Add banking details so Claxi can send your 70% payout share.',
+    };
+  }
+
+  if (!hasZoomLinked) {
+    return {
+      complete: false,
+      step: TUTOR_PROFILE_STEPS.ZOOM,
+      title: 'Link Zoom account',
+      message: 'Connect your Zoom account to receive and host student sessions.',
     };
   }
 

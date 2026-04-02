@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useTutorAvailableRequests } from '../../hooks/useClassRequests';
 import { acceptClassRequest, declineClassRequest } from '../../services/classRequestService';
 import { getTutorOnboardingStatus } from '../../utils/onboarding';
+import { createZoomMeetingForRequest } from '../../services/zoomService';
 
 export default function TutorOfferOverlay() {
   const { user } = useAuth();
@@ -46,7 +47,7 @@ export default function TutorOfferOverlay() {
 
   const secondsLeft = Math.max(0, Math.ceil(((topRequest?.offerExpiresAt || 0) - now) / 1000));
   const progress = useMemo(() => {
-    const total = 10;
+    const total = 30;
     return Math.max(0, Math.min(100, (secondsLeft / total) * 100));
   }, [secondsLeft]);
 
@@ -57,11 +58,17 @@ export default function TutorOfferOverlay() {
     setActiveRequest(topRequest.id);
     try {
       if (response === 'accept') {
+        const meeting = await createZoomMeetingForRequest({
+          requestId: topRequest.id,
+          topic: topRequest.topic || 'Claxi session',
+          durationMinutes: Number(topRequest.durationMinutes || topRequest.duration || 30),
+        });
         await acceptClassRequest({
           requestId: topRequest.id,
           tutorId: user.uid,
           tutorName: user.fullName || user.displayName || user.email,
           tutorEmail: user.email,
+          meeting,
         });
       } else {
         await declineClassRequest({
@@ -79,7 +86,8 @@ export default function TutorOfferOverlay() {
   const isImage = topRequest.attachment?.contentType?.startsWith('image/');
 
   return (
-    <div className="fixed inset-x-0 top-4 z-[70] mx-auto w-[95%] max-w-2xl rounded-2xl border border-emerald-300 bg-white p-4 shadow-2xl">
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-zinc-950/80 p-4">
+      <div className="w-full max-w-3xl rounded-3xl border border-emerald-300 bg-white p-6 shadow-2xl">
       <div className="mb-3 flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600">Incoming request</p>
@@ -129,6 +137,7 @@ export default function TutorOfferOverlay() {
         >
           Decline
         </button>
+      </div>
       </div>
     </div>
   );

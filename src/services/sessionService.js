@@ -6,7 +6,7 @@ import { EMAIL_EVENT_TYPES, queueEmailEvent } from './emailEventService';
 import { settleSessionBilling } from './classRequestService';
 import { chargeCard } from './paymentGatewayService';
 import { applyWalletDebt } from './walletService';
-import { getUserProfile } from './userService';
+import { getUserProfile, updateUserRatingSummary } from './userService';
 
 const MOCK_SESSIONS_KEY = 'claxi_mock_sessions';
 const MOCK_REQUESTS_KEY = 'claxi_mock_requests';
@@ -41,12 +41,18 @@ function syncMockRequestStatus(requestId, sessionStatus) {
   if (!nextRequestStatus) return;
 
   const nextRequests = getMockRequests().map((request) =>
-    request.id === requestId
-      ? {
-          ...request,
-          status: nextRequestStatus,
-          updatedAt: new Date().toISOString(),
-        }
+        request.id === requestId
+          ? {
+              ...request,
+              status: nextRequestStatus,
+              ...(sessionStatus === SESSION_STATUS.IN_PROGRESS
+                ? { startedAt: Date.now(), statusDetail: 'Student joined. Session is in progress.' }
+                : {}),
+              ...(sessionStatus === SESSION_STATUS.COMPLETED
+                ? { endedAt: Date.now(), statusDetail: 'Session ended. Billing completed.' }
+                : {}),
+              updatedAt: new Date().toISOString(),
+            }
       : request,
   );
 
@@ -168,9 +174,20 @@ export async function updateSession(sessionId, updates) {
     const nextRequestStatus = deriveRequestStatusFromSession(updates.status);
     if (nextRequestStatus) {
       const requestRef = doc(db, 'classRequests', updates.requestId);
-      batch.update(requestRef, {
+      const requestPatch = {
         status: nextRequestStatus,
         updatedAt: serverTimestamp(),
+      };
+      if (updates.status === SESSION_STATUS.IN_PROGRESS) {
+        requestPatch.startedAt = updates.studentJoinedAt || Date.now();
+        requestPatch.statusDetail = 'Student joined. Session is in progress.';
+      }
+      if (updates.status === SESSION_STATUS.COMPLETED) {
+        requestPatch.endedAt = updates.endedAt || Date.now();
+        requestPatch.statusDetail = 'Session ended. Billing completed.';
+      }
+      batch.update(requestRef, {
+        ...requestPatch,
       });
     }
   }
@@ -269,10 +286,18 @@ export async function submitSessionRating(session, role, payload) {
     },
   };
 
-  return updateSession(session.id, {
+  const updatedSession = await updateSession(session.id, {
     ...session,
     ratings,
   });
+
+  if (role === 'student') {
+    await updateUserRatingSummary(session.tutorId, 'asTutor', payload.overall);
+  } else {
+    await updateUserRatingSummary(session.studentId, 'asStudent', payload.overall);
+  }
+
+  return updatedSession;
 }
 
 export { REQUEST_STATUS };
