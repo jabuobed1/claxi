@@ -5,6 +5,7 @@ import { useTutorAvailableRequests } from '../../hooks/useClassRequests';
 import { acceptClassRequest, declineClassRequest } from '../../services/classRequestService';
 import { getTutorOnboardingStatus } from '../../utils/onboarding';
 import { createZoomMeetingForRequest } from '../../services/zoomService';
+import { debugError, debugLog } from '../../utils/devLogger';
 
 export default function TutorOfferOverlay() {
   const { user } = useAuth();
@@ -55,6 +56,7 @@ export default function TutorOfferOverlay() {
 
   const handleResponse = async (response) => {
     if (!topRequest || !canAccept) return;
+    debugLog('tutorOffer', 'Tutor offer response started.', { response, requestId: topRequest.id });
     setActiveRequest(topRequest.id);
     try {
       if (response === 'accept') {
@@ -70,12 +72,17 @@ export default function TutorOfferOverlay() {
           tutorEmail: user.email,
           meeting,
         });
+        debugLog('tutorOffer', 'Tutor accepted request successfully.', { requestId: topRequest.id });
       } else {
         await declineClassRequest({
           requestId: topRequest.id,
           tutorId: user.uid,
         });
+        debugLog('tutorOffer', 'Tutor declined request.', { requestId: topRequest.id });
       }
+    } catch (error) {
+      debugError('tutorOffer', 'Tutor offer response failed.', { message: error.message, requestId: topRequest.id });
+      throw error;
     } finally {
       setActiveRequest(null);
     }

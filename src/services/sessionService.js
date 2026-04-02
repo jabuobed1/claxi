@@ -7,6 +7,7 @@ import { settleSessionBilling } from './classRequestService';
 import { chargeCard } from './paymentGatewayService';
 import { applyWalletDebt } from './walletService';
 import { getUserProfile, updateUserRatingSummary } from './userService';
+import { debugError, debugLog } from '../utils/devLogger';
 
 const MOCK_SESSIONS_KEY = 'claxi_mock_sessions';
 const MOCK_REQUESTS_KEY = 'claxi_mock_requests';
@@ -199,6 +200,7 @@ export async function updateSession(sessionId, updates) {
 }
 
 export async function joinSessionAsStudent(session, selectedCardId, selectedCardLast4) {
+  debugLog('sessionService', 'Student joining session.', { sessionId: session?.id, requestId: session?.requestId });
   return updateSession(session.id, {
     ...session,
     status: SESSION_STATUS.IN_PROGRESS,
@@ -210,6 +212,7 @@ export async function joinSessionAsStudent(session, selectedCardId, selectedCard
 }
 
 export async function endSession(session) {
+  debugLog('sessionService', 'Ending session and settling billing.', { sessionId: session?.id, requestId: session?.requestId });
   const billing = await settleSessionBilling(session);
   const studentProfile = await getUserProfile(session.studentId);
   const selectedCard = (studentProfile?.paymentMethods || []).find((card) => card.id === session.selectedCardId)
@@ -272,10 +275,16 @@ export async function endSession(session) {
     }),
   ]);
 
+  debugLog('sessionService', 'Session ended and billing updates completed.', {
+    sessionId: session?.id,
+    totalAmount: billing.totalAmount,
+    paymentStatus,
+  });
   return updated;
 }
 
 export async function submitSessionRating(session, role, payload) {
+  debugLog('sessionService', 'Submitting session rating.', { sessionId: session?.id, role, overall: payload?.overall });
   const ratings = {
     ...(session.ratings || {}),
     [role]: {
@@ -291,12 +300,18 @@ export async function submitSessionRating(session, role, payload) {
     ratings,
   });
 
-  if (role === 'student') {
-    await updateUserRatingSummary(session.tutorId, 'asTutor', payload.overall);
-  } else {
-    await updateUserRatingSummary(session.studentId, 'asStudent', payload.overall);
+  try {
+    if (role === 'student') {
+      await updateUserRatingSummary(session.tutorId, 'asTutor', payload.overall);
+    } else {
+      await updateUserRatingSummary(session.studentId, 'asStudent', payload.overall);
+    }
+  } catch (error) {
+    debugError('sessionService', 'Failed to update user rating summary.', { message: error.message, sessionId: session?.id });
+    throw error;
   }
 
+  debugLog('sessionService', 'Session rating submitted successfully.', { sessionId: session?.id, role });
   return updatedSession;
 }
 

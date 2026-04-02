@@ -5,6 +5,7 @@ import { BILLING_RULES, PLATFORM_FEE_RATE, TUTOR_PAYOUT_RATE } from '../utils/on
 import { createNotification } from './notificationService';
 import { EMAIL_EVENT_TYPES, queueEmailEvent } from './emailEventService';
 import { getTutorCandidatesForRequest } from './userService';
+import { debugError, debugLog } from '../utils/devLogger';
 
 const MOCK_REQUESTS_KEY = 'claxi_mock_requests';
 const MOCK_SESSIONS_KEY = 'claxi_mock_sessions';
@@ -142,7 +143,7 @@ async function assignNextTutorOffer(requestId) {
               tutorQueue: queue,
               currentOfferTutorId: null,
               offerExpiresAt: null,
-              statusDetail: 'No tutor available. Showing this for a short delay.',
+              statusDetail: 'No tutor accepted. Looking for another tutor.',
               updatedAt: new Date().toISOString(),
             }
           : request,
@@ -516,6 +517,11 @@ async function refreshActiveMatchingRequests(studentId) {
 }
 
 export async function createClassRequest(payload) {
+  debugLog('classRequestService', 'Creating class request.', {
+    studentId: payload?.studentId,
+    topic: payload?.topic,
+    durationMinutes: payload?.durationMinutes || payload?.duration,
+  });
   const clients = await getFirebaseClients();
   const requestBody = {
     ...payload,
@@ -612,6 +618,7 @@ export async function createClassRequest(payload) {
   });
 
   await initializeTutorMatching(docRef.id, payload);
+  debugLog('classRequestService', 'Class request created and matching initialized.', { requestId: docRef.id });
   return docRef.id;
 }
 
@@ -1023,14 +1030,55 @@ export async function attachMeetingToRequest({ requestId, tutorId, meeting }) {
 }
 
 export async function acceptClassRequest({ requestId, tutorId, tutorName, tutorEmail, meeting }) {
+  debugLog('classRequestService', 'Accepting class request.', { requestId, tutorId, hasMeeting: Boolean(meeting?.meetingId) });
   if (meeting) {
     await attachMeetingToRequest({ requestId, tutorId, meeting });
   }
-  return handleTutorOfferResponse({ requestId, tutorId, tutorName, tutorEmail, response: 'accept' });
+  const result = await handleTutorOfferResponse({ requestId, tutorId, tutorName, tutorEmail, response: 'accept' });
+  debugLog('classRequestService', 'Class request accepted.', { requestId, tutorId });
+  return result;
 }
 
 export async function declineClassRequest({ requestId, tutorId }) {
-  return handleTutorOfferResponse({ requestId, tutorId, response: 'decline' });
+  debugLog('classRequestService', 'Declining class request.', { requestId, tutorId });
+  const result = await handleTutorOfferResponse({ requestId, tutorId, response: 'decline' });
+  debugLog('classRequestService', 'Class request declined.', { requestId, tutorId });
+  return result;
+}
+
+export async function cancelClassRequest({ requestId, canceledBy, reason }) {
+  debugLog('classRequestService', 'Canceling class request.', { requestId, canceledBy });
+  const clients = await getFirebaseClients();
+  const patch = {
+    status: REQUEST_STATUS.CANCELED,
+    statusDetail: 'Request canceled by student.',
+    canceledReason: String(reason || '').trim(),
+    canceledBy: canceledBy || 'student',
+    canceledAt: Date.now(),
+    currentOfferTutorId: null,
+    offerExpiresAt: null,
+  };
+
+  if (!clients) {
+    const next = getMockRequests().map((item) =>
+      item.id === requestId ? { ...item, ...patch, updatedAt: new Date().toISOString() } : item,
+    );
+    setMockRequests(next);
+    return;
+  }
+
+  const { db, firestoreModule } = clients;
+  const { doc, updateDoc, serverTimestamp } = firestoreModule;
+  try {
+    await updateDoc(doc(db, 'classRequests', requestId), {
+      ...patch,
+      updatedAt: serverTimestamp(),
+    });
+    debugLog('classRequestService', 'Class request canceled.', { requestId });
+  } catch (error) {
+    debugError('classRequestService', 'Failed to cancel class request.', { requestId, message: error.message });
+    throw error;
+  }
 }
 
 export async function cancelClassRequest({ requestId, canceledBy, reason }) {

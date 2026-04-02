@@ -358,6 +358,7 @@ exports.zoomAuthStart = onRequest({ cors: true, secrets: [ZOOM_CLIENT_ID, ZOOM_R
     res.status(401).json({ success: false, message: 'Unauthorized request.' });
     return;
   }
+  logger.info('zoomAuthStart called by authenticated user.', { uid: decoded.uid });
 
   const state = randomUUID();
   await db.collection('zoomOAuthStates').doc(state).set({
@@ -366,12 +367,14 @@ exports.zoomAuthStart = onRequest({ cors: true, secrets: [ZOOM_CLIENT_ID, ZOOM_R
   });
 
   const authUrl = `https://zoom.us/oauth/authorize?response_type=code&client_id=${encodeURIComponent(ZOOM_CLIENT_ID.value())}&redirect_uri=${encodeURIComponent(ZOOM_REDIRECT_URI.value())}&state=${encodeURIComponent(state)}`;
+  logger.info('zoomAuthStart generated OAuth URL.', { uid: decoded.uid, state });
   res.status(200).json({ success: true, authUrl });
 });
 
 exports.zoomOAuthCallback = onRequest({ cors: true, secrets: [ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET, ZOOM_REDIRECT_URI, APP_BASE_URL] }, async (req, res) => {
   const code = req.query.code?.toString();
   const state = req.query.state?.toString();
+  logger.info('zoomOAuthCallback received callback.', { hasCode: Boolean(code), hasState: Boolean(state) });
   if (!code || !state) {
     res.status(400).send('Missing code/state');
     return;
@@ -380,6 +383,7 @@ exports.zoomOAuthCallback = onRequest({ cors: true, secrets: [ZOOM_CLIENT_ID, ZO
   const stateRef = db.collection('zoomOAuthStates').doc(state);
   const stateSnap = await stateRef.get();
   if (!stateSnap.exists) {
+    logger.warn('zoomOAuthCallback received invalid OAuth state.', { state });
     res.status(400).send('Invalid OAuth state.');
     return;
   }
@@ -387,6 +391,7 @@ exports.zoomOAuthCallback = onRequest({ cors: true, secrets: [ZOOM_CLIENT_ID, ZO
   const uid = stateSnap.data()?.uid;
   await stateRef.delete();
   if (!uid) {
+    logger.warn('zoomOAuthCallback missing uid from OAuth state.', { state });
     res.status(400).send('Missing user mapping for OAuth state.');
     return;
   }
@@ -429,6 +434,7 @@ exports.zoomOAuthCallback = onRequest({ cors: true, secrets: [ZOOM_CLIENT_ID, ZO
     },
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   }, { merge: true });
+  logger.info('zoomOAuthCallback linked Zoom account for user.', { uid, zoomEmail: me.email || null });
 
   const frontendBase = APP_BASE_URL.value()?.trim() || `${req.protocol}://${req.get('host')}`;
   res.redirect(302, `${frontendBase.replace(/\/$/, '')}/app/onboarding?role=tutor&zoom=connected`);
@@ -482,6 +488,7 @@ exports.zoomCreateMeeting = onRequest({ cors: true, secrets: [ZOOM_CLIENT_ID, ZO
     res.status(401).json({ success: false, message: 'Unauthorized request.' });
     return;
   }
+  logger.info('zoomCreateMeeting called.', { uid: decoded.uid, requestId: req.body?.requestId || null });
 
   const requestId = req.body?.requestId?.toString();
   const topic = req.body?.topic?.toString() || 'Claxi session';
@@ -574,9 +581,14 @@ exports.zoomWebhook = onRequest({ cors: true, secrets: [ZOOM_WEBHOOK_SECRET] }, 
   const webhookSecret = ZOOM_WEBHOOK_SECRET.value();
   const isValidSignature = verifyZoomWebhookSignature(req, webhookSecret);
   if (!isValidSignature) {
+    logger.warn('zoomWebhook signature verification failed.', {
+      hasTimestamp: Boolean(req.headers['x-zm-request-timestamp']),
+      hasSignature: Boolean(req.headers['x-zm-signature']),
+    });
     res.status(401).json({ success: false, message: 'Invalid Zoom webhook signature.' });
     return;
   }
+  logger.info('zoomWebhook signature verified.', { event: req.body?.event || null });
 
   if (req.body?.event === 'endpoint.url_validation') {
     const plainToken = req.body?.payload?.plainToken?.toString() || '';
@@ -609,6 +621,7 @@ exports.zoomWebhook = onRequest({ cors: true, secrets: [ZOOM_WEBHOOK_SECRET] }, 
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           }, { merge: true });
         }
+        logger.info('zoomWebhook processed meeting.ended event.', { meetingId, sessionId: match.id, requestId: data.requestId || null });
       }
     }
   }

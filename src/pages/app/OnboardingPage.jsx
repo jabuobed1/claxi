@@ -15,6 +15,7 @@ import {
 } from '../../utils/onboarding';
 import PaymentMethodsManager from '../../components/app/PaymentMethodsManager';
 import { getZoomConnectUrl } from '../../services/zoomService';
+import { debugError, debugLog } from '../../utils/devLogger';
 
 export default function OnboardingPage() {
   const { user, setUser } = useAuth();
@@ -113,9 +114,12 @@ export default function OnboardingPage() {
   const connectZoom = async () => {
     try {
       setIsConnectingZoom(true);
+      debugLog('onboarding', 'Tutor requested Zoom account linking.');
       const authUrl = await getZoomConnectUrl();
+      debugLog('onboarding', 'Redirecting tutor to Zoom auth URL.');
       window.location.assign(authUrl);
     } catch (error) {
+      debugError('onboarding', 'Failed to start Zoom linking.', { message: error.message });
       setStatusMessage(error.message || 'Unable to start Zoom linking.');
     } finally {
       setIsConnectingZoom(false);

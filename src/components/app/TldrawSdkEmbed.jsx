@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { debugError, debugLog } from '../../utils/devLogger';
 
 const TLDRAW_ESM_URL = 'https://esm.sh/@tldraw/tldraw@2.3.0?bundle';
 const TLDRAW_CSS_URL = 'https://esm.sh/@tldraw/tldraw@2.3.0/tldraw.css';
@@ -25,17 +26,21 @@ export default function TldrawSdkEmbed({ roomId, licenseKey }) {
     async function loadSdk() {
       try {
         setLoadError('');
+        debugLog('tldraw', 'Loading tldraw SDK runtime module.');
         ensureStylesheet();
         const module = await import(/* @vite-ignore */ TLDRAW_ESM_URL);
         if (canceled) return;
         const sdkComponent = module?.Tldraw || module?.default?.Tldraw || null;
         if (!sdkComponent) {
+          debugError('tldraw', 'SDK module missing Tldraw export.');
           setLoadError('Tldraw SDK loaded but component export was not found.');
           return;
         }
+        debugLog('tldraw', 'tldraw SDK loaded successfully.');
         setTldrawComponent(() => sdkComponent);
       } catch (error) {
         if (canceled) return;
+        debugError('tldraw', 'Failed to load tldraw SDK.', { message: error?.message });
         setLoadError(error?.message || 'Unable to load tldraw SDK.');
       }
     }
