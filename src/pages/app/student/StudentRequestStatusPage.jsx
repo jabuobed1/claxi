@@ -1,4 +1,5 @@
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
+import { useState } from 'react';
 import {
   ArrowRight,
   BookOpen,
@@ -13,6 +14,7 @@ import PageHeader from '../../../components/ui/PageHeader';
 import SectionCard from '../../../components/ui/SectionCard';
 import { useStudentRequest } from '../../../hooks/useClassRequests';
 import { REQUEST_STATUSES } from '../../../utils/requestStatus';
+import { cancelClassRequest } from '../../../services/classRequestService';
 
 function getStatusCopy(status) {
   if ([REQUEST_STATUSES.PENDING, REQUEST_STATUSES.MATCHING].includes(status)) return 'Searching for tutors';
@@ -198,6 +200,9 @@ export default function StudentRequestStatusPage() {
   const durationMinutes = Number(state?.durationMinutes || 10);
   const requestId = requestIdParam || state?.requestId || '';
   const { request } = useStudentRequest(requestId);
+  const [cancelReason, setCancelReason] = useState('');
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [isCanceling, setIsCanceling] = useState(false);
 
   if (!requestId) {
     return <Navigate to="/app/student" replace />;
@@ -218,9 +223,19 @@ export default function StudentRequestStatusPage() {
     currentStatus === REQUEST_STATUSES.IN_SESSION;
 
   const canCancel =
-    currentStatus === REQUEST_STATUSES.PENDING ||
-    currentStatus === REQUEST_STATUSES.MATCHING ||
-    currentStatus === REQUEST_STATUSES.OFFERED;
+    ![REQUEST_STATUSES.CANCELED, REQUEST_STATUSES.COMPLETED, REQUEST_STATUSES.EXPIRED].includes(currentStatus);
+
+  const submitCancel = async () => {
+    if (!request?.id || !cancelReason.trim()) return;
+    setIsCanceling(true);
+    try {
+      await cancelClassRequest({ requestId: request.id, canceledBy: 'student', reason: cancelReason });
+      setShowCancelModal(false);
+      setCancelReason('');
+    } finally {
+      setIsCanceling(false);
+    }
+  };
 
   const steps = [
     { id: 1, title: 'Request received' },
@@ -314,6 +329,12 @@ export default function StudentRequestStatusPage() {
                 </div>
               </div>
             </div>
+            {request?.statusDetail ? (
+              <div className="rounded-[1.5rem] border border-indigo-200 bg-indigo-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-500">Latest update</p>
+                <p className="mt-2 text-sm font-medium text-indigo-900">{request.statusDetail}</p>
+              </div>
+            ) : null}
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-[1.5rem] border border-zinc-200 bg-zinc-50 p-4">
@@ -341,10 +362,16 @@ export default function StudentRequestStatusPage() {
           <div className="space-y-3">
             {canJoin ? (
               <Link
-                to="/app/student/classes"
+                to={request?.meetingLink ? '#' : '/app/student/classes'}
+                onClick={(event) => {
+                  if (request?.meetingLink) {
+                    event.preventDefault();
+                    window.open(request.meetingLink, '_blank', 'noopener,noreferrer');
+                  }
+                }}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-zinc-950 px-4 py-3 text-sm font-bold text-white transition hover:bg-zinc-800"
               >
-                Open Classes
+                {request?.meetingLink ? 'Join Zoom Call' : 'Open Classes'}
                 <ArrowRight className="h-4 w-4" />
               </Link>
             ) : null}
@@ -366,9 +393,8 @@ export default function StudentRequestStatusPage() {
             {canCancel ? (
               <button
                 type="button"
-                disabled
-                className="inline-flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700 opacity-80"
-                title="Connect your cancel-request logic here"
+                onClick={() => setShowCancelModal(true)}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700"
               >
                 Cancel Request
               </button>
@@ -383,6 +409,34 @@ export default function StudentRequestStatusPage() {
           </div>
         </SectionCard>
       </div>
+      {showCancelModal ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/70 p-4">
+          <div className="w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl">
+            <p className="text-lg font-black text-zinc-900">Cancel request</p>
+            <p className="mt-1 text-sm text-zinc-600">Please provide a reason. This helps us improve matching quality.</p>
+            <textarea
+              value={cancelReason}
+              onChange={(event) => setCancelReason(event.target.value)}
+              rows={4}
+              className="mt-4 w-full rounded-2xl border border-zinc-300 px-3 py-2 text-sm"
+              placeholder="Type your cancellation reason"
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" onClick={() => setShowCancelModal(false)} className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold">
+                Close
+              </button>
+              <button
+                type="button"
+                disabled={!cancelReason.trim() || isCanceling}
+                onClick={submitCancel}
+                className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+              >
+                {isCanceling ? 'Canceling...' : 'Confirm cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

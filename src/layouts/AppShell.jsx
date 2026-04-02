@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from '../components/app/Sidebar';
 import Topbar from '../components/app/Topbar';
 import TutorOfferOverlay from '../components/app/TutorOfferOverlay';
+import SessionRatingPrompt from '../components/app/SessionRatingPrompt';
 import { useAuth } from '../hooks/useAuth';
 
 export default function AppShell() {
@@ -19,6 +20,7 @@ export default function AppShell() {
 
         <div>
           {activeRole === 'tutor' ? <TutorOfferOverlay /> : null}
+          <SessionRatingPrompt />
           <Topbar
             name={user?.fullName || user?.displayName || 'Claxi User'}
             role={activeRole}

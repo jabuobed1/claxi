@@ -74,6 +74,9 @@ export default function SessionRoomPage() {
   };
 
   const graceRemaining = Math.max(0, Math.ceil(((session.joinGraceEndsAt || 0) - Date.now()) / 1000));
+  const tldrawLicenseKey = import.meta.env.VITE_TLDRAW_LICENSE_KEY;
+  const whiteboardRoom = session.whiteboardRoomId || session.requestId || session.id;
+  const whiteboardUrl = `https://www.tldraw.com/f/${encodeURIComponent(whiteboardRoom)}`;
 
   return (
     <div className="space-y-6">
@@ -96,8 +99,10 @@ export default function SessionRoomPage() {
         </div>
 
         <div className="mt-4 rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4">
-          <p className="text-sm font-semibold text-white">Whiteboard placeholder</p>
-          <p className="text-xs text-zinc-400">Whiteboard integration will be added later. This placeholder indicates active session collaboration state.</p>
+          <p className="text-sm font-semibold text-white">Collaborative whiteboard (tldraw)</p>
+          <p className="mb-2 text-xs text-zinc-400">Use <code>VITE_TLDRAW_LICENSE_KEY</code> when you switch to a fully licensed SDK deployment flow.</p>
+          <iframe title="tldraw board" src={whiteboardUrl} className="h-[420px] w-full rounded-xl border border-zinc-700 bg-white" />
+          {tldrawLicenseKey ? <p className="mt-2 text-[11px] text-zinc-500">License key detected in env for SDK rollout readiness.</p> : null}
         </div>
 
 
@@ -127,6 +132,11 @@ export default function SessionRoomPage() {
               End session
             </button>
           ) : null}
+          {session.meetingLink ? (
+            <a href={session.meetingLink} target="_blank" rel="noreferrer" className="rounded-2xl border border-sky-500/40 px-4 py-2 text-sm font-bold text-sky-200">
+              Join Zoom meeting
+            </a>
+          ) : null}
         </div>
 
         {session.status === 'completed' ? (
@@ -140,6 +150,22 @@ export default function SessionRoomPage() {
             Card charge was declined. Outstanding balance moved to wallet debt.
             <Link to="/app/student/payment" className="ml-1 underline">Pay from wallet</Link>
           </p>
+        ) : null}
+        {role === 'tutor' ? (
+          <div className="mt-4 rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4">
+            <p className="text-xs uppercase tracking-wide text-zinc-500">Student request context</p>
+            <p className="mt-2 text-sm text-zinc-200">{session.requestDescription || 'No description provided.'}</p>
+            {session.requestAttachment?.downloadUrl ? (
+              <a
+                href={session.requestAttachment.downloadUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 inline-flex text-sm font-semibold text-sky-300 underline"
+              >
+                Open request attachment
+              </a>
+            ) : null}
+          </div>
         ) : null}
       </SectionCard>
 
