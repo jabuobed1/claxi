@@ -4,7 +4,7 @@ const { defineSecret } = require('firebase-functions/params');
 const { logger } = require('firebase-functions');
 const admin = require('firebase-admin');
 const { Resend } = require('resend');
-const { randomUUID } = require('crypto');
+const { randomUUID, createHmac, timingSafeEqual } = require('crypto');
 
 admin.initializeApp();
 
@@ -17,6 +17,7 @@ const ZOOM_CLIENT_ID = defineSecret('ZOOM_CLIENT_ID');
 const ZOOM_CLIENT_SECRET = defineSecret('ZOOM_CLIENT_SECRET');
 const ZOOM_REDIRECT_URI = defineSecret('ZOOM_REDIRECT_URI');
 const ZOOM_WEBHOOK_SECRET = defineSecret('ZOOM_WEBHOOK_SECRET');
+const APP_BASE_URL = defineSecret('APP_BASE_URL');
 
 function buildEmailPayload(eventType, payload) {
   switch (eventType) {
@@ -368,7 +369,7 @@ exports.zoomAuthStart = onRequest({ cors: true, secrets: [ZOOM_CLIENT_ID, ZOOM_R
   res.status(200).json({ success: true, authUrl });
 });
 
-exports.zoomOAuthCallback = onRequest({ cors: true, secrets: [ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET, ZOOM_REDIRECT_URI] }, async (req, res) => {
+exports.zoomOAuthCallback = onRequest({ cors: true, secrets: [ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET, ZOOM_REDIRECT_URI, APP_BASE_URL] }, async (req, res) => {
   const code = req.query.code?.toString();
   const state = req.query.state?.toString();
   if (!code || !state) {
@@ -429,7 +430,8 @@ exports.zoomOAuthCallback = onRequest({ cors: true, secrets: [ZOOM_CLIENT_ID, ZO
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   }, { merge: true });
 
-  res.redirect(302, `${req.protocol}://${req.get('host')}/app/onboarding?role=tutor&zoom=connected`);
+  const frontendBase = APP_BASE_URL.value()?.trim() || `${req.protocol}://${req.get('host')}`;
+  res.redirect(302, `${frontendBase.replace(/\/$/, '')}/app/onboarding?role=tutor&zoom=connected`);
 });
 
 async function refreshZoomAccessTokenIfNeeded(zoomMeta = {}) {
@@ -548,10 +550,41 @@ exports.zoomCreateMeeting = onRequest({ cors: true, secrets: [ZOOM_CLIENT_ID, ZO
   }
 });
 
+function verifyZoomWebhookSignature(req, webhookSecret) {
+  const timestamp = req.headers['x-zm-request-timestamp']?.toString();
+  const signature = req.headers['x-zm-signature']?.toString();
+
+  if (!timestamp || !signature || !webhookSecret) return false;
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  if (Math.abs(nowSeconds - Number(timestamp)) > 300) {
+    return false;
+  }
+
+  const bodyString = Buffer.isBuffer(req.rawBody) ? req.rawBody.toString('utf8') : JSON.stringify(req.body || {});
+  const message = `v0:${timestamp}:${bodyString}`;
+  const expected = `v0=${createHmac('sha256', webhookSecret).update(message).digest('hex')}`;
+
+  const providedBuffer = Buffer.from(signature, 'utf8');
+  const expectedBuffer = Buffer.from(expected, 'utf8');
+  if (providedBuffer.length !== expectedBuffer.length) return false;
+  return timingSafeEqual(providedBuffer, expectedBuffer);
+}
+
 exports.zoomWebhook = onRequest({ cors: true, secrets: [ZOOM_WEBHOOK_SECRET] }, async (req, res) => {
-  const providedSecret = req.headers['x-claxi-zoom-secret']?.toString();
-  if (providedSecret !== ZOOM_WEBHOOK_SECRET.value()) {
-    res.status(401).json({ success: false, message: 'Unauthorized webhook.' });
+  const webhookSecret = ZOOM_WEBHOOK_SECRET.value();
+  const isValidSignature = verifyZoomWebhookSignature(req, webhookSecret);
+  if (!isValidSignature) {
+    res.status(401).json({ success: false, message: 'Invalid Zoom webhook signature.' });
+    return;
+  }
+
+  if (req.body?.event === 'endpoint.url_validation') {
+    const plainToken = req.body?.payload?.plainToken?.toString() || '';
+    const encryptedToken = createHmac('sha256', webhookSecret).update(plainToken).digest('hex');
+    res.status(200).json({
+      plainToken,
+      encryptedToken,
+    });
     return;
   }
 
