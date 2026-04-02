@@ -1081,34 +1081,6 @@ export async function cancelClassRequest({ requestId, canceledBy, reason }) {
   }
 }
 
-export async function cancelClassRequest({ requestId, canceledBy, reason }) {
-  const clients = await getFirebaseClients();
-  const patch = {
-    status: REQUEST_STATUS.CANCELED,
-    statusDetail: 'Request canceled by student.',
-    canceledReason: String(reason || '').trim(),
-    canceledBy: canceledBy || 'student',
-    canceledAt: Date.now(),
-    currentOfferTutorId: null,
-    offerExpiresAt: null,
-  };
-
-  if (!clients) {
-    const next = getMockRequests().map((item) =>
-      item.id === requestId ? { ...item, ...patch, updatedAt: new Date().toISOString() } : item,
-    );
-    setMockRequests(next);
-    return;
-  }
-
-  const { db, firestoreModule } = clients;
-  const { doc, updateDoc, serverTimestamp } = firestoreModule;
-  await updateDoc(doc(db, 'classRequests', requestId), {
-    ...patch,
-    updatedAt: serverTimestamp(),
-  });
-}
-
 export async function settleSessionBilling(session) {
   const billedSeconds = Math.max(0, Math.floor((Date.now() - (session.billingStartedAt || Date.now())) / 1000));
   const totalAmount = Number(((billedSeconds / 60) * BILLING_RULES.DISPLAY_RATE_PER_MINUTE).toFixed(2));
