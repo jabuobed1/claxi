@@ -11,7 +11,7 @@ export default function ProtectedRoute({ children, allowedRoles }) {
   const location = useLocation();
 
   if (isInitializing) {
-    return <LoadingState message="Loading your workspace..." fullPage />;
+    return <LoadingState message="Loading Claxi..." fullPage />;
   }
 
   if (!isAuthenticated) {
