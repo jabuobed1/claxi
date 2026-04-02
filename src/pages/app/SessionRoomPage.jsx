@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import PageHeader from '../../components/ui/PageHeader';
 import SectionCard from '../../components/ui/SectionCard';
 import SelectField from '../../components/ui/SelectField';
+import TldrawSdkEmbed from '../../components/app/TldrawSdkEmbed';
 import { useAuth } from '../../hooks/useAuth';
 import { useStudentSessions, useTutorSessions } from '../../hooks/useSessions';
 import { BILLING_RULES, TUTOR_PAYOUT_RATE } from '../../utils/onboarding';
@@ -76,7 +77,6 @@ export default function SessionRoomPage() {
   const graceRemaining = Math.max(0, Math.ceil(((session.joinGraceEndsAt || 0) - Date.now()) / 1000));
   const tldrawLicenseKey = import.meta.env.VITE_TLDRAW_LICENSE_KEY;
   const whiteboardRoom = session.whiteboardRoomId || session.requestId || session.id;
-  const whiteboardUrl = `https://www.tldraw.com/f/${encodeURIComponent(whiteboardRoom)}`;
 
   return (
     <div className="space-y-6">
@@ -100,9 +100,10 @@ export default function SessionRoomPage() {
 
         <div className="mt-4 rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4">
           <p className="text-sm font-semibold text-white">Collaborative whiteboard (tldraw)</p>
-          <p className="mb-2 text-xs text-zinc-400">Use <code>VITE_TLDRAW_LICENSE_KEY</code> when you switch to a fully licensed SDK deployment flow.</p>
-          <iframe title="tldraw board" src={whiteboardUrl} className="h-[420px] w-full rounded-xl border border-zinc-700 bg-white" />
-          {tldrawLicenseKey ? <p className="mt-2 text-[11px] text-zinc-500">License key detected in env for SDK rollout readiness.</p> : null}
+          <p className="mb-2 text-xs text-zinc-400">Powered by the tldraw SDK. License key is read from <code>VITE_TLDRAW_LICENSE_KEY</code>.</p>
+          <div className="h-[420px] overflow-hidden rounded-xl border border-zinc-700 bg-white">
+            <TldrawSdkEmbed roomId={whiteboardRoom} licenseKey={tldrawLicenseKey} />
+          </div>
         </div>
 
 
