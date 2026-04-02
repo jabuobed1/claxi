@@ -19,13 +19,13 @@ import { cancelClassRequest } from '../../../services/classRequestService';
 function getStatusCopy(status) {
   if ([REQUEST_STATUSES.PENDING, REQUEST_STATUSES.MATCHING].includes(status)) return 'Searching for tutors';
   if (status === REQUEST_STATUSES.OFFERED) return 'Waiting for tutor to accept';
-  if (status === REQUEST_STATUSES.ACCEPTED) return 'Tutor accepted, creating an online class link';
+  if (status === REQUEST_STATUSES.ACCEPTED) return 'Tutor accepted';
   if (status === REQUEST_STATUSES.IN_SESSION) return 'Session has started';
   if (status === REQUEST_STATUSES.WAITING_STUDENT || status === REQUEST_STATUSES.IN_PROGRESS) return 'Class link is ready';
-  if (status === REQUEST_STATUSES.NO_TUTOR_AVAILABLE) return 'No tutor accepted. Searching for another tutor';
+  if (status === REQUEST_STATUSES.NO_TUTOR_AVAILABLE) return 'No available tutor';
   if (status === REQUEST_STATUSES.COMPLETED) return 'Your session is complete';
   if (status === REQUEST_STATUSES.CANCELED) return 'This request has been canceled';
-  if (status === REQUEST_STATUSES.EXPIRED) return 'Request expired because no tutor accepted in time';
+  if (status === REQUEST_STATUSES.EXPIRED) return 'Request expired';
   return 'Preparing your request';
 }
 
@@ -222,8 +222,7 @@ export default function StudentRequestStatusPage() {
     currentStatus === REQUEST_STATUSES.IN_PROGRESS ||
     currentStatus === REQUEST_STATUSES.IN_SESSION;
 
-  const canCancel =
-    ![REQUEST_STATUSES.CANCELED, REQUEST_STATUSES.COMPLETED, REQUEST_STATUSES.EXPIRED].includes(currentStatus);
+  const canCancel = ![REQUEST_STATUSES.CANCELED, REQUEST_STATUSES.COMPLETED, REQUEST_STATUSES.EXPIRED].includes(currentStatus);
 
   const submitCancel = async () => {
     if (!request?.id || !cancelReason.trim()) return;
@@ -283,52 +282,11 @@ export default function StudentRequestStatusPage() {
             </div>
           </div>
         </div>
-
-        <div className="bg-white px-6 py-6 md:px-8">
-          <div className="grid gap-3 md:grid-cols-4">
-            {steps.map((step) => {
-              const active = progressIndex >= step.id;
-              return (
-                <div
-                  key={step.id}
-                  className={`rounded-2xl border px-4 py-4 transition ${
-                    active ? 'border-zinc-900 bg-zinc-900 text-white' : 'border-zinc-200 bg-zinc-50 text-zinc-500'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${
-                        active ? 'bg-white text-zinc-900' : 'bg-zinc-200 text-zinc-600'
-                      }`}
-                    >
-                      {step.id}
-                    </div>
-                    <p className="text-sm font-semibold">{step.title}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.35fr_0.95fr]">
-        <SectionCard title="Request overview" subtitle="A clean summary of the request currently being processed.">
+        <SectionCard title="Request overview" subtitle="If the request takes a little longer, do not worry. The system continues trying to match you with the right tutor based on availability.">
           <div className="space-y-5">
-            <div className={`rounded-[1.5rem] border p-4 ${tone.ring}`}>
-              <div className="flex flex-wrap items-center gap-3">
-                <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${tone.iconWrap}`}>
-                  <StatusIcon className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Status</p>
-                  <p className="break-words text-lg font-bold text-zinc-900">{statusText}</p>
-                </div>
-                <div className={`rounded-full border px-3 py-1 text-xs font-semibold ${tone.badge}`}>
-                  {meta.label}
-                </div>
-              </div>
-            </div>
             {request?.statusDetail ? (
               <div className="rounded-[1.5rem] border border-indigo-200 bg-indigo-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-500">Latest update</p>
@@ -383,13 +341,6 @@ export default function StudentRequestStatusPage() {
               View All Requests
             </Link>
 
-            <Link
-              to="/app/student/request-class"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-bold text-zinc-900 transition hover:bg-zinc-50"
-            >
-              Request Another Class
-            </Link>
-
             {canCancel ? (
               <button
                 type="button"
@@ -399,13 +350,6 @@ export default function StudentRequestStatusPage() {
                 Cancel Request
               </button>
             ) : null}
-
-            <div className="rounded-[1.5rem] border border-zinc-200 bg-zinc-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">Helpful note</p>
-              <p className="mt-2 text-sm leading-6 text-zinc-600">
-                If the request takes a little longer, do not worry. The system continues trying to match you with the right tutor based on availability.
-              </p>
-            </div>
           </div>
         </SectionCard>
       </div>

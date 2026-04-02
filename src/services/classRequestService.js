@@ -11,6 +11,8 @@ const MOCK_REQUESTS_KEY = 'claxi_mock_requests';
 const MOCK_SESSIONS_KEY = 'claxi_mock_sessions';
 const MATCHING_TIMEOUT_MS = 3 * 60 * 1000;
 const OFFER_TIMEOUT_MS = 30000;
+const MATCHING_STATUS_DELAY_MS = 3000;
+const NO_TUTOR_STATUS_DELAY_MS = 3000;
 
 let isUpdatingRequests = false;
 let isUpdatingSessions = false;
@@ -58,6 +60,13 @@ function normalizeTimestamp(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function getStatusDelayElapsed(request, delayMs) {
+  if (!request) return true;
+  const updatedAtMs = normalizeTimestamp(request.updatedAt);
+  if (!updatedAtMs) return true;
+  return Date.now() - updatedAtMs >= delayMs;
+}
+
 function isRequestExpired(request) {
   const createdAtMs = normalizeTimestamp(request.createdAt);
   if (!createdAtMs) return false;
@@ -98,12 +107,40 @@ async function assignNextTutorOffer(requestId) {
 
     const queue = existing.tutorQueue || [];
     const nextTutorId = queue[0] || null;
+    const isNoTutorReady = getStatusDelayElapsed(existing, MATCHING_STATUS_DELAY_MS);
+    const isRetryReady = getStatusDelayElapsed(existing, NO_TUTOR_STATUS_DELAY_MS);
 
     if (!nextTutorId) {
-      const next = getMockRequests().map((request) =>
+      if (existing.status === REQUEST_STATUS.NO_TUTOR_AVAILABLE) {
+        if (!isRetryReady) {
+          return null;
+        }
+
+        const goMatching = getMockRequests().map((request) =>
+          request.id === requestId
+            ? {
+                ...updateRequestStatusSafe(request, REQUEST_STATUS.MATCHING),
+                tutorQueue: queue,
+                currentOfferTutorId: null,
+                offerExpiresAt: null,
+                statusDetail: 'Retrying tutor matching.',
+                updatedAt: new Date().toISOString(),
+              }
+            : request,
+        );
+        setMockRequests(goMatching);
+        return null;
+      }
+
+      if (!isNoTutorReady) {
+        return null;
+      }
+
+      const noTutor = getMockRequests().map((request) =>
         request.id === requestId
           ? {
               ...updateRequestStatusSafe(request, REQUEST_STATUS.NO_TUTOR_AVAILABLE),
+              tutorQueue: queue,
               currentOfferTutorId: null,
               offerExpiresAt: null,
               statusDetail: 'No tutor accepted. Looking for another tutor.',
@@ -111,8 +148,22 @@ async function assignNextTutorOffer(requestId) {
             }
           : request,
       );
-      setMockRequests(next);
+      setMockRequests(noTutor);
       return null;
+    }
+
+    if (existing.status === REQUEST_STATUS.NO_TUTOR_AVAILABLE) {
+      const promote = getMockRequests().map((request) =>
+        request.id === requestId
+          ? {
+              ...updateRequestStatusSafe(request, REQUEST_STATUS.MATCHING),
+              tutorQueue: queue,
+              statusDetail: 'Tutor found; moving to matching.',
+              updatedAt: new Date().toISOString(),
+            }
+          : request,
+      );
+      setMockRequests(promote);
     }
 
     const next = getMockRequests().map((request) =>
@@ -153,13 +204,49 @@ async function assignNextTutorOffer(requestId) {
   }
   const queue = requestData.tutorQueue || [];
   const nextTutorId = queue[0] || null;
+  const isNoTutorReady = getStatusDelayElapsed(requestData, MATCHING_STATUS_DELAY_MS);
+  const isRetryReady = getStatusDelayElapsed(requestData, NO_TUTOR_STATUS_DELAY_MS);
 
   if (!nextTutorId) {
+    if (requestData.status === REQUEST_STATUS.NO_TUTOR_AVAILABLE) {
+      if (!isRetryReady) {
+        return null;
+      }
+
+      if (canTransitionRequest(requestData.status, REQUEST_STATUS.MATCHING)) {
+        await updateDoc(requestRef, {
+          status: REQUEST_STATUS.MATCHING,
+          tutorQueue: queue,
+          currentOfferTutorId: null,
+          offerExpiresAt: null,
+          statusDetail: 'Retrying tutor matching.',
+          updatedAt: serverTimestamp(),
+        });
+      }
+
+      return null;
+    }
+
+    if (!isNoTutorReady) {
+      if (canTransitionRequest(requestData.status, REQUEST_STATUS.MATCHING)) {
+        await updateDoc(requestRef, {
+          status: REQUEST_STATUS.MATCHING,
+          tutorQueue: queue,
+          currentOfferTutorId: null,
+          offerExpiresAt: null,
+          statusDetail: 'Matching tutors currently online.',
+          updatedAt: serverTimestamp(),
+        });
+      }
+      return null;
+    }
+
     if (canTransitionRequest(requestData.status, REQUEST_STATUS.NO_TUTOR_AVAILABLE)) {
       await updateDoc(requestRef, {
         status: REQUEST_STATUS.NO_TUTOR_AVAILABLE,
         currentOfferTutorId: null,
         offerExpiresAt: null,
+        statusDetail: 'No tutor available. Showing this for a short delay.',
         updatedAt: serverTimestamp(),
       });
     }
@@ -173,6 +260,16 @@ async function assignNextTutorOffer(requestId) {
     });
 
     return null;
+  }
+
+  if (requestData.status === REQUEST_STATUS.NO_TUTOR_AVAILABLE && canTransitionRequest(requestData.status, REQUEST_STATUS.MATCHING)) {
+    await updateDoc(requestRef, {
+      status: REQUEST_STATUS.MATCHING,
+      tutorQueue: queue,
+      statusDetail: 'Tutor found; moving to matching.',
+      updatedAt: serverTimestamp(),
+    });
+    requestData.status = REQUEST_STATUS.MATCHING;
   }
 
   if (canTransitionRequest(requestData.status, REQUEST_STATUS.OFFERED)) {
@@ -273,28 +370,65 @@ async function refreshActiveMatchingRequests(studentId) {
       const currentOfferTutorId = request.currentOfferTutorId && queue.includes(request.currentOfferTutorId)
         ? request.currentOfferTutorId
         : null;
-      updates.push({
-        id: request.id,
-        status: currentOfferTutorId ? request.status : REQUEST_STATUS.MATCHING,
-        tutorQueue: queue,
-        currentOfferTutorId,
-        offerExpiresAt: currentOfferTutorId ? request.offerExpiresAt : null,
-        updatedAt: new Date().toISOString(),
-      });
+
+    let nextStatus = request.status;
+    let nextStatusDetail = request.statusDetail;
+    const hasTutors = queue.length > 0;
+    const isNoTutorReady = getStatusDelayElapsed(request, MATCHING_STATUS_DELAY_MS);
+    const isRetryReady = getStatusDelayElapsed(request, NO_TUTOR_STATUS_DELAY_MS);
+
+    if (hasTutors) {
+      if (request.status === REQUEST_STATUS.NO_TUTOR_AVAILABLE) {
+        if (isRetryReady) {
+          nextStatus = REQUEST_STATUS.MATCHING;
+          nextStatusDetail = 'Retrying tutor matching.';
+        }
+      } else if (request.status === REQUEST_STATUS.PENDING) {
+        nextStatus = REQUEST_STATUS.MATCHING;
+        nextStatusDetail = 'Matching tutors currently online.';
+      }
+    } else {
+      if (request.status === REQUEST_STATUS.NO_TUTOR_AVAILABLE) {
+        if (isRetryReady) {
+          nextStatus = REQUEST_STATUS.MATCHING;
+          nextStatusDetail = 'Retrying tutor matching.';
+        } else {
+          nextStatus = REQUEST_STATUS.NO_TUTOR_AVAILABLE;
+          nextStatusDetail = 'No tutor available. Showing this for a short delay.';
+        }
+      } else {
+        if (isNoTutorReady) {
+          nextStatus = REQUEST_STATUS.NO_TUTOR_AVAILABLE;
+          nextStatusDetail = 'No tutor available. Showing this for a short delay.';
+        } else {
+          nextStatus = REQUEST_STATUS.MATCHING;
+          nextStatusDetail = 'Matching tutors currently online.';
+        }
+      }
     }
 
-    if (!updates.length) return;
-    const byId = new Map(updates.map((item) => [item.id, item]));
-    const next = mutable.map((request) => (byId.has(request.id) ? { ...request, ...byId.get(request.id) } : request));
-    setMockRequests(next);
-    await Promise.all(
-      updates
-        .filter((item) => item.status === REQUEST_STATUS.MATCHING && !item.currentOfferTutorId)
-        .map((item) => assignNextTutorOffer(item.id)),
-    );
-    return;
+    updates.push({
+      id: request.id,
+      status: nextStatus,
+      statusDetail: nextStatusDetail,
+      tutorQueue: queue,
+      currentOfferTutorId,
+      offerExpiresAt: currentOfferTutorId ? request.offerExpiresAt : null,
+      updatedAt: new Date().toISOString(),
+    });
   }
 
+  if (!updates.length) return;
+  const byId = new Map(updates.map((item) => [item.id, item]));
+  const next = mutable.map((request) => (byId.has(request.id) ? { ...request, ...byId.get(request.id) } : request));
+  setMockRequests(next);
+  await Promise.all(
+    updates
+      .filter((item) => item.status === REQUEST_STATUS.MATCHING && !item.currentOfferTutorId)
+      .map((item) => assignNextTutorOffer(item.id)),
+  );
+  return;
+}
   const { db, firestoreModule } = clients;
   const { collection, getDocs, query, where, doc, updateDoc, serverTimestamp } = firestoreModule;
   const baseQuery = query(
@@ -327,15 +461,56 @@ async function refreshActiveMatchingRequests(studentId) {
     const currentOfferTutorId = request.currentOfferTutorId && queue.includes(request.currentOfferTutorId)
       ? request.currentOfferTutorId
       : null;
+
+    let nextStatus = request.status;
+    let nextStatusDetail = request.statusDetail;
+    const hasTutors = queue.length > 0;
+    const isNoTutorReady = getStatusDelayElapsed(request, MATCHING_STATUS_DELAY_MS);
+    const isRetryReady = getStatusDelayElapsed(request, NO_TUTOR_STATUS_DELAY_MS);
+
+    if (hasTutors) {
+      if (request.status === REQUEST_STATUS.NO_TUTOR_AVAILABLE) {
+        if (isRetryReady) {
+          nextStatus = REQUEST_STATUS.MATCHING;
+          nextStatusDetail = 'Retrying tutor matching.';
+        } else {
+          nextStatus = REQUEST_STATUS.NO_TUTOR_AVAILABLE;
+          nextStatusDetail = 'No tutor available. Showing this for a short delay.';
+        }
+      } else if (request.status === REQUEST_STATUS.PENDING) {
+        nextStatus = REQUEST_STATUS.MATCHING;
+        nextStatusDetail = 'Matching tutors currently online.';
+      }
+    } else {
+      if (request.status === REQUEST_STATUS.NO_TUTOR_AVAILABLE) {
+        if (isRetryReady) {
+          nextStatus = REQUEST_STATUS.MATCHING;
+          nextStatusDetail = 'Retrying tutor matching.';
+        } else {
+          nextStatus = REQUEST_STATUS.NO_TUTOR_AVAILABLE;
+          nextStatusDetail = 'No tutor available. Showing this for a short delay.';
+        }
+      } else {
+        if (isNoTutorReady) {
+          nextStatus = REQUEST_STATUS.NO_TUTOR_AVAILABLE;
+          nextStatusDetail = 'No tutor available. Showing this for a short delay.';
+        } else {
+          nextStatus = REQUEST_STATUS.MATCHING;
+          nextStatusDetail = 'Matching tutors currently online.';
+        }
+      }
+    }
+
     await updateDoc(requestRef, {
       tutorQueue: queue,
       currentOfferTutorId,
       offerExpiresAt: currentOfferTutorId ? request.offerExpiresAt || null : null,
-      status: currentOfferTutorId ? request.status : REQUEST_STATUS.MATCHING,
+      status: nextStatus,
+      statusDetail: nextStatusDetail,
       updatedAt: serverTimestamp(),
     });
 
-    if (!currentOfferTutorId) {
+    if (!currentOfferTutorId && nextStatus === REQUEST_STATUS.MATCHING) {
       await assignNextTutorOffer(request.id);
     }
   }
@@ -904,6 +1079,34 @@ export async function cancelClassRequest({ requestId, canceledBy, reason }) {
     debugError('classRequestService', 'Failed to cancel class request.', { requestId, message: error.message });
     throw error;
   }
+}
+
+export async function cancelClassRequest({ requestId, canceledBy, reason }) {
+  const clients = await getFirebaseClients();
+  const patch = {
+    status: REQUEST_STATUS.CANCELED,
+    statusDetail: 'Request canceled by student.',
+    canceledReason: String(reason || '').trim(),
+    canceledBy: canceledBy || 'student',
+    canceledAt: Date.now(),
+    currentOfferTutorId: null,
+    offerExpiresAt: null,
+  };
+
+  if (!clients) {
+    const next = getMockRequests().map((item) =>
+      item.id === requestId ? { ...item, ...patch, updatedAt: new Date().toISOString() } : item,
+    );
+    setMockRequests(next);
+    return;
+  }
+
+  const { db, firestoreModule } = clients;
+  const { doc, updateDoc, serverTimestamp } = firestoreModule;
+  await updateDoc(doc(db, 'classRequests', requestId), {
+    ...patch,
+    updatedAt: serverTimestamp(),
+  });
 }
 
 export async function settleSessionBilling(session) {
