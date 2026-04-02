@@ -16,6 +16,18 @@
         "function": "verifyPaystack"
       },
       {
+        "source": "/zoom-auth-start",
+        "function": "zoomAuthStart"
+      },
+      {
+        "source": "/zoom-create-meeting",
+        "function": "zoomCreateMeeting"
+      },
+      {
+        "source": "/zoom-oauth-callback",
+        "function": "zoomOAuthCallback"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
