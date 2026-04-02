@@ -26,7 +26,14 @@ Set Firebase Functions environment variables/secrets separately:
 ```bash
 RESEND_API_KEY=
 EMAIL_FROM=noreply@yourdomain.com
+ZOOM_CLIENT_ID=
+ZOOM_CLIENT_SECRET=
+ZOOM_REDIRECT_URI=https://<your-host-domain>/zoom-oauth-callback
+ZOOM_WEBHOOK_SECRET=
+APP_BASE_URL=https://<your-host-domain>
 ```
+
+For Zoom endpoints, this project is configured to use Hosting/Vite route mapping (`/zoom-auth-start`, `/zoom-create-meeting`, `/zoom-oauth-callback`) so frontend `.env` Zoom endpoint overrides are optional.
 
 ## Firestore Collections
 - `users`
