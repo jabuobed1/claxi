@@ -202,3 +202,33 @@ export async function setTutorVerificationStatus(uid, verificationStatus) {
     },
   });
 }
+
+export async function updateUserRatingSummary(uid, roleKey, overallScore) {
+  const existing = await getUserProfile(uid);
+  if (!existing) return null;
+
+  const currentStats = existing?.ratings?.[roleKey] || {};
+  const count = Number(currentStats.count || 0);
+  const average = Number(currentStats.average || 0);
+  const nextCount = count + 1;
+  const nextAverage = Number((((average * count) + Number(overallScore || 0)) / nextCount).toFixed(2));
+
+  return updateUserProfile(uid, {
+    ratings: {
+      ...(existing.ratings || {}),
+      [roleKey]: {
+        count: nextCount,
+        average: nextAverage,
+        updatedAt: Date.now(),
+      },
+    },
+    ...(roleKey === 'asTutor'
+      ? {
+          tutorProfile: {
+            ...(existing.tutorProfile || {}),
+            overallRating: nextAverage,
+          },
+        }
+      : {}),
+  });
+}

@@ -8,6 +8,8 @@ import { useTutorAvailableRequests } from '../../../hooks/useClassRequests';
 import { getTutorOnboardingStatus } from '../../../utils/onboarding';
 import { updateUserProfile } from '../../../services/userService';
 import { acceptClassRequest, declineClassRequest } from '../../../services/classRequestService';
+import { createZoomMeetingForRequest } from '../../../services/zoomService';
+import { debugError, debugLog } from '../../../utils/devLogger';
 
 export default function TutorDashboardPage() {
   const { user, setUser } = useAuth();
@@ -24,23 +26,39 @@ export default function TutorDashboardPage() {
 
   const toggleOnlineStatus = async () => {
     if (!onboardingStatus.complete) return;
+    if (!isOnline && !user?.tutorProfile?.zoom?.linked) return;
+    debugLog('tutorDashboard', 'Toggling tutor online status.', { current: isOnline ? 'online' : 'offline' });
     const profile = await updateUserProfile(user.uid, { onlineStatus: isOnline ? 'offline' : 'online' });
     setUser((prev) => ({ ...prev, ...profile }));
   };
 
   const respond = async (requestId, response) => {
+    debugLog('tutorDashboard', 'Tutor responding to request from dashboard.', { requestId, response });
     setActiveRequestId(requestId);
-    if (response === 'accept') {
-      await acceptClassRequest({
-        requestId,
-        tutorId: user.uid,
-        tutorName: user.fullName || user.displayName || user.email,
-        tutorEmail: user.email,
-      });
-    } else {
-      await declineClassRequest({ requestId, tutorId: user.uid });
+    try {
+      if (response === 'accept') {
+        const request = requests.find((item) => item.id === requestId);
+        const meeting = await createZoomMeetingForRequest({
+          requestId,
+          topic: request?.topic || 'Claxi session',
+          durationMinutes: Number(request?.durationMinutes || request?.duration || 30),
+        });
+        await acceptClassRequest({
+          requestId,
+          tutorId: user.uid,
+          tutorName: user.fullName || user.displayName || user.email,
+          tutorEmail: user.email,
+          meeting,
+        });
+      } else {
+        await declineClassRequest({ requestId, tutorId: user.uid });
+      }
+    } catch (error) {
+      debugError('tutorDashboard', 'Tutor response failed.', { requestId, response, message: error.message });
+      throw error;
+    } finally {
+      setActiveRequestId('');
     }
-    setActiveRequestId('');
   };
 
   return (

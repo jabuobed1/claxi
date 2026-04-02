@@ -5,11 +5,12 @@ import { BILLING_RULES, PLATFORM_FEE_RATE, TUTOR_PAYOUT_RATE } from '../utils/on
 import { createNotification } from './notificationService';
 import { EMAIL_EVENT_TYPES, queueEmailEvent } from './emailEventService';
 import { getTutorCandidatesForRequest } from './userService';
+import { debugError, debugLog } from '../utils/devLogger';
 
 const MOCK_REQUESTS_KEY = 'claxi_mock_requests';
 const MOCK_SESSIONS_KEY = 'claxi_mock_sessions';
 const MATCHING_TIMEOUT_MS = 3 * 60 * 1000;
-const OFFER_TIMEOUT_MS = 10000;
+const OFFER_TIMEOUT_MS = 30000;
 
 let isUpdatingRequests = false;
 let isUpdatingSessions = false;
@@ -86,6 +87,7 @@ async function assignNextTutorOffer(requestId) {
               ...updateRequestStatusSafe(request, REQUEST_STATUS.EXPIRED),
               currentOfferTutorId: null,
               offerExpiresAt: null,
+              statusDetail: 'Request expired because no tutor accepted in time.',
               updatedAt: new Date().toISOString(),
             }
           : request,
@@ -104,6 +106,7 @@ async function assignNextTutorOffer(requestId) {
               ...updateRequestStatusSafe(request, REQUEST_STATUS.NO_TUTOR_AVAILABLE),
               currentOfferTutorId: null,
               offerExpiresAt: null,
+              statusDetail: 'No tutor accepted. Looking for another tutor.',
               updatedAt: new Date().toISOString(),
             }
           : request,
@@ -120,6 +123,7 @@ async function assignNextTutorOffer(requestId) {
             tutorQueue: queue,
             offerExpiresAt: Date.now() + OFFER_TIMEOUT_MS,
             retryOfferGranted: false,
+            statusDetail: 'Tutor notified. Waiting for acceptance.',
             updatedAt: new Date().toISOString(),
           }
         : request,
@@ -177,6 +181,7 @@ async function assignNextTutorOffer(requestId) {
       currentOfferTutorId: nextTutorId,
       offerExpiresAt: Date.now() + OFFER_TIMEOUT_MS,
       retryOfferGranted: false,
+      statusDetail: 'Tutor notified. Waiting for acceptance.',
       updatedAt: serverTimestamp(),
     });
   }
@@ -184,7 +189,7 @@ async function assignNextTutorOffer(requestId) {
   await createNotification({
     userId: nextTutorId,
     title: 'New live request',
-    message: `New math request: ${requestData.topic}. Accept within 10 seconds.`,
+    message: `New math request: ${requestData.topic}. Accept within 30 seconds.`,
     type: 'tutor_offer',
     requestId,
   });
@@ -203,6 +208,7 @@ async function initializeTutorMatching(requestId, payload) {
         ? {
             ...updateRequestStatusSafe(request, REQUEST_STATUS.MATCHING),
             tutorQueue: queue,
+            statusDetail: 'Matching tutors currently online.',
             updatedAt: new Date().toISOString(),
           }
         : request,
@@ -222,6 +228,7 @@ async function initializeTutorMatching(requestId, payload) {
     await updateDoc(requestRef, {
       status: REQUEST_STATUS.MATCHING,
       tutorQueue: queue,
+      statusDetail: 'Matching tutors currently online.',
       updatedAt: serverTimestamp(),
     });
   }
@@ -252,6 +259,7 @@ async function refreshActiveMatchingRequests(studentId) {
         updates.push({
           id: request.id,
           status: REQUEST_STATUS.EXPIRED,
+          statusDetail: 'Request expired because no tutor accepted in time.',
           tutorQueue: [],
           currentOfferTutorId: null,
           offerExpiresAt: null,
@@ -304,6 +312,7 @@ async function refreshActiveMatchingRequests(studentId) {
       if (canTransitionRequest(request.status, REQUEST_STATUS.EXPIRED)) {
         await updateDoc(requestRef, {
           status: REQUEST_STATUS.EXPIRED,
+          statusDetail: 'Request expired because no tutor accepted in time.',
           tutorQueue: [],
           currentOfferTutorId: null,
           offerExpiresAt: null,
@@ -333,6 +342,11 @@ async function refreshActiveMatchingRequests(studentId) {
 }
 
 export async function createClassRequest(payload) {
+  debugLog('classRequestService', 'Creating class request.', {
+    studentId: payload?.studentId,
+    topic: payload?.topic,
+    durationMinutes: payload?.durationMinutes || payload?.duration,
+  });
   const clients = await getFirebaseClients();
   const requestBody = {
     ...payload,
@@ -348,6 +362,7 @@ export async function createClassRequest(payload) {
     offerExpiresAt: null,
     imageAttachment: payload.imageAttachment || '',
     attachment: payload.attachment || null,
+    statusDetail: 'Request submitted. Initializing tutor matching.',
   };
 
   if (!clients) {
@@ -398,6 +413,7 @@ export async function createClassRequest(payload) {
 
   await Promise.all(existingSnap.docs.map((item) => updateDoc(item.ref, {
     status: REQUEST_STATUS.EXPIRED,
+    statusDetail: 'Previous request auto-expired by new request.',
     currentOfferTutorId: null,
     offerExpiresAt: null,
     updatedAt: serverTimestamp(),
@@ -427,6 +443,7 @@ export async function createClassRequest(payload) {
   });
 
   await initializeTutorMatching(docRef.id, payload);
+  debugLog('classRequestService', 'Class request created and matching initialized.', { requestId: docRef.id });
   return docRef.id;
 }
 
@@ -522,6 +539,7 @@ export function subscribeToTutorAvailableRequests(tutorId, callback) {
               tutorQueue: queue,
               currentOfferTutorId: null,
               offerExpiresAt: null,
+              statusDetail: queue.length ? 'Tutor timed out. Trying another tutor.' : 'No tutor accepted. Looking for another tutor.',
               updatedAt: new Date().toISOString(),
             };
           }
@@ -635,6 +653,7 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
               tutorEmail: tutorEmail || existing.tutorEmail || '',
               currentOfferTutorId: null,
               offerExpiresAt: null,
+              statusDetail: 'Tutor accepted. Zoom meeting is being prepared.',
               updatedAt: new Date().toISOString(),
             }
           : item,
@@ -655,9 +674,14 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
         scheduledDate: existing.preferredDate,
         scheduledTime: existing.preferredTime,
         duration: existing.duration,
-        meetingProvider: existing.meetingProviderPreference || MEETING_PROVIDERS.ANY,
-        meetingLink: '',
+        meetingProvider: MEETING_PROVIDERS.ZOOM,
+        meetingLink: existing.meetingLink || '',
+        meetingId: existing.meetingId || '',
+        meetingPassword: existing.meetingPassword || '',
+        whiteboardRoomId: existing.whiteboardRoomId || requestId,
         notes: '',
+        requestAttachment: existing.attachment || null,
+        requestDescription: existing.description || '',
         status: SESSION_STATUS.WAITING_STUDENT,
         joinGraceEndsAt: Date.now() + 2 * 60 * 1000,
         callStartedAt: Date.now(),
@@ -719,6 +743,7 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
           status: REQUEST_STATUS.ACCEPTED,
           currentOfferTutorId: null,
           offerExpiresAt: null,
+          statusDetail: 'Tutor accepted. Zoom meeting is ready.',
           updatedAt: serverTimestamp(),
         });
       }
@@ -737,9 +762,14 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
         scheduledDate: requestData.preferredDate,
         scheduledTime: requestData.preferredTime,
         duration: requestData.duration,
-        meetingProvider: requestData.meetingProviderPreference || MEETING_PROVIDERS.ANY,
-        meetingLink: '',
+        meetingProvider: MEETING_PROVIDERS.ZOOM,
+        meetingLink: requestData.meetingLink || '',
+        meetingId: requestData.meetingId || '',
+        meetingPassword: requestData.meetingPassword || '',
+        whiteboardRoomId: requestData.whiteboardRoomId || requestId,
         notes: '',
+        requestAttachment: requestData.attachment || null,
+        requestDescription: requestData.description || '',
         status: SESSION_STATUS.WAITING_STUDENT,
         joinGraceEndsAt: Date.now() + 2 * 60 * 1000,
         callStartedAt: Date.now(),
@@ -769,6 +799,7 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
           status: nextStatus,
           currentOfferTutorId: null,
           offerExpiresAt: null,
+          statusDetail: 'Tutor declined. Matching another tutor.',
           updatedAt: serverTimestamp(),
         });
       }
@@ -795,12 +826,84 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
   await assignNextTutorOffer(requestId);
 }
 
-export async function acceptClassRequest({ requestId, tutorId, tutorName, tutorEmail }) {
-  return handleTutorOfferResponse({ requestId, tutorId, tutorName, tutorEmail, response: 'accept' });
+export async function attachMeetingToRequest({ requestId, tutorId, meeting }) {
+  const clients = await getFirebaseClients();
+  const meetingPatch = {
+    meetingProvider: MEETING_PROVIDERS.ZOOM,
+    meetingLink: meeting?.joinUrl || '',
+    meetingId: meeting?.meetingId || '',
+    meetingPassword: meeting?.password || '',
+    whiteboardRoomId: meeting?.whiteboardRoomId || requestId,
+    statusDetail: 'Tutor is creating Zoom call and whiteboard.',
+  };
+
+  if (!clients) {
+    const next = getMockRequests().map((item) =>
+      item.id === requestId ? { ...item, ...meetingPatch, tutorId, updatedAt: new Date().toISOString() } : item,
+    );
+    setMockRequests(next);
+    return;
+  }
+
+  const { db, firestoreModule } = clients;
+  const { doc, updateDoc, serverTimestamp } = firestoreModule;
+  await updateDoc(doc(db, 'classRequests', requestId), {
+    ...meetingPatch,
+    tutorId,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function acceptClassRequest({ requestId, tutorId, tutorName, tutorEmail, meeting }) {
+  debugLog('classRequestService', 'Accepting class request.', { requestId, tutorId, hasMeeting: Boolean(meeting?.meetingId) });
+  if (meeting) {
+    await attachMeetingToRequest({ requestId, tutorId, meeting });
+  }
+  const result = await handleTutorOfferResponse({ requestId, tutorId, tutorName, tutorEmail, response: 'accept' });
+  debugLog('classRequestService', 'Class request accepted.', { requestId, tutorId });
+  return result;
 }
 
 export async function declineClassRequest({ requestId, tutorId }) {
-  return handleTutorOfferResponse({ requestId, tutorId, response: 'decline' });
+  debugLog('classRequestService', 'Declining class request.', { requestId, tutorId });
+  const result = await handleTutorOfferResponse({ requestId, tutorId, response: 'decline' });
+  debugLog('classRequestService', 'Class request declined.', { requestId, tutorId });
+  return result;
+}
+
+export async function cancelClassRequest({ requestId, canceledBy, reason }) {
+  debugLog('classRequestService', 'Canceling class request.', { requestId, canceledBy });
+  const clients = await getFirebaseClients();
+  const patch = {
+    status: REQUEST_STATUS.CANCELED,
+    statusDetail: 'Request canceled by student.',
+    canceledReason: String(reason || '').trim(),
+    canceledBy: canceledBy || 'student',
+    canceledAt: Date.now(),
+    currentOfferTutorId: null,
+    offerExpiresAt: null,
+  };
+
+  if (!clients) {
+    const next = getMockRequests().map((item) =>
+      item.id === requestId ? { ...item, ...patch, updatedAt: new Date().toISOString() } : item,
+    );
+    setMockRequests(next);
+    return;
+  }
+
+  const { db, firestoreModule } = clients;
+  const { doc, updateDoc, serverTimestamp } = firestoreModule;
+  try {
+    await updateDoc(doc(db, 'classRequests', requestId), {
+      ...patch,
+      updatedAt: serverTimestamp(),
+    });
+    debugLog('classRequestService', 'Class request canceled.', { requestId });
+  } catch (error) {
+    debugError('classRequestService', 'Failed to cancel class request.', { requestId, message: error.message });
+    throw error;
+  }
 }
 
 export async function settleSessionBilling(session) {

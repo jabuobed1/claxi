@@ -6,7 +6,8 @@ import { EMAIL_EVENT_TYPES, queueEmailEvent } from './emailEventService';
 import { settleSessionBilling } from './classRequestService';
 import { chargeCard } from './paymentGatewayService';
 import { applyWalletDebt } from './walletService';
-import { getUserProfile } from './userService';
+import { getUserProfile, updateUserRatingSummary } from './userService';
+import { debugError, debugLog } from '../utils/devLogger';
 
 const MOCK_SESSIONS_KEY = 'claxi_mock_sessions';
 const MOCK_REQUESTS_KEY = 'claxi_mock_requests';
@@ -41,12 +42,18 @@ function syncMockRequestStatus(requestId, sessionStatus) {
   if (!nextRequestStatus) return;
 
   const nextRequests = getMockRequests().map((request) =>
-    request.id === requestId
-      ? {
-          ...request,
-          status: nextRequestStatus,
-          updatedAt: new Date().toISOString(),
-        }
+        request.id === requestId
+          ? {
+              ...request,
+              status: nextRequestStatus,
+              ...(sessionStatus === SESSION_STATUS.IN_PROGRESS
+                ? { startedAt: Date.now(), statusDetail: 'Student joined. Session is in progress.' }
+                : {}),
+              ...(sessionStatus === SESSION_STATUS.COMPLETED
+                ? { endedAt: Date.now(), statusDetail: 'Session ended. Billing completed.' }
+                : {}),
+              updatedAt: new Date().toISOString(),
+            }
       : request,
   );
 
@@ -168,9 +175,20 @@ export async function updateSession(sessionId, updates) {
     const nextRequestStatus = deriveRequestStatusFromSession(updates.status);
     if (nextRequestStatus) {
       const requestRef = doc(db, 'classRequests', updates.requestId);
-      batch.update(requestRef, {
+      const requestPatch = {
         status: nextRequestStatus,
         updatedAt: serverTimestamp(),
+      };
+      if (updates.status === SESSION_STATUS.IN_PROGRESS) {
+        requestPatch.startedAt = updates.studentJoinedAt || Date.now();
+        requestPatch.statusDetail = 'Student joined. Session is in progress.';
+      }
+      if (updates.status === SESSION_STATUS.COMPLETED) {
+        requestPatch.endedAt = updates.endedAt || Date.now();
+        requestPatch.statusDetail = 'Session ended. Billing completed.';
+      }
+      batch.update(requestRef, {
+        ...requestPatch,
       });
     }
   }
@@ -182,6 +200,7 @@ export async function updateSession(sessionId, updates) {
 }
 
 export async function joinSessionAsStudent(session, selectedCardId, selectedCardLast4) {
+  debugLog('sessionService', 'Student joining session.', { sessionId: session?.id, requestId: session?.requestId });
   return updateSession(session.id, {
     ...session,
     status: SESSION_STATUS.IN_PROGRESS,
@@ -193,6 +212,7 @@ export async function joinSessionAsStudent(session, selectedCardId, selectedCard
 }
 
 export async function endSession(session) {
+  debugLog('sessionService', 'Ending session and settling billing.', { sessionId: session?.id, requestId: session?.requestId });
   const billing = await settleSessionBilling(session);
   const studentProfile = await getUserProfile(session.studentId);
   const selectedCard = (studentProfile?.paymentMethods || []).find((card) => card.id === session.selectedCardId)
@@ -255,10 +275,16 @@ export async function endSession(session) {
     }),
   ]);
 
+  debugLog('sessionService', 'Session ended and billing updates completed.', {
+    sessionId: session?.id,
+    totalAmount: billing.totalAmount,
+    paymentStatus,
+  });
   return updated;
 }
 
 export async function submitSessionRating(session, role, payload) {
+  debugLog('sessionService', 'Submitting session rating.', { sessionId: session?.id, role, overall: payload?.overall });
   const ratings = {
     ...(session.ratings || {}),
     [role]: {
@@ -269,10 +295,24 @@ export async function submitSessionRating(session, role, payload) {
     },
   };
 
-  return updateSession(session.id, {
+  const updatedSession = await updateSession(session.id, {
     ...session,
     ratings,
   });
+
+  try {
+    if (role === 'student') {
+      await updateUserRatingSummary(session.tutorId, 'asTutor', payload.overall);
+    } else {
+      await updateUserRatingSummary(session.studentId, 'asStudent', payload.overall);
+    }
+  } catch (error) {
+    debugError('sessionService', 'Failed to update user rating summary.', { message: error.message, sessionId: session?.id });
+    throw error;
+  }
+
+  debugLog('sessionService', 'Session rating submitted successfully.', { sessionId: session?.id, role });
+  return updatedSession;
 }
 
 export { REQUEST_STATUS };
