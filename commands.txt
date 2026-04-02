@@ -7,7 +7,7 @@ Run:
 
 git status
 git add .
-git commit -m "Commit before Codex merge and pull - 02.04.2026 - 1."
+git commit -m "Commit before tldraw update - 02.04.2026 - 2."
 git push origin main
 
 (This ensures Codex sees your latest work from GitHub)
@@ -44,10 +44,10 @@ firebase functions:secrets:set EMAIL_FROM
 no-reply@examify-mail.bakayise.com
 
 firebase functions:secrets:set ZOOM_CLIENT_ID
-ja5owvAyQVKP_ZNYh8VKPw
+w9RC17FQOS6cqMec_7PQ
 
 firebase functions:secrets:set ZOOM_CLIENT_SECRET
-fFm4BBfcU9pL39O8tA1emm7jdqd2kr8w
+p8BbKxj0dCvf8dupr9CACTiTO9QmRdPn
 
 firebase functions:secrets:set ZOOM_REDIRECT_URI
 https://us-central1-claxi-bakayise.cloudfunctions.net/zoomOAuthCallback
@@ -55,6 +55,9 @@ https://us-central1-claxi-bakayise.cloudfunctions.net/zoomOAuthCallback
 firebase functions:secrets:set ZOOM_WEBHOOK_SECRET
 19trgX9Fi2s1Ial74Kxy4SHPmWo3+It8UlzukS70lZ+GtlZKa1ziMdy8keRtozu8
 to generate the above, use this command > openssl rand -base64 48
+
+firebase functions:secrets:set APP_BASE_URL
+https://claxi.bakayise.com/
 
 VITE_ZOOM_AUTH_START_ENDPOINT
 https://us-central1-claxi-bakayise.cloudfunctions.net/zoomAuthStart
