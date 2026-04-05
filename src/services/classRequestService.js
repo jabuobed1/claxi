@@ -828,7 +828,7 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
               tutorEmail: tutorEmail || existing.tutorEmail || '',
               currentOfferTutorId: null,
               offerExpiresAt: null,
-              statusDetail: 'Tutor accepted. Zoom meeting is being prepared.',
+              statusDetail: 'Tutor accepted. Session is being prepared.',
               updatedAt: new Date().toISOString(),
             }
           : item,
@@ -849,10 +849,19 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
         scheduledDate: existing.preferredDate,
         scheduledTime: existing.preferredTime,
         duration: existing.duration,
-        meetingProvider: MEETING_PROVIDERS.ZOOM,
-        meetingLink: existing.meetingLink || '',
-        meetingId: existing.meetingId || '',
-        meetingPassword: existing.meetingPassword || '',
+        meetingProvider: MEETING_PROVIDERS.WEBRTC,
+        meetingLink: '',
+        meetingId: '',
+        meetingPassword: '',
+        webrtc: {
+          ready: true,
+          status: 'tutor_waiting',
+          tutorReadyAt: Date.now(),
+          studentReadyAt: null,
+          offer: null,
+          answer: null,
+          lastRestartAt: null,
+        },
         whiteboardRoomId: existing.whiteboardRoomId || requestId,
         notes: '',
         requestAttachment: existing.attachment || null,
@@ -918,7 +927,7 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
           status: REQUEST_STATUS.ACCEPTED,
           currentOfferTutorId: null,
           offerExpiresAt: null,
-          statusDetail: 'Tutor accepted. Zoom meeting is ready.',
+          statusDetail: 'Tutor accepted. Session is ready to join.',
           updatedAt: serverTimestamp(),
         });
       }
@@ -937,10 +946,19 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
         scheduledDate: requestData.preferredDate,
         scheduledTime: requestData.preferredTime,
         duration: requestData.duration,
-        meetingProvider: MEETING_PROVIDERS.ZOOM,
-        meetingLink: requestData.meetingLink || '',
-        meetingId: requestData.meetingId || '',
-        meetingPassword: requestData.meetingPassword || '',
+        meetingProvider: MEETING_PROVIDERS.WEBRTC,
+        meetingLink: '',
+        meetingId: '',
+        meetingPassword: '',
+        webrtc: {
+          ready: true,
+          status: 'tutor_waiting',
+          tutorReadyAt: Date.now(),
+          studentReadyAt: null,
+          offer: null,
+          answer: null,
+          lastRestartAt: null,
+        },
         whiteboardRoomId: requestData.whiteboardRoomId || requestId,
         notes: '',
         requestAttachment: requestData.attachment || null,
@@ -1001,39 +1019,8 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
   await assignNextTutorOffer(requestId);
 }
 
-export async function attachMeetingToRequest({ requestId, tutorId, meeting }) {
-  const clients = await getFirebaseClients();
-  const meetingPatch = {
-    meetingProvider: MEETING_PROVIDERS.ZOOM,
-    meetingLink: meeting?.joinUrl || '',
-    meetingId: meeting?.meetingId || '',
-    meetingPassword: meeting?.password || '',
-    whiteboardRoomId: meeting?.whiteboardRoomId || requestId,
-    statusDetail: 'Tutor is creating Zoom call and whiteboard.',
-  };
-
-  if (!clients) {
-    const next = getMockRequests().map((item) =>
-      item.id === requestId ? { ...item, ...meetingPatch, tutorId, updatedAt: new Date().toISOString() } : item,
-    );
-    setMockRequests(next);
-    return;
-  }
-
-  const { db, firestoreModule } = clients;
-  const { doc, updateDoc, serverTimestamp } = firestoreModule;
-  await updateDoc(doc(db, 'classRequests', requestId), {
-    ...meetingPatch,
-    tutorId,
-    updatedAt: serverTimestamp(),
-  });
-}
-
-export async function acceptClassRequest({ requestId, tutorId, tutorName, tutorEmail, meeting }) {
-  debugLog('classRequestService', 'Accepting class request.', { requestId, tutorId, hasMeeting: Boolean(meeting?.meetingId) });
-  if (meeting) {
-    await attachMeetingToRequest({ requestId, tutorId, meeting });
-  }
+export async function acceptClassRequest({ requestId, tutorId, tutorName, tutorEmail }) {
+  debugLog('classRequestService', 'Accepting class request.', { requestId, tutorId });
   const result = await handleTutorOfferResponse({ requestId, tutorId, tutorName, tutorEmail, response: 'accept' });
   debugLog('classRequestService', 'Class request accepted.', { requestId, tutorId });
   return result;

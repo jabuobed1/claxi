@@ -4,7 +4,7 @@ const { defineSecret } = require('firebase-functions/params');
 const { logger } = require('firebase-functions');
 const admin = require('firebase-admin');
 const { Resend } = require('resend');
-const { randomUUID, createHmac, timingSafeEqual } = require('crypto');
+const { randomUUID } = require('crypto');
 
 admin.initializeApp();
 
@@ -13,11 +13,6 @@ const db = admin.firestore();
 const PAYSTACK_SECRET_KEY = defineSecret('PAYSTACK_SECRET_KEY');
 const RESEND_API_KEY = defineSecret('RESEND_API_KEY');
 const EMAIL_FROM = defineSecret('EMAIL_FROM');
-const ZOOM_CLIENT_ID = defineSecret('ZOOM_CLIENT_ID');
-const ZOOM_CLIENT_SECRET = defineSecret('ZOOM_CLIENT_SECRET');
-const ZOOM_REDIRECT_URI = defineSecret('ZOOM_REDIRECT_URI');
-const ZOOM_WEBHOOK_SECRET = defineSecret('ZOOM_WEBHOOK_SECRET');
-const APP_BASE_URL = defineSecret('APP_BASE_URL');
 
 function buildEmailPayload(eventType, payload) {
   switch (eventType) {
@@ -341,138 +336,43 @@ exports.verifyPaystack = onRequest({ cors: true, secrets: [PAYSTACK_SECRET_KEY] 
   }
 });
 
-exports.zoomAuthStart = onRequest({ cors: true, secrets: [ZOOM_CLIENT_ID, ZOOM_REDIRECT_URI] }, async (req, res) => {
-  if (req.method !== 'POST') {
-    res.status(405).json({ success: false, message: 'Method not allowed' });
-    return;
+const BILLING_RULES = {
+  DISPLAY_RATE_PER_MINUTE: 5,
+  PLATFORM_FEE_RATE: 0.3,
+  TUTOR_PAYOUT_RATE: 0.7,
+};
+
+async function chargeAuthorizationWithPaystack({ paystackSecretKey, email, amount, authorizationCode }) {
+  if (!authorizationCode) {
+    return { ok: false, reason: 'missing_authorization' };
   }
 
-  const token = getBearerToken(req);
-  if (!token) {
-    res.status(401).json({ success: false, message: 'Unauthorized request.' });
-    return;
-  }
-
-  const decoded = await admin.auth().verifyIdToken(token).catch(() => null);
-  if (!decoded?.uid) {
-    res.status(401).json({ success: false, message: 'Unauthorized request.' });
-    return;
-  }
-  logger.info('zoomAuthStart called by authenticated user.', { uid: decoded.uid });
-
-  const state = randomUUID();
-  await db.collection('zoomOAuthStates').doc(state).set({
-    uid: decoded.uid,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
-
-  const authUrl = `https://zoom.us/oauth/authorize?response_type=code&client_id=${encodeURIComponent(ZOOM_CLIENT_ID.value())}&redirect_uri=${encodeURIComponent(ZOOM_REDIRECT_URI.value())}&state=${encodeURIComponent(state)}`;
-  logger.info('zoomAuthStart generated OAuth URL.', { uid: decoded.uid, state });
-  res.status(200).json({ success: true, authUrl });
-});
-
-exports.zoomOAuthCallback = onRequest({ cors: true, secrets: [ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET, ZOOM_REDIRECT_URI, APP_BASE_URL] }, async (req, res) => {
-  const code = req.query.code?.toString();
-  const state = req.query.state?.toString();
-  logger.info('zoomOAuthCallback received callback.', { hasCode: Boolean(code), hasState: Boolean(state) });
-  if (!code || !state) {
-    res.status(400).send('Missing code/state');
-    return;
-  }
-
-  const stateRef = db.collection('zoomOAuthStates').doc(state);
-  const stateSnap = await stateRef.get();
-  if (!stateSnap.exists) {
-    logger.warn('zoomOAuthCallback received invalid OAuth state.', { state });
-    res.status(400).send('Invalid OAuth state.');
-    return;
-  }
-
-  const uid = stateSnap.data()?.uid;
-  await stateRef.delete();
-  if (!uid) {
-    logger.warn('zoomOAuthCallback missing uid from OAuth state.', { state });
-    res.status(400).send('Missing user mapping for OAuth state.');
-    return;
-  }
-
-  const tokenResponse = await fetch('https://zoom.us/oauth/token', {
+  const chargeResponse = await fetch('https://api.paystack.co/transaction/charge_authorization', {
     method: 'POST',
     headers: {
-      Authorization: `Basic ${Buffer.from(`${ZOOM_CLIENT_ID.value()}:${ZOOM_CLIENT_SECRET.value()}`).toString('base64')}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
+      Authorization: `Bearer ${paystackSecretKey}`,
+      'Content-Type': 'application/json',
     },
-    body: new URLSearchParams({
-      grant_type: 'authorization_code',
-      code,
-      redirect_uri: ZOOM_REDIRECT_URI.value(),
+    body: JSON.stringify({
+      email,
+      amount: Math.round(Number(amount || 0) * 100),
+      authorization_code: authorizationCode,
+      currency: 'ZAR',
     }),
   });
-  const tokenPayload = await tokenResponse.json().catch(() => ({}));
-  if (!tokenResponse.ok) {
-    logger.error('Zoom OAuth token exchange failed', { tokenPayload });
-    res.status(500).send('Failed to link Zoom account.');
-    return;
-  }
 
-  const meResp = await fetch('https://api.zoom.us/v2/users/me', {
-    headers: { Authorization: `Bearer ${tokenPayload.access_token}` },
-  });
-  const me = await meResp.json().catch(() => ({}));
-
-  await db.collection('users').doc(uid).set({
-    tutorProfile: {
-      zoom: {
-        linked: true,
-        accountId: me.account_id || tokenPayload?.scope || uid,
-        email: me.email || '',
-        accessToken: tokenPayload.access_token,
-        refreshToken: tokenPayload.refresh_token,
-        expiresAt: Date.now() + ((Number(tokenPayload.expires_in) || 3600) * 1000),
-        linkedAt: Date.now(),
-      },
-    },
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  }, { merge: true });
-  logger.info('zoomOAuthCallback linked Zoom account for user.', { uid, zoomEmail: me.email || null });
-
-  const frontendBase = APP_BASE_URL.value()?.trim() || `${req.protocol}://${req.get('host')}`;
-  res.redirect(302, `${frontendBase.replace(/\/$/, '')}/app/onboarding?role=tutor&zoom=connected`);
-});
-
-async function refreshZoomAccessTokenIfNeeded(zoomMeta = {}) {
-  if (zoomMeta.accessToken && Number(zoomMeta.expiresAt || 0) > Date.now() + 60_000) {
-    return zoomMeta;
-  }
-  if (!zoomMeta.refreshToken) {
-    throw new Error('Zoom account is not linked or refresh token is missing.');
-  }
-
-  const response = await fetch('https://zoom.us/oauth/token', {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${Buffer.from(`${ZOOM_CLIENT_ID.value()}:${ZOOM_CLIENT_SECRET.value()}`).toString('base64')}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: zoomMeta.refreshToken,
-    }),
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload?.reason || 'Unable to refresh Zoom token.');
-  }
+  const chargePayload = await chargeResponse.json().catch(() => ({}));
+  const chargeData = chargePayload?.data || {};
+  const succeeded = chargeResponse.ok && chargePayload?.status === true && chargeData?.status === 'success';
 
   return {
-    ...zoomMeta,
-    accessToken: payload.access_token,
-    refreshToken: payload.refresh_token || zoomMeta.refreshToken,
-    expiresAt: Date.now() + ((Number(payload.expires_in) || 3600) * 1000),
+    ok: succeeded,
+    reason: succeeded ? null : (chargePayload?.message || 'gateway_declined'),
+    transactionId: chargeData?.id ? String(chargeData.id) : null,
   };
 }
 
-exports.zoomCreateMeeting = onRequest({ cors: true, secrets: [ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET] }, async (req, res) => {
+exports.finalizeSessionBilling = onRequest({ cors: true, secrets: [PAYSTACK_SECRET_KEY] }, async (req, res) => {
   if (req.method !== 'POST') {
     res.status(405).json({ success: false, message: 'Method not allowed' });
     return;
@@ -483,149 +383,112 @@ exports.zoomCreateMeeting = onRequest({ cors: true, secrets: [ZOOM_CLIENT_ID, ZO
     res.status(401).json({ success: false, message: 'Unauthorized request.' });
     return;
   }
+
   const decoded = await admin.auth().verifyIdToken(token).catch(() => null);
   if (!decoded?.uid) {
     res.status(401).json({ success: false, message: 'Unauthorized request.' });
     return;
   }
-  logger.info('zoomCreateMeeting called.', { uid: decoded.uid, requestId: req.body?.requestId || null });
 
-  const requestId = req.body?.requestId?.toString();
-  const topic = req.body?.topic?.toString() || 'Claxi session';
-  const durationMinutes = Number(req.body?.durationMinutes || 30);
+  const sessionId = req.body?.sessionId?.toString().trim();
+  if (!sessionId) {
+    res.status(400).json({ success: false, message: 'Missing sessionId.' });
+    return;
+  }
 
-  const userRef = db.collection('users').doc(decoded.uid);
-  const userSnap = await userRef.get();
-  const userData = userSnap.data() || {};
-  const existingZoom = userData?.tutorProfile?.zoom || {};
+  const sessionRef = db.collection('sessions').doc(sessionId);
+  const sessionSnap = await sessionRef.get();
+  if (!sessionSnap.exists) {
+    res.status(404).json({ success: false, message: 'Session not found.' });
+    return;
+  }
 
-  try {
-    const zoomMeta = await refreshZoomAccessTokenIfNeeded(existingZoom);
-    const zoomResponse = await fetch('https://api.zoom.us/v2/users/me/meetings', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${zoomMeta.accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        topic,
-        type: 1,
-        duration: durationMinutes,
-        settings: {
-          waiting_room: true,
-          join_before_host: true,
-        },
-      }),
-    });
-    const meetingPayload = await zoomResponse.json().catch(() => ({}));
-    if (!zoomResponse.ok) {
-      throw new Error(meetingPayload?.message || 'Zoom meeting creation failed.');
-    }
+  const session = sessionSnap.data() || {};
+  const isParticipant = [session.studentId, session.tutorId].includes(decoded.uid);
+  if (!isParticipant) {
+    res.status(403).json({ success: false, message: 'Not allowed to close this session.' });
+    return;
+  }
 
-    await userRef.set({
-      tutorProfile: {
-        ...(userData.tutorProfile || {}),
-        zoom: zoomMeta,
+  if (session.status === 'completed') {
+    res.status(200).json({ success: true, session: { id: sessionId, ...session } });
+    return;
+  }
+
+  const endedAt = Date.now();
+  const startedAt = Number(session.billingStartedAt || session.studentJoinedAt || session.callStartedAt || endedAt);
+  const billedSeconds = Math.max(0, Math.floor((endedAt - startedAt) / 1000));
+  const totalAmount = Number(((billedSeconds / 60) * BILLING_RULES.DISPLAY_RATE_PER_MINUTE).toFixed(2));
+  const tutorAmount = Number((totalAmount * BILLING_RULES.TUTOR_PAYOUT_RATE).toFixed(2));
+  const platformAmount = Number((totalAmount * BILLING_RULES.PLATFORM_FEE_RATE).toFixed(2));
+
+  const studentRef = db.collection('users').doc(session.studentId);
+  const studentSnap = await studentRef.get();
+  const studentData = studentSnap.data() || {};
+  const paymentMethods = studentData.paymentMethods || [];
+  const selectedCard = paymentMethods.find((card) => card.id === session.selectedCardId)
+    || paymentMethods.find((card) => card.isDefault)
+    || paymentMethods[0]
+    || null;
+
+  const charge = await chargeAuthorizationWithPaystack({
+    paystackSecretKey: PAYSTACK_SECRET_KEY.value(),
+    email: studentData.email || session.studentEmail || '',
+    amount: totalAmount,
+    authorizationCode: selectedCard?.paystackAuthorizationCode || '',
+  });
+
+  const paymentStatus = charge.ok ? 'paid' : 'wallet_debt_recorded';
+  const wallet = studentData.wallet || { balance: 0, currency: 'ZAR' };
+  const nextWalletBalance = charge.ok
+    ? Number(wallet.balance || 0)
+    : Number((Number(wallet.balance || 0) - totalAmount).toFixed(2));
+
+  const batch = db.batch();
+  batch.set(sessionRef, {
+    status: 'completed',
+    endedAt,
+    billedSeconds,
+    totalAmount,
+    payoutBreakdown: {
+      platformFeeRate: BILLING_RULES.PLATFORM_FEE_RATE,
+      tutorRate: BILLING_RULES.TUTOR_PAYOUT_RATE,
+      tutorAmount,
+      platformAmount,
+    },
+    paymentStatus,
+    paymentTransactionId: charge.transactionId || null,
+    chargedCardLast4: selectedCard?.last4 || null,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+
+  batch.set(db.collection('classRequests').doc(session.requestId), {
+    status: 'completed',
+    statusDetail: 'Session ended. Billing completed.',
+    endedAt,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+
+  if (!charge.ok) {
+    batch.set(studentRef, {
+      wallet: {
+        ...wallet,
+        balance: nextWalletBalance,
+        currency: wallet.currency || 'ZAR',
+        updatedAt: new Date().toISOString(),
       },
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
-
-    if (requestId) {
-      await db.collection('classRequests').doc(requestId).set({
-        meetingProvider: 'zoom',
-        meetingLink: meetingPayload.join_url || '',
-        meetingId: String(meetingPayload.id || ''),
-        meetingPassword: meetingPayload.password || '',
-        statusDetail: 'Zoom meeting created. Waiting for student to join.',
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      }, { merge: true });
-    }
-
-    res.status(200).json({
-      success: true,
-      meeting: {
-        joinUrl: meetingPayload.join_url || '',
-        meetingId: String(meetingPayload.id || ''),
-        password: meetingPayload.password || '',
-        startUrl: meetingPayload.start_url || '',
-        whiteboardRoomId: requestId || randomUUID(),
-      },
-    });
-  } catch (error) {
-    logger.error('zoomCreateMeeting failed', { uid: decoded.uid, error: error.message });
-    res.status(500).json({ success: false, message: error.message || 'Unable to create Zoom meeting.' });
-  }
-});
-
-function verifyZoomWebhookSignature(req, webhookSecret) {
-  const timestamp = req.headers['x-zm-request-timestamp']?.toString();
-  const signature = req.headers['x-zm-signature']?.toString();
-
-  if (!timestamp || !signature || !webhookSecret) return false;
-  const nowSeconds = Math.floor(Date.now() / 1000);
-  if (Math.abs(nowSeconds - Number(timestamp)) > 300) {
-    return false;
   }
 
-  const bodyString = Buffer.isBuffer(req.rawBody) ? req.rawBody.toString('utf8') : JSON.stringify(req.body || {});
-  const message = `v0:${timestamp}:${bodyString}`;
-  const expected = `v0=${createHmac('sha256', webhookSecret).update(message).digest('hex')}`;
+  await batch.commit();
 
-  const providedBuffer = Buffer.from(signature, 'utf8');
-  const expectedBuffer = Buffer.from(expected, 'utf8');
-  if (providedBuffer.length !== expectedBuffer.length) return false;
-  return timingSafeEqual(providedBuffer, expectedBuffer);
-}
-
-exports.zoomWebhook = onRequest({ cors: true, secrets: [ZOOM_WEBHOOK_SECRET] }, async (req, res) => {
-  const webhookSecret = ZOOM_WEBHOOK_SECRET.value();
-  const isValidSignature = verifyZoomWebhookSignature(req, webhookSecret);
-  if (!isValidSignature) {
-    logger.warn('zoomWebhook signature verification failed.', {
-      hasTimestamp: Boolean(req.headers['x-zm-request-timestamp']),
-      hasSignature: Boolean(req.headers['x-zm-signature']),
-    });
-    res.status(401).json({ success: false, message: 'Invalid Zoom webhook signature.' });
-    return;
-  }
-  logger.info('zoomWebhook signature verified.', { event: req.body?.event || null });
-
-  if (req.body?.event === 'endpoint.url_validation') {
-    const plainToken = req.body?.payload?.plainToken?.toString() || '';
-    const encryptedToken = createHmac('sha256', webhookSecret).update(plainToken).digest('hex');
-    res.status(200).json({
-      plainToken,
-      encryptedToken,
-    });
-    return;
-  }
-
-  const eventType = req.body?.event;
-  if (eventType === 'meeting.ended') {
-    const meetingId = String(req.body?.payload?.object?.id || '');
-    if (meetingId) {
-      const sessionsSnap = await db.collection('sessions').where('meetingId', '==', meetingId).limit(1).get();
-      const match = sessionsSnap.docs[0];
-      if (match) {
-        const data = match.data();
-        await match.ref.set({
-          status: 'completed',
-          endedAt: Date.now(),
-          zoomEndedAt: Date.now(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        }, { merge: true });
-        if (data.requestId) {
-          await db.collection('classRequests').doc(data.requestId).set({
-            status: 'completed',
-            statusDetail: 'Zoom call ended. Finalizing billing.',
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          }, { merge: true });
-        }
-        logger.info('zoomWebhook processed meeting.ended event.', { meetingId, sessionId: match.id, requestId: data.requestId || null });
-      }
-    }
-  }
-  res.status(200).json({ success: true });
+  const updatedSnap = await sessionRef.get();
+  res.status(200).json({
+    success: true,
+    session: { id: updatedSnap.id, ...updatedSnap.data() },
+    charge: { ok: charge.ok, reason: charge.reason || null },
+  });
 });
 
 exports.sendEmailFromQueue = onDocumentCreated(
