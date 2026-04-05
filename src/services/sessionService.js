@@ -1,11 +1,8 @@
 import { getFirebaseClients } from '../firebase/config';
 import { REQUEST_STATUS, SESSION_STATUS, PAYMENT_STATUS, canTransitionSession, deriveRequestStatusFromSession } from '../constants/lifecycle';
-import { BILLING_RULES } from '../utils/onboarding';
+import { BILLING_RULES, TUTOR_PAYOUT_RATE, PLATFORM_FEE_RATE } from '../utils/onboarding';
 import { createNotification } from './notificationService';
 import { EMAIL_EVENT_TYPES, queueEmailEvent } from './emailEventService';
-import { settleSessionBilling } from './classRequestService';
-import { chargeCard } from './paymentGatewayService';
-import { applyWalletDebt } from './walletService';
 import { getUserProfile, updateUserRatingSummary } from './userService';
 import { debugError, debugLog } from '../utils/devLogger';
 
@@ -213,43 +210,68 @@ export async function joinSessionAsStudent(session, selectedCardId, selectedCard
 
 export async function endSession(session) {
   debugLog('sessionService', 'Ending session and settling billing.', { sessionId: session?.id, requestId: session?.requestId });
-  const billing = await settleSessionBilling(session);
-  const studentProfile = await getUserProfile(session.studentId);
-  const selectedCard = (studentProfile?.paymentMethods || []).find((card) => card.id === session.selectedCardId)
-    || (studentProfile?.paymentMethods || []).find((card) => card.isDefault)
-    || studentProfile?.paymentMethods?.[0];
+  const clients = await getFirebaseClients();
+  let updated;
+  let isPaid = true;
 
-  const charge = await chargeCard({
-    amount: billing.totalAmount,
-    card: selectedCard,
-  });
+  if (!clients) {
+    const endedAt = Date.now();
+    const startedAt = Number(session.billingStartedAt || session.studentJoinedAt || session.callStartedAt || endedAt);
+    const billedSeconds = Math.max(0, Math.floor((endedAt - startedAt) / 1000));
+    const totalAmount = Number(((billedSeconds / 60) * BILLING_RULES.DISPLAY_RATE_PER_MINUTE).toFixed(2));
+    const tutorAmount = Number((totalAmount * TUTOR_PAYOUT_RATE).toFixed(2));
+    const platformAmount = Number((totalAmount * PLATFORM_FEE_RATE).toFixed(2));
 
-  let paymentStatus = PAYMENT_STATUS.PAID;
+    updated = await updateSession(session.id, {
+      ...session,
+      status: SESSION_STATUS.COMPLETED,
+      endedAt,
+      billedSeconds,
+      totalAmount,
+      payoutBreakdown: {
+        platformFeeRate: PLATFORM_FEE_RATE,
+        tutorRate: TUTOR_PAYOUT_RATE,
+        tutorAmount,
+        platformAmount,
+      },
+      paymentStatus: PAYMENT_STATUS.PAID,
+      paymentTransactionId: null,
+    });
+  } else {
+    const idToken = await clients?.auth?.currentUser?.getIdToken?.();
+    if (!idToken) {
+      throw new Error('You must be signed in to end this session.');
+    }
 
-  if (!charge.ok) {
-    paymentStatus = PAYMENT_STATUS.WALLET_DEBT_RECORDED;
-    await applyWalletDebt(session.studentId, billing.totalAmount);
+    const response = await fetch('/finalize-session-billing', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${idToken}`,
+      },
+      body: JSON.stringify({ sessionId: session.id }),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload?.success) {
+      throw new Error(payload?.message || 'Unable to finalize session billing.');
+    }
+
+    updated = payload.session || session;
+    isPaid = updated.paymentStatus !== PAYMENT_STATUS.WALLET_DEBT_RECORDED;
   }
 
-  const updated = await updateSession(session.id, {
-    ...session,
-    status: SESSION_STATUS.COMPLETED,
-    endedAt: Date.now(),
-    billedSeconds: billing.billedSeconds,
-    totalAmount: billing.totalAmount,
-    payoutBreakdown: billing.payoutBreakdown,
-    chargedCardLast4: billing.chargedCardLast4,
-    paymentStatus,
-    paymentTransactionId: charge.transactionId || null,
-  });
+  if (!clients) {
+    isPaid = true;
+  }
 
   await Promise.all([
     createNotification({
       userId: session.studentId,
-      title: charge.ok ? 'Session ended' : 'Payment declined - wallet updated',
-      message: charge.ok
-        ? `Billing complete: R${billing.totalAmount.toFixed(2)} (${billing.billedSeconds}s).`
-        : `Card declined. Wallet updated to cover R${billing.totalAmount.toFixed(2)} outstanding.`,
+      title: isPaid ? 'Session ended' : 'Payment declined - wallet updated',
+      message: isPaid
+        ? `Billing complete: R${Number(updated.totalAmount || 0).toFixed(2)} (${Number(updated.billedSeconds || 0)}s).`
+        : `Card declined. Wallet updated to cover R${Number(updated.totalAmount || 0).toFixed(2)} outstanding.`,
       type: 'session_billing',
       requestId: session.requestId,
       sessionId: session.id,
@@ -257,7 +279,7 @@ export async function endSession(session) {
     createNotification({
       userId: session.tutorId,
       title: 'Session ended',
-      message: `Tutor payout pending: R${billing.payoutBreakdown.tutorAmount.toFixed(2)}.`,
+      message: `Tutor payout pending: R${Number(updated.payoutBreakdown?.tutorAmount || 0).toFixed(2)}.`,
       type: 'session_billing',
       requestId: session.requestId,
       sessionId: session.id,
@@ -269,16 +291,16 @@ export async function endSession(session) {
       tutorEmail: session.tutorEmail,
       subject: session.subject,
       topic: session.topic,
-      amount: billing.totalAmount,
+      amount: Number(updated.totalAmount || 0),
       rate: BILLING_RULES.DISPLAY_RATE_PER_MINUTE,
-      paymentStatus,
+      paymentStatus: updated.paymentStatus,
     }),
   ]);
 
   debugLog('sessionService', 'Session ended and billing updates completed.', {
     sessionId: session?.id,
-    totalAmount: billing.totalAmount,
-    paymentStatus,
+    totalAmount: Number(updated.totalAmount || 0),
+    paymentStatus: updated.paymentStatus,
   });
   return updated;
 }

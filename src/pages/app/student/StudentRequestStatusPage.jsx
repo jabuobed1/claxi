@@ -320,16 +320,10 @@ export default function StudentRequestStatusPage() {
           <div className="space-y-3">
             {canJoin ? (
               <Link
-                to={request?.meetingLink ? '#' : '/app/student/classes'}
-                onClick={(event) => {
-                  if (request?.meetingLink) {
-                    event.preventDefault();
-                    window.open(request.meetingLink, '_blank', 'noopener,noreferrer');
-                  }
-                }}
+                to="/app/student/classes"
                 className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-zinc-950 px-4 py-3 text-sm font-bold text-white transition hover:bg-zinc-800"
               >
-                {request?.meetingLink ? 'Join Zoom Call' : 'Open Classes'}
+                Join session
                 <ArrowRight className="h-4 w-4" />
               </Link>
             ) : null}

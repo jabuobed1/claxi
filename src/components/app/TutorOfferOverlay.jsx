@@ -4,7 +4,6 @@ import { useAuth } from '../../hooks/useAuth';
 import { useTutorAvailableRequests } from '../../hooks/useClassRequests';
 import { acceptClassRequest, declineClassRequest } from '../../services/classRequestService';
 import { getTutorOnboardingStatus } from '../../utils/onboarding';
-import { createZoomMeetingForRequest } from '../../services/zoomService';
 import { debugError, debugLog } from '../../utils/devLogger';
 
 export default function TutorOfferOverlay() {
@@ -60,17 +59,11 @@ export default function TutorOfferOverlay() {
     setActiveRequest(topRequest.id);
     try {
       if (response === 'accept') {
-        const meeting = await createZoomMeetingForRequest({
-          requestId: topRequest.id,
-          topic: topRequest.topic || 'Claxi session',
-          durationMinutes: Number(topRequest.durationMinutes || topRequest.duration || 30),
-        });
         await acceptClassRequest({
           requestId: topRequest.id,
           tutorId: user.uid,
           tutorName: user.fullName || user.displayName || user.email,
           tutorEmail: user.email,
-          meeting,
         });
         debugLog('tutorOffer', 'Tutor accepted request successfully.', { requestId: topRequest.id });
       } else {
