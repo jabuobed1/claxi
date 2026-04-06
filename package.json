@@ -14,7 +14,8 @@
     "motion": "^11.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.20.0"
+    "react-router-dom": "^6.20.0",
+    "@tldraw/tldraw": "2.3.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
