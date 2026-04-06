@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import PageHeader from '../../components/ui/PageHeader';
 import SectionCard from '../../components/ui/SectionCard';
@@ -60,16 +60,8 @@ export default function SessionRoomPage() {
     };
   }, []);
 
-  if (!session) {
-    return (
-      <div className="space-y-6">
-        <PageHeader title="Session room" description="Session not found or no access." />
-        <Link to="/app" className="rounded-2xl bg-brand px-4 py-2 text-sm font-bold text-white">Back to dashboard</Link>
-      </div>
-    );
-  }
-
-  const initializeCall = async ({ shouldJoinStudent }) => {
+  const initializeCall = useCallback(async ({ shouldJoinStudent }) => {
+    if (!session || !user?.uid) return;
     if (rtcRef.current || isBusy) return;
     setIsBusy(true);
     setNetworkError('');
@@ -113,13 +105,23 @@ export default function SessionRoomPage() {
     } finally {
       setIsBusy(false);
     }
-  };
+  }, [isBusy, role, selectedCardId, session, user]);
 
   useEffect(() => {
+    if (!session) return;
     if (role !== 'tutor') return;
     if (session.status !== 'waiting_student') return;
     initializeCall({ shouldJoinStudent: false });
-  }, [role, session.status]);
+  }, [initializeCall, role, session]);
+
+  if (!session) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Session room" description="Session not found or no access." />
+        <Link to="/app" className="rounded-2xl bg-brand px-4 py-2 text-sm font-bold text-white">Back to dashboard</Link>
+      </div>
+    );
+  }
 
   const endCurrentSession = async () => {
     rtcRef.current?.close?.();
