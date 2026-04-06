@@ -1,5 +1,5 @@
-import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
-import { useState } from 'react';
+import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowRight,
   BookOpen,
@@ -13,6 +13,8 @@ import {
 import PageHeader from '../../../components/ui/PageHeader';
 import SectionCard from '../../../components/ui/SectionCard';
 import { useStudentRequest } from '../../../hooks/useClassRequests';
+import { useStudentSessions } from '../../../hooks/useSessions';
+import { useAuth } from '../../../hooks/useAuth';
 import { REQUEST_STATUSES } from '../../../utils/requestStatus';
 import { cancelClassRequest } from '../../../services/classRequestService';
 
@@ -195,11 +197,14 @@ function getToneClasses(tone) {
 }
 
 export default function StudentRequestStatusPage() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const { requestId: requestIdParam } = useParams();
   const { state } = useLocation();
   const durationMinutes = Number(state?.durationMinutes || 10);
   const requestId = requestIdParam || state?.requestId || '';
   const { request } = useStudentRequest(requestId);
+  const { sessions } = useStudentSessions(user?.uid);
   const [cancelReason, setCancelReason] = useState('');
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [isCanceling, setIsCanceling] = useState(false);
@@ -221,6 +226,16 @@ export default function StudentRequestStatusPage() {
     currentStatus === REQUEST_STATUSES.WAITING_STUDENT ||
     currentStatus === REQUEST_STATUSES.IN_PROGRESS ||
     currentStatus === REQUEST_STATUSES.IN_SESSION;
+  const matchingSession = useMemo(
+    () => sessions.find((item) => item.requestId === requestId),
+    [requestId, sessions],
+  );
+  const shouldAutoOpenSession = canJoin && Boolean(matchingSession?.id);
+
+  useEffect(() => {
+    if (!shouldAutoOpenSession) return;
+    navigate(`/app/session/${matchingSession.id}`, { replace: true });
+  }, [matchingSession?.id, navigate, shouldAutoOpenSession]);
 
   const canCancel = ![REQUEST_STATUSES.CANCELED, REQUEST_STATUSES.COMPLETED, REQUEST_STATUSES.EXPIRED].includes(currentStatus);
 
@@ -320,7 +335,7 @@ export default function StudentRequestStatusPage() {
           <div className="space-y-3">
             {canJoin ? (
               <Link
-                to="/app/student/classes"
+                to={matchingSession?.id ? `/app/session/${matchingSession.id}` : '/app/student/sessions'}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-zinc-950 px-4 py-3 text-sm font-bold text-white transition hover:bg-zinc-800"
               >
                 Join session

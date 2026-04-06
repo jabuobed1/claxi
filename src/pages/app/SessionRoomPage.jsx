@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import PageHeader from '../../components/ui/PageHeader';
-import SectionCard from '../../components/ui/SectionCard';
-import SelectField from '../../components/ui/SelectField';
 import TldrawSdkEmbed from '../../components/app/TldrawSdkEmbed';
 import { useAuth } from '../../hooks/useAuth';
 import { useStudentSessions, useTutorSessions } from '../../hooks/useSessions';
+import { SESSION_STATUS } from '../../constants/lifecycle';
 import { BILLING_RULES, TUTOR_PAYOUT_RATE } from '../../utils/onboarding';
 import { endSession, joinSessionAsStudent, submitSessionRating, updateSession } from '../../services/sessionService';
 import { createWebRtcSessionController } from '../../services/webrtcService';
@@ -35,6 +33,7 @@ export default function SessionRoomPage() {
   const { sessions: tutorSessions } = useTutorSessions(user?.uid);
   const sessions = role === 'tutor' ? tutorSessions : studentSessions;
   const session = sessions.find((item) => item.id === id);
+
   const [ratingForm, setRatingForm] = useState({ overall: '5', topic: '5', comment: '' });
   const [isSaving, setIsSaving] = useState(false);
   const [selectedCardId, setSelectedCardId] = useState(user?.paymentMethods?.find((card) => card.isDefault)?.id || user?.paymentMethods?.[0]?.id || '');
@@ -47,11 +46,16 @@ export default function SessionRoomPage() {
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const rtcRef = useRef(null);
+  const autoJoinAttemptedRef = useRef(false);
 
   const callSeconds = useLiveSeconds(session?.callStartedAt);
   const billedSeconds = useLiveSeconds(session?.billingStartedAt);
   const runningAmount = (billedSeconds / 60) * BILLING_RULES.DISPLAY_RATE_PER_MINUTE;
-  const needsRating = session?.status === 'completed' && !session?.ratings?.[role];
+  const needsRating = session?.status === SESSION_STATUS.COMPLETED && !session?.ratings?.[role];
+
+  useEffect(() => {
+    autoJoinAttemptedRef.current = false;
+  }, [session?.id, role]);
 
   useEffect(() => {
     return () => {
@@ -110,18 +114,40 @@ export default function SessionRoomPage() {
   useEffect(() => {
     if (!session) return;
     if (role !== 'tutor') return;
-    if (session.status !== 'waiting_student') return;
+    if (![SESSION_STATUS.WAITING_STUDENT, SESSION_STATUS.IN_PROGRESS].includes(session.status)) return;
     initializeCall({ shouldJoinStudent: false });
   }, [initializeCall, role, session]);
+
+  useEffect(() => {
+    if (!session) return;
+    if (role !== 'student') return;
+    if (![SESSION_STATUS.WAITING_STUDENT, SESSION_STATUS.IN_PROGRESS].includes(session.status)) return;
+    if (rtcRef.current || isBusy || autoJoinAttemptedRef.current) return;
+    autoJoinAttemptedRef.current = true;
+    initializeCall({ shouldJoinStudent: session.status === SESSION_STATUS.WAITING_STUDENT });
+  }, [initializeCall, isBusy, role, session]);
 
   if (!session) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Session room" description="Session not found or no access." />
+        <p className="text-sm text-zinc-500">Session not found or no access.</p>
         <Link to="/app" className="rounded-2xl bg-brand px-4 py-2 text-sm font-bold text-white">Back to dashboard</Link>
       </div>
     );
   }
+
+  const cancelCurrentClass = async () => {
+    rtcRef.current?.close?.();
+    rtcRef.current = null;
+    await updateSession(session.id, {
+      ...session,
+      status: SESSION_STATUS.CANCELED,
+      endedAt: Date.now(),
+      canceledAt: Date.now(),
+      canceledBy: role,
+      canceledReason: role === 'tutor' ? 'Canceled by tutor.' : 'Canceled by student.',
+    });
+  };
 
   const endCurrentSession = async () => {
     rtcRef.current?.close?.();
@@ -167,153 +193,142 @@ export default function SessionRoomPage() {
   const whiteboardRoom = session.whiteboardRoomId || session.requestId || session.id;
 
   return (
-    <div className="space-y-6">
-      <PageHeader title={`Live Session: ${session.topic}`} description="In-app call and whiteboard placeholders are active for this phase." />
+    <div className="relative min-h-[calc(100vh-8rem)] overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950">
+      <div className="absolute inset-0">
+        <TldrawSdkEmbed roomId={whiteboardRoom} licenseKey={tldrawLicenseKey} />
+      </div>
 
-      <SectionCard title="Call status">
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4">
-            <p className="text-xs uppercase tracking-wide text-zinc-500">On call</p>
-            <p className="mt-1 text-xl font-black text-emerald-300">{formatDuration(callSeconds)}</p>
-          </div>
-          <div className="rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4">
-            <p className="text-xs uppercase tracking-wide text-zinc-500">Billable time</p>
-            <p className="mt-1 text-xl font-black text-sky-300">{formatDuration(billedSeconds)}</p>
-          </div>
-          <div className="rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4">
-            <p className="text-xs uppercase tracking-wide text-zinc-500">Running total (R5/min)</p>
-            <p className="mt-1 text-xl font-black text-white">R{runningAmount.toFixed(2)}</p>
-          </div>
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-zinc-950/70 via-transparent to-zinc-950/85" />
+
+      <div className="absolute left-4 top-4 z-20 flex flex-wrap items-center gap-2 rounded-2xl border border-zinc-700/80 bg-zinc-950/80 px-3 py-2 text-xs text-zinc-200 backdrop-blur">
+        <span className="font-semibold">{session.topic}</span>
+        <span>•</span>
+        <span>Call {formatDuration(callSeconds)}</span>
+        <span>•</span>
+        <span>Billable {formatDuration(billedSeconds)}</span>
+        <span>•</span>
+        <span>R{runningAmount.toFixed(2)}</span>
+        {role === 'student' && session.status === SESSION_STATUS.WAITING_STUDENT ? <span>• Join window {graceRemaining}s</span> : null}
+      </div>
+
+      {connectionMessage ? (
+        <p className="absolute left-4 top-20 z-20 rounded-xl border border-zinc-700 bg-zinc-950/85 px-3 py-2 text-xs text-zinc-100">
+          {connectionMessage}
+        </p>
+      ) : null}
+      {networkError ? (
+        <p className="absolute left-4 top-32 z-20 rounded-xl border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
+          {networkError}
+        </p>
+      ) : null}
+
+      <div className="absolute bottom-24 right-4 z-20 grid w-[min(36vw,360px)] gap-3 sm:w-[min(32vw,420px)]">
+        <div className="overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-900/80 backdrop-blur">
+          <p className="px-3 pt-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">You</p>
+          <video ref={localVideoRef} autoPlay playsInline muted className="h-24 w-full bg-black object-cover sm:h-28" />
         </div>
-
-        {connectionMessage ? (
-          <p className="mt-4 rounded-xl border border-zinc-700 bg-zinc-950/70 px-3 py-2 text-sm text-zinc-200">{connectionMessage}</p>
-        ) : null}
-        {networkError ? (
-          <p className="mt-3 rounded-xl border border-rose-300 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">{networkError}</p>
-        ) : null}
-
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <div className="rounded-2xl border border-zinc-700 bg-zinc-950/70 p-2">
-            <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">You</p>
-            <video ref={localVideoRef} autoPlay playsInline muted className="h-56 w-full rounded-xl bg-black object-cover" />
-          </div>
-          <div className="rounded-2xl border border-zinc-700 bg-zinc-950/70 p-2">
-            <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">Remote</p>
-            <video ref={remoteVideoRef} autoPlay playsInline className="h-56 w-full rounded-xl bg-black object-cover" />
-          </div>
+        <div className="overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-900/80 backdrop-blur">
+          <p className="px-3 pt-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Remote</p>
+          <video ref={remoteVideoRef} autoPlay playsInline className="h-24 w-full bg-black object-cover sm:h-28" />
         </div>
+      </div>
 
-        <div className="mt-4 rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4">
-          <p className="text-sm font-semibold text-white">Collaborative whiteboard (tldraw)</p>
-          <p className="mb-2 text-xs text-zinc-400">Powered by the tldraw SDK. License key is read from <code>VITE_TLDRAW_LICENSE_KEY</code>.</p>
-          <div className="h-[420px] overflow-hidden rounded-xl border border-zinc-700 bg-white">
-            <TldrawSdkEmbed roomId={whiteboardRoom} licenseKey={tldrawLicenseKey} />
-          </div>
-        </div>
-
-        {role === 'student' && session.status === 'waiting_student' ? (
-          <div className="mt-4 max-w-xs">
-            <SelectField
-              label="Payment card"
-              name="paymentCard"
-              value={selectedCardId}
-              onChange={(event) => setSelectedCardId(event.target.value)}
-              options={(user?.paymentMethods || []).map((card) => ({
-                value: card.id,
-                label: `${card.nickname} •••• ${card.last4}${card.isDefault ? ' (Primary)' : ''}`,
-              }))}
-            />
-          </div>
-        ) : null}
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          {role === 'student' && session.status === 'waiting_student' ? (
-            <button onClick={() => initializeCall({ shouldJoinStudent: true })} className="rounded-2xl bg-brand px-4 py-2 text-sm font-bold text-white" disabled={isBusy}>
-              Join session (free join window: {graceRemaining}s)
-            </button>
+      {role === 'tutor' ? (
+        <div className="absolute right-4 top-4 z-20 max-w-sm rounded-2xl border border-zinc-700/80 bg-zinc-950/85 p-3 text-xs text-zinc-200 backdrop-blur">
+          <p className="font-semibold uppercase tracking-wide text-zinc-400">Student request context</p>
+          <p className="mt-2 line-clamp-4 text-zinc-200">{session.requestDescription || 'No description provided.'}</p>
+          {session.requestAttachment?.downloadUrl ? (
+            <a
+              href={session.requestAttachment.downloadUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-2 inline-flex font-semibold text-sky-300 underline"
+            >
+              Open request attachment
+            </a>
           ) : null}
-          <button onClick={toggleMute} className="rounded-2xl border border-zinc-500/40 px-4 py-2 text-sm font-bold text-zinc-100" disabled={!rtcRef.current}>
+        </div>
+      ) : null}
+
+      <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center p-4">
+        <div className="flex w-full max-w-4xl flex-wrap items-center justify-center gap-2 rounded-2xl border border-zinc-700 bg-zinc-950/90 p-3 backdrop-blur">
+          <button onClick={toggleMute} className="rounded-xl border border-zinc-500/40 px-4 py-2 text-sm font-bold text-zinc-100" disabled={!rtcRef.current}>
             {isMuted ? 'Unmute' : 'Mute'}
           </button>
-          <button onClick={toggleCamera} className="rounded-2xl border border-zinc-500/40 px-4 py-2 text-sm font-bold text-zinc-100" disabled={!rtcRef.current}>
+          <button onClick={toggleCamera} className="rounded-xl border border-zinc-500/40 px-4 py-2 text-sm font-bold text-zinc-100" disabled={!rtcRef.current}>
             {isCameraOff ? 'Camera on' : 'Camera off'}
           </button>
           {role === 'tutor' ? (
-            <button onClick={shareScreen} className="rounded-2xl border border-sky-500/40 px-4 py-2 text-sm font-bold text-sky-200" disabled={!rtcRef.current}>
+            <button onClick={shareScreen} className="rounded-xl border border-sky-500/40 px-4 py-2 text-sm font-bold text-sky-200" disabled={!rtcRef.current}>
               Share screen
             </button>
           ) : null}
-          {session.status === 'in_progress' ? (
-            <button onClick={endCurrentSession} className="rounded-2xl border border-rose-500/40 px-4 py-2 text-sm font-bold text-rose-200">
-              End session
+          <button onClick={cancelCurrentClass} className="rounded-xl border border-amber-500/40 px-4 py-2 text-sm font-bold text-amber-200">
+            Cancel
+          </button>
+          {role === 'tutor' ? (
+            <button onClick={endCurrentSession} className="rounded-xl border border-rose-500/40 px-4 py-2 text-sm font-bold text-rose-200">
+              End Class
+            </button>
+          ) : null}
+          {role === 'student' && !rtcRef.current && session.status === SESSION_STATUS.WAITING_STUDENT ? (
+            <button onClick={() => initializeCall({ shouldJoinStudent: true })} className="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white" disabled={isBusy}>
+              Join now
             </button>
           ) : null}
         </div>
+      </div>
 
-        {session.status === 'completed' ? (
-          <p className="mt-4 text-sm text-emerald-300">
-            Session billed at R5/min. Total: R{Number(session.totalAmount || 0).toFixed(2)}. Tutor share: R{Number(session.payoutBreakdown?.tutorAmount || 0).toFixed(2)} ({Math.round(TUTOR_PAYOUT_RATE * 100)}%).
-          </p>
-        ) : null}
+      {session.status === SESSION_STATUS.COMPLETED ? (
+        <div className="absolute bottom-24 left-4 z-20 rounded-xl border border-emerald-500/30 bg-zinc-950/85 px-3 py-2 text-xs text-emerald-200">
+          Total: R{Number(session.totalAmount || 0).toFixed(2)} • Tutor share: R{Number(session.payoutBreakdown?.tutorAmount || 0).toFixed(2)} ({Math.round(TUTOR_PAYOUT_RATE * 100)}%)
+        </div>
+      ) : null}
 
-        {session.status === 'completed' && session.paymentStatus === 'wallet_debt_recorded' ? (
-          <p className="mt-2 text-sm text-amber-200">
-            Card charge was declined. Outstanding balance moved to wallet debt.
-            <Link to="/app/student/payment" className="ml-1 underline">Pay from wallet</Link>
-          </p>
-        ) : null}
-        {role === 'tutor' ? (
-          <div className="mt-4 rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4">
-            <p className="text-xs uppercase tracking-wide text-zinc-500">Student request context</p>
-            <p className="mt-2 text-sm text-zinc-200">{session.requestDescription || 'No description provided.'}</p>
-            {session.requestAttachment?.downloadUrl ? (
-              <a
-                href={session.requestAttachment.downloadUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-2 inline-flex text-sm font-semibold text-sky-300 underline"
-              >
-                Open request attachment
-              </a>
-            ) : null}
-          </div>
-        ) : null}
-      </SectionCard>
+      {session.status === SESSION_STATUS.CANCELED ? (
+        <div className="absolute bottom-24 left-4 z-20 rounded-xl border border-amber-500/30 bg-zinc-950/85 px-3 py-2 text-xs text-amber-200">
+          Class canceled.
+        </div>
+      ) : null}
 
       {needsRating ? (
-        <SectionCard title="Rate this session" subtitle="Submit both overall and topic-specific ratings.">
-          <form className="grid gap-4 md:grid-cols-3" onSubmit={submitRating}>
-            <SelectField
-              label="Overall"
-              name="overall"
-              value={ratingForm.overall}
-              onChange={(event) => setRatingForm((prev) => ({ ...prev, overall: event.target.value }))}
-              options={[1, 2, 3, 4, 5].map((value) => ({ value: String(value), label: `${value}/5` }))}
-            />
-            <SelectField
-              label="Topic specific"
-              name="topic"
-              value={ratingForm.topic}
-              onChange={(event) => setRatingForm((prev) => ({ ...prev, topic: event.target.value }))}
-              options={[1, 2, 3, 4, 5].map((value) => ({ value: String(value), label: `${value}/5` }))}
-            />
-            <div className="md:col-span-3">
-              <textarea
-                value={ratingForm.comment}
-                onChange={(event) => setRatingForm((prev) => ({ ...prev, comment: event.target.value }))}
-                className="w-full rounded-2xl border border-zinc-700 bg-zinc-950/70 px-4 py-3 text-sm text-white"
-                rows={3}
-                placeholder="Optional feedback"
-              />
+        <div className="absolute left-4 top-44 z-20 w-full max-w-xl rounded-2xl border border-zinc-700 bg-zinc-950/90 p-4 text-zinc-100 backdrop-blur">
+          <p className="text-sm font-semibold">Rate this session</p>
+          <form className="mt-3 grid gap-3" onSubmit={submitRating}>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="text-xs">
+                Overall
+                <select
+                  value={ratingForm.overall}
+                  onChange={(event) => setRatingForm((prev) => ({ ...prev, overall: event.target.value }))}
+                  className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm"
+                >
+                  {[1, 2, 3, 4, 5].map((value) => <option key={`overall-${value}`} value={String(value)}>{value}/5</option>)}
+                </select>
+              </label>
+              <label className="text-xs">
+                Topic specific
+                <select
+                  value={ratingForm.topic}
+                  onChange={(event) => setRatingForm((prev) => ({ ...prev, topic: event.target.value }))}
+                  className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm"
+                >
+                  {[1, 2, 3, 4, 5].map((value) => <option key={`topic-${value}`} value={String(value)}>{value}/5</option>)}
+                </select>
+              </label>
             </div>
-            <div className="md:col-span-3">
-              <button type="submit" disabled={isSaving} className="rounded-2xl bg-brand px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
-                {isSaving ? 'Saving rating...' : 'Submit rating'}
-              </button>
-            </div>
+            <textarea
+              value={ratingForm.comment}
+              onChange={(event) => setRatingForm((prev) => ({ ...prev, comment: event.target.value }))}
+              className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm"
+              rows={3}
+              placeholder="Optional feedback"
+            />
+            <button type="submit" disabled={isSaving} className="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
+              {isSaving ? 'Saving rating...' : 'Submit rating'}
+            </button>
           </form>
-        </SectionCard>
+        </div>
       ) : null}
     </div>
   );

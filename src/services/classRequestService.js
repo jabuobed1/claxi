@@ -1051,16 +1051,50 @@ export async function cancelClassRequest({ requestId, canceledBy, reason }) {
       item.id === requestId ? { ...item, ...patch, updatedAt: new Date().toISOString() } : item,
     );
     setMockRequests(next);
+    const nextSessions = getMockSessions().map((item) => {
+      if (item.requestId !== requestId) return item;
+      if (![SESSION_STATUS.WAITING_STUDENT, SESSION_STATUS.IN_PROGRESS].includes(item.status)) return item;
+      return {
+        ...item,
+        status: SESSION_STATUS.CANCELED,
+        endedAt: Date.now(),
+        canceledAt: Date.now(),
+        canceledBy: canceledBy || 'student',
+        canceledReason: String(reason || '').trim(),
+        updatedAt: new Date().toISOString(),
+      };
+    });
+    setMockSessions(nextSessions);
     return;
   }
 
   const { db, firestoreModule } = clients;
-  const { doc, updateDoc, serverTimestamp } = firestoreModule;
+  const { collection, doc, getDocs, query, serverTimestamp, updateDoc, where, writeBatch } = firestoreModule;
   try {
     await updateDoc(doc(db, 'classRequests', requestId), {
       ...patch,
       updatedAt: serverTimestamp(),
     });
+    const sessionsQuery = query(collection(db, 'sessions'), where('requestId', '==', requestId));
+    const sessionsSnap = await getDocs(sessionsQuery);
+    const sessionBatch = writeBatch(db);
+    let updatesCount = 0;
+    sessionsSnap.docs.forEach((sessionDoc) => {
+      const sessionData = sessionDoc.data();
+      if (![SESSION_STATUS.WAITING_STUDENT, SESSION_STATUS.IN_PROGRESS].includes(sessionData.status)) return;
+      updatesCount += 1;
+      sessionBatch.update(sessionDoc.ref, {
+        status: SESSION_STATUS.CANCELED,
+        endedAt: Date.now(),
+        canceledAt: Date.now(),
+        canceledBy: canceledBy || 'student',
+        canceledReason: String(reason || '').trim(),
+        updatedAt: serverTimestamp(),
+      });
+    });
+    if (updatesCount) {
+      await sessionBatch.commit();
+    }
     debugLog('classRequestService', 'Class request canceled.', { requestId });
   } catch (error) {
     debugError('classRequestService', 'Failed to cancel class request.', { requestId, message: error.message });
