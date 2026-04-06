@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import '@tldraw/tldraw/tldraw.css';
+import '../../../node_modules/@tldraw/tldraw/tldraw.css';
 import { debugError, debugLog } from '../../utils/devLogger';
 
 export default function TldrawSdkEmbed({ roomId, licenseKey }) {
