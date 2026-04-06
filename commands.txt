@@ -43,34 +43,8 @@ re_5534FX3a_781uRpgzn2a3ijU2s3bEvHTk
 firebase functions:secrets:set EMAIL_FROM
 no-reply@examify-mail.bakayise.com
 
-firebase functions:secrets:set ZOOM_CLIENT_ID
-w9RC17FQOS6cqMec_7PQ
-
-firebase functions:secrets:set ZOOM_CLIENT_SECRET
-p8BbKxj0dCvf8dupr9CACTiTO9QmRdPn
-
-firebase functions:secrets:set ZOOM_REDIRECT_URI
-https://claxi.bakayise.com/zoom-oauth-callback
-
-firebase functions:secrets:set ZOOM_WEBHOOK_SECRET
-19trgX9Fi2s1Ial74Kxy4SHPmWo3+It8UlzukS70lZ+GtlZKa1ziMdy8keRtozu8
-to generate the above, use this command > openssl rand -base64 48
-
-firebase functions:secrets:set APP_BASE_URL
-https://claxi.bakayise.com/
-
-VITE_ZOOM_AUTH_START_ENDPOINT
-https://us-central1-claxi-bakayise.cloudfunctions.net/zoomAuthStart
-
-VITE_ZOOM_CREATE_MEETING_ENDPOINT
-https://us-central1-claxi-bakayise.cloudfunctions.net/zoomCreateMeeting
-
-
-VITE_ZOOM_AUTH_START_ENDPOINT
-https://us-central1-claxi-bakayise.cloudfunctions.net/zoomAuthStart
-
-VITE_ZOOM_CREATE_MEETING_ENDPOINT
-https://us-central1-claxi-bakayise.cloudfunctions.net/zoomCreateMeeting
+FINALIZE_SESSION_BILLING_ENDPOINT
+https://us-central1-claxi-bakayise.cloudfunctions.net/finalizeSessionBilling
 
 VITE_FIREBASE_API_KEY
 AIzaSyDM-UOQ8EZfT54OUlo6JadwDXm2gIIyvHI

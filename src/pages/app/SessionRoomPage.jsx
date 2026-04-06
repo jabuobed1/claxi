@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import PageHeader from '../../components/ui/PageHeader';
 import SectionCard from '../../components/ui/SectionCard';
@@ -7,7 +7,8 @@ import TldrawSdkEmbed from '../../components/app/TldrawSdkEmbed';
 import { useAuth } from '../../hooks/useAuth';
 import { useStudentSessions, useTutorSessions } from '../../hooks/useSessions';
 import { BILLING_RULES, TUTOR_PAYOUT_RATE } from '../../utils/onboarding';
-import { endSession, joinSessionAsStudent, submitSessionRating } from '../../services/sessionService';
+import { endSession, joinSessionAsStudent, submitSessionRating, updateSession } from '../../services/sessionService';
+import { createWebRtcSessionController } from '../../services/webrtcService';
 
 function useLiveSeconds(startTs) {
   const [tick, setTick] = useState(Date.now());
@@ -37,11 +38,81 @@ export default function SessionRoomPage() {
   const [ratingForm, setRatingForm] = useState({ overall: '5', topic: '5', comment: '' });
   const [isSaving, setIsSaving] = useState(false);
   const [selectedCardId, setSelectedCardId] = useState(user?.paymentMethods?.find((card) => card.isDefault)?.id || user?.paymentMethods?.[0]?.id || '');
+  const [isBusy, setIsBusy] = useState(false);
+  const [connectionMessage, setConnectionMessage] = useState('');
+  const [networkError, setNetworkError] = useState('');
+  const [isMuted, setIsMuted] = useState(false);
+  const [isCameraOff, setIsCameraOff] = useState(false);
+
+  const localVideoRef = useRef(null);
+  const remoteVideoRef = useRef(null);
+  const rtcRef = useRef(null);
 
   const callSeconds = useLiveSeconds(session?.callStartedAt);
   const billedSeconds = useLiveSeconds(session?.billingStartedAt);
   const runningAmount = (billedSeconds / 60) * BILLING_RULES.DISPLAY_RATE_PER_MINUTE;
   const needsRating = session?.status === 'completed' && !session?.ratings?.[role];
+
+  useEffect(() => {
+    return () => {
+      rtcRef.current?.close?.();
+      rtcRef.current = null;
+    };
+  }, []);
+
+  const initializeCall = useCallback(async ({ shouldJoinStudent }) => {
+    if (!session || !user?.uid) return;
+    if (rtcRef.current || isBusy) return;
+    setIsBusy(true);
+    setNetworkError('');
+    try {
+      if (shouldJoinStudent) {
+        const selected = (user?.paymentMethods || []).find((card) => card.id === selectedCardId)
+          || (user?.paymentMethods || []).find((card) => card.isDefault)
+          || user?.paymentMethods?.[0];
+        await joinSessionAsStudent(session, selected?.id || null, selected?.last4 || null);
+      }
+
+      const controller = await createWebRtcSessionController({
+        sessionId: session.id,
+        role,
+        currentUserId: user.uid,
+        onLocalStream: (stream) => {
+          if (!localVideoRef.current) return;
+          localVideoRef.current.srcObject = stream;
+        },
+        onRemoteStream: (stream) => {
+          if (!remoteVideoRef.current) return;
+          remoteVideoRef.current.srcObject = stream;
+        },
+        onConnectionMessage: (message) => setConnectionMessage(message),
+        onNetworkFailure: (message) => setNetworkError(message),
+        onSessionState: async (state) => {
+          if (state !== 'connected') return;
+          if (!session.callStartedAt) {
+            await updateSession(session.id, {
+              ...session,
+              callStartedAt: Date.now(),
+            });
+          }
+        },
+      });
+
+      rtcRef.current = controller;
+      setConnectionMessage(role === 'tutor' ? 'Waiting for student to join…' : 'Connecting…');
+    } catch (error) {
+      setNetworkError(error.message || 'Unable to start call. Please retry.');
+    } finally {
+      setIsBusy(false);
+    }
+  }, [isBusy, role, selectedCardId, session, user]);
+
+  useEffect(() => {
+    if (!session) return;
+    if (role !== 'tutor') return;
+    if (session.status !== 'waiting_student') return;
+    initializeCall({ shouldJoinStudent: false });
+  }, [initializeCall, role, session]);
 
   if (!session) {
     return (
@@ -52,14 +123,9 @@ export default function SessionRoomPage() {
     );
   }
 
-  const joinAsStudent = async () => {
-    const selected = (user?.paymentMethods || []).find((card) => card.id === selectedCardId)
-      || (user?.paymentMethods || []).find((card) => card.isDefault)
-      || user?.paymentMethods?.[0];
-    await joinSessionAsStudent(session, selected?.id || null, selected?.last4 || null);
-  };
-
   const endCurrentSession = async () => {
+    rtcRef.current?.close?.();
+    rtcRef.current = null;
     await endSession(session);
   };
 
@@ -72,6 +138,28 @@ export default function SessionRoomPage() {
       comment: ratingForm.comment,
     });
     setIsSaving(false);
+  };
+
+  const toggleMute = () => {
+    const enabled = rtcRef.current?.toggleAudio?.();
+    if (typeof enabled === 'boolean') {
+      setIsMuted(!enabled);
+    }
+  };
+
+  const toggleCamera = () => {
+    const enabled = rtcRef.current?.toggleVideo?.();
+    if (typeof enabled === 'boolean') {
+      setIsCameraOff(!enabled);
+    }
+  };
+
+  const shareScreen = async () => {
+    try {
+      await rtcRef.current?.startScreenShare?.();
+    } catch (error) {
+      setNetworkError(error.message || 'Unable to share screen.');
+    }
   };
 
   const graceRemaining = Math.max(0, Math.ceil(((session.joinGraceEndsAt || 0) - Date.now()) / 1000));
@@ -98,6 +186,24 @@ export default function SessionRoomPage() {
           </div>
         </div>
 
+        {connectionMessage ? (
+          <p className="mt-4 rounded-xl border border-zinc-700 bg-zinc-950/70 px-3 py-2 text-sm text-zinc-200">{connectionMessage}</p>
+        ) : null}
+        {networkError ? (
+          <p className="mt-3 rounded-xl border border-rose-300 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">{networkError}</p>
+        ) : null}
+
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <div className="rounded-2xl border border-zinc-700 bg-zinc-950/70 p-2">
+            <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">You</p>
+            <video ref={localVideoRef} autoPlay playsInline muted className="h-56 w-full rounded-xl bg-black object-cover" />
+          </div>
+          <div className="rounded-2xl border border-zinc-700 bg-zinc-950/70 p-2">
+            <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">Remote</p>
+            <video ref={remoteVideoRef} autoPlay playsInline className="h-56 w-full rounded-xl bg-black object-cover" />
+          </div>
+        </div>
+
         <div className="mt-4 rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4">
           <p className="text-sm font-semibold text-white">Collaborative whiteboard (tldraw)</p>
           <p className="mb-2 text-xs text-zinc-400">Powered by the tldraw SDK. License key is read from <code>VITE_TLDRAW_LICENSE_KEY</code>.</p>
@@ -105,7 +211,6 @@ export default function SessionRoomPage() {
             <TldrawSdkEmbed roomId={whiteboardRoom} licenseKey={tldrawLicenseKey} />
           </div>
         </div>
-
 
         {role === 'student' && session.status === 'waiting_student' ? (
           <div className="mt-4 max-w-xs">
@@ -124,19 +229,25 @@ export default function SessionRoomPage() {
 
         <div className="mt-4 flex flex-wrap gap-2">
           {role === 'student' && session.status === 'waiting_student' ? (
-            <button onClick={joinAsStudent} className="rounded-2xl bg-brand px-4 py-2 text-sm font-bold text-white">
-              Join call (free join window: {graceRemaining}s)
+            <button onClick={() => initializeCall({ shouldJoinStudent: true })} className="rounded-2xl bg-brand px-4 py-2 text-sm font-bold text-white" disabled={isBusy}>
+              Join session (free join window: {graceRemaining}s)
+            </button>
+          ) : null}
+          <button onClick={toggleMute} className="rounded-2xl border border-zinc-500/40 px-4 py-2 text-sm font-bold text-zinc-100" disabled={!rtcRef.current}>
+            {isMuted ? 'Unmute' : 'Mute'}
+          </button>
+          <button onClick={toggleCamera} className="rounded-2xl border border-zinc-500/40 px-4 py-2 text-sm font-bold text-zinc-100" disabled={!rtcRef.current}>
+            {isCameraOff ? 'Camera on' : 'Camera off'}
+          </button>
+          {role === 'tutor' ? (
+            <button onClick={shareScreen} className="rounded-2xl border border-sky-500/40 px-4 py-2 text-sm font-bold text-sky-200" disabled={!rtcRef.current}>
+              Share screen
             </button>
           ) : null}
           {session.status === 'in_progress' ? (
             <button onClick={endCurrentSession} className="rounded-2xl border border-rose-500/40 px-4 py-2 text-sm font-bold text-rose-200">
               End session
             </button>
-          ) : null}
-          {session.meetingLink ? (
-            <a href={session.meetingLink} target="_blank" rel="noreferrer" className="rounded-2xl border border-sky-500/40 px-4 py-2 text-sm font-bold text-sky-200">
-              Join Zoom meeting
-            </a>
           ) : null}
         </div>
 
