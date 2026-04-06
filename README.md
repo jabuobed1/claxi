@@ -26,14 +26,10 @@ Set Firebase Functions environment variables/secrets separately:
 ```bash
 RESEND_API_KEY=
 EMAIL_FROM=noreply@yourdomain.com
-ZOOM_CLIENT_ID=
-ZOOM_CLIENT_SECRET=
-ZOOM_REDIRECT_URI=https://<your-host-domain>/zoom-oauth-callback
-ZOOM_WEBHOOK_SECRET=
-APP_BASE_URL=https://<your-host-domain>
+PAYSTACK_SECRET_KEY=
 ```
 
-For Zoom endpoints, this project is configured to use Hosting/Vite route mapping (`/zoom-auth-start`, `/zoom-create-meeting`, `/zoom-oauth-callback`) so frontend `.env` Zoom endpoint overrides are optional.
+This project is configured to use Hosting/Vite route mapping for backend payment endpoints (`/verify-paystack`, `/finalize-session-billing`).
 
 ## Firestore Collections
 - `users`
@@ -54,7 +50,7 @@ For Zoom endpoints, this project is configured to use Hosting/Vite route mapping
 1. Signup/login with role (`student` or `tutor`) and user profile document creation.
 2. Student creates request -> stored in `classRequests` and visible live to tutors.
 3. Tutor accepts request -> request status updates + `sessions` document created.
-4. Tutor updates scheduling, meeting link, provider, status -> students see updates instantly.
+4. Tutor accepts request and starts in-app WebRTC call setup -> students see session-ready state instantly.
 5. Critical email events are queued in `emailEvents` and dispatched via Firebase Function + Resend.
 
 ## Firebase Functions

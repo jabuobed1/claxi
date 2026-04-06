@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PageHeader from '../../../components/ui/PageHeader';
 import SectionCard from '../../../components/ui/SectionCard';
 import LoadingState from '../../../components/ui/LoadingState';
@@ -7,10 +8,12 @@ import RequestCard from '../../../components/app/RequestCard';
 import { useAuth } from '../../../hooks/useAuth';
 import { useTutorAvailableRequests } from '../../../hooks/useClassRequests';
 import { acceptClassRequest, declineClassRequest } from '../../../services/classRequestService';
+import { findSessionIdByRequestAndTutor } from '../../../services/sessionService';
 import { getTutorOnboardingStatus } from '../../../utils/onboarding';
 
 export default function AvailableRequestsPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { requests, isLoading } = useTutorAvailableRequests(user?.uid);
   const [activeRequest, setActiveRequest] = useState(null);
   const [now, setNow] = useState(Date.now());
@@ -36,6 +39,10 @@ export default function AvailableRequestsPage() {
           tutorName: user.fullName || user.displayName || user.email,
           tutorEmail: user.email,
         });
+        const sessionId = await findSessionIdByRequestAndTutor({ requestId, tutorId: user.uid });
+        if (sessionId) {
+          navigate(`/app/session/${sessionId}`);
+        }
       } else {
         await declineClassRequest({
           requestId,

@@ -10,20 +10,10 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/verify-paystack/, '/verifyPaystack'),
       },
-      '/zoom-auth-start': {
+      '/finalize-session-billing': {
         target: 'http://localhost:5001/claxi-bakayise/us-central1',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/zoom-auth-start/, '/zoomAuthStart'),
-      },
-      '/zoom-create-meeting': {
-        target: 'http://localhost:5001/claxi-bakayise/us-central1',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/zoom-create-meeting/, '/zoomCreateMeeting'),
-      },
-      '/zoom-oauth-callback': {
-        target: 'http://localhost:5001/claxi-bakayise/us-central1',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/zoom-oauth-callback/, '/zoomOAuthCallback'),
+        rewrite: (path) => path.replace(/^\/finalize-session-billing/, '/finalizeSessionBilling'),
       },
     },
   },

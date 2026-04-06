@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FileText, ImageIcon } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useTutorAvailableRequests } from '../../hooks/useClassRequests';
 import { acceptClassRequest, declineClassRequest } from '../../services/classRequestService';
+import { findSessionIdByRequestAndTutor } from '../../services/sessionService';
 import { getTutorOnboardingStatus } from '../../utils/onboarding';
-import { createZoomMeetingForRequest } from '../../services/zoomService';
 import { debugError, debugLog } from '../../utils/devLogger';
 
 export default function TutorOfferOverlay() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { requests } = useTutorAvailableRequests(user?.uid);
   const onboardingStatus = getTutorOnboardingStatus(user);
   const canAccept = onboardingStatus.complete && user?.onlineStatus === 'online';
@@ -60,18 +62,16 @@ export default function TutorOfferOverlay() {
     setActiveRequest(topRequest.id);
     try {
       if (response === 'accept') {
-        const meeting = await createZoomMeetingForRequest({
-          requestId: topRequest.id,
-          topic: topRequest.topic || 'Claxi session',
-          durationMinutes: Number(topRequest.durationMinutes || topRequest.duration || 30),
-        });
         await acceptClassRequest({
           requestId: topRequest.id,
           tutorId: user.uid,
           tutorName: user.fullName || user.displayName || user.email,
           tutorEmail: user.email,
-          meeting,
         });
+        const sessionId = await findSessionIdByRequestAndTutor({ requestId: topRequest.id, tutorId: user.uid });
+        if (sessionId) {
+          navigate(`/app/session/${sessionId}`);
+        }
         debugLog('tutorOffer', 'Tutor accepted request successfully.', { requestId: topRequest.id });
       } else {
         await declineClassRequest({
