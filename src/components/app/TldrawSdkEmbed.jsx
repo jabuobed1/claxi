@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import '../../../node_modules/@tldraw/tldraw/tldraw.css';
+import 'tldraw/tldraw.css';
 import { debugError, debugLog } from '../../utils/devLogger';
 
 export default function TldrawSdkEmbed({ roomId, licenseKey }) {
   const [TldrawComponent, setTldrawComponent] = useState(null);
   const [loadError, setLoadError] = useState('');
 
-  const persistenceKey = useMemo(() => `claxi-${roomId || 'session-board'}`, [roomId]);
+  const persistenceKey = useMemo(
+    () => `claxi-${roomId || 'session-board'}`,
+    [roomId]
+  );
 
   useEffect(() => {
     let canceled = false;
@@ -15,19 +18,26 @@ export default function TldrawSdkEmbed({ roomId, licenseKey }) {
       try {
         setLoadError('');
         debugLog('tldraw', 'Loading tldraw SDK runtime module.');
-        const module = await import('@tldraw/tldraw');
+
+        const module = await import('tldraw');
+
         if (canceled) return;
-        const sdkComponent = module?.Tldraw || module?.default?.Tldraw || null;
+
+        const sdkComponent = module?.Tldraw || null;
+
         if (!sdkComponent) {
           debugError('tldraw', 'SDK module missing Tldraw export.');
           setLoadError('Whiteboard failed to initialize (missing Tldraw export).');
           return;
         }
+
         debugLog('tldraw', 'tldraw SDK loaded successfully.');
         setTldrawComponent(() => sdkComponent);
       } catch (error) {
         if (canceled) return;
-        debugError('tldraw', 'Whiteboard SDK load failed.', { message: error?.message });
+        debugError('tldraw', 'Whiteboard SDK load failed.', {
+          message: error?.message,
+        });
         setLoadError(error?.message || 'Unable to load tldraw SDK.');
       }
     }
@@ -42,7 +52,9 @@ export default function TldrawSdkEmbed({ roomId, licenseKey }) {
   if (loadError) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 p-4 text-center">
-        <p className="text-sm font-semibold text-rose-600">Whiteboard is temporarily unavailable.</p>
+        <p className="text-sm font-semibold text-rose-600">
+          Whiteboard is temporarily unavailable.
+        </p>
         <p className="text-xs text-zinc-500">{loadError}</p>
       </div>
     );
@@ -56,5 +68,10 @@ export default function TldrawSdkEmbed({ roomId, licenseKey }) {
     );
   }
 
-  return <TldrawComponent persistenceKey={persistenceKey} licenseKey={licenseKey || undefined} />;
+  return (
+    <TldrawComponent
+      persistenceKey={persistenceKey}
+      licenseKey={licenseKey || undefined}
+    />
+  );
 }
