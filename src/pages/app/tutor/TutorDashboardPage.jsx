@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Power } from 'lucide-react';
 import PageHeader from '../../../components/ui/PageHeader';
 import SectionCard from '../../../components/ui/SectionCard';
@@ -8,10 +8,12 @@ import { useTutorAvailableRequests } from '../../../hooks/useClassRequests';
 import { getTutorOnboardingStatus } from '../../../utils/onboarding';
 import { updateUserProfile } from '../../../services/userService';
 import { acceptClassRequest, declineClassRequest } from '../../../services/classRequestService';
+import { findSessionIdByRequestAndTutor } from '../../../services/sessionService';
 import { debugError, debugLog } from '../../../utils/devLogger';
 
 export default function TutorDashboardPage() {
   const { user, setUser } = useAuth();
+  const navigate = useNavigate();
   const { requests } = useTutorAvailableRequests(user?.uid);
   const onboardingStatus = getTutorOnboardingStatus(user);
   const isOnline = user?.onlineStatus === 'online';
@@ -41,6 +43,10 @@ export default function TutorDashboardPage() {
           tutorName: user.fullName || user.displayName || user.email,
           tutorEmail: user.email,
         });
+        const sessionId = await findSessionIdByRequestAndTutor({ requestId, tutorId: user.uid });
+        if (sessionId) {
+          navigate(`/app/session/${sessionId}`);
+        }
       } else {
         await declineClassRequest({ requestId, tutorId: user.uid });
       }

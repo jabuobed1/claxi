@@ -337,6 +337,35 @@ export async function submitSessionRating(session, role, payload) {
   return updatedSession;
 }
 
+export async function findSessionIdByRequestAndTutor({ requestId, tutorId, maxAttempts = 8, delayMs = 350 }) {
+  if (!requestId || !tutorId) return null;
+
+  const clients = await getFirebaseClients();
+  if (!clients) {
+    const match = getMockSessions().find((item) => item.requestId === requestId && item.tutorId === tutorId);
+    return match?.id || null;
+  }
+
+  const { db, firestoreModule } = clients;
+  const { collection, getDocs, query, where } = firestoreModule;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const snapshot = await getDocs(query(
+      collection(db, 'sessions'),
+      where('requestId', '==', requestId),
+      where('tutorId', '==', tutorId),
+    ));
+    if (snapshot.docs.length) {
+      return snapshot.docs[0].id;
+    }
+    if (attempt < maxAttempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
+  return null;
+}
+
 export { REQUEST_STATUS };
 
 export async function getPaymentExceptionsForAdmin() {
