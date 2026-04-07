@@ -5,6 +5,11 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
+      '/ice-config': {
+        target: 'http://localhost:5001/claxi-bakayise/us-central1',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/ice-config/, '/getIceConfig'),
+      },
       '/verify-paystack': {
         target: 'http://localhost:5001/claxi-bakayise/us-central1',
         changeOrigin: true,
