@@ -20,6 +20,7 @@ export async function fetchIceServers() {
   });
 
   const payload = await response.json().catch(() => ({}));
+
   if (!response.ok || !payload.success || !Array.isArray(payload.iceServers)) {
     throw new Error(payload.message || 'Unable to load network relay configuration right now.');
   }
@@ -28,8 +29,13 @@ export async function fetchIceServers() {
     if (!entry?.urls) return [];
     return Array.isArray(entry.urls) ? entry.urls : [entry.urls];
   });
+
   const stunUrls = flattenUrls.filter((url) => String(url).toLowerCase().startsWith('stun:'));
-  const turnUrls = flattenUrls.filter((url) => String(url).toLowerCase().startsWith('turn:'));
+  const turnUrls = flattenUrls.filter(
+    (url) =>
+      String(url).toLowerCase().startsWith('turn:')
+      || String(url).toLowerCase().startsWith('turns:'),
+  );
 
   debugLog('iceServerService', 'Fetched ICE configuration.', {
     serverCount: payload.iceServers.length,
@@ -38,7 +44,23 @@ export async function fetchIceServers() {
     stunCount: stunUrls.length,
     turnCount: turnUrls.length,
     urls: flattenUrls,
-    expiresAt: payload.expiresAt || null,
+    ttlSeconds: payload.ttlSeconds || null,
+    servers: payload.iceServers.map((entry) => {
+      const urls = Array.isArray(entry?.urls) ? entry.urls : [entry?.urls].filter(Boolean);
+      const hasTurnUrl = urls.some(
+        (url) =>
+          String(url).toLowerCase().startsWith('turn:')
+          || String(url).toLowerCase().startsWith('turns:'),
+      );
+
+      return {
+        urls,
+        hasTurnUrl,
+        hasUsername: Boolean(entry?.username),
+        hasCredential: Boolean(entry?.credential),
+        credentialType: entry?.credentialType || null,
+      };
+    }),
   });
 
   return payload.iceServers;

@@ -4,7 +4,7 @@ const { defineSecret } = require('firebase-functions/params');
 const { logger } = require('firebase-functions');
 const admin = require('firebase-admin');
 const { Resend } = require('resend');
-const { randomUUID, createHmac } = require('crypto');
+const { randomUUID } = require('crypto');
 
 admin.initializeApp();
 
@@ -13,35 +13,40 @@ const db = admin.firestore();
 const PAYSTACK_SECRET_KEY = defineSecret('PAYSTACK_SECRET_KEY');
 const RESEND_API_KEY = defineSecret('RESEND_API_KEY');
 const EMAIL_FROM = defineSecret('EMAIL_FROM');
-const CLOUDFLARE_TURN_KEY = defineSecret('CLOUDFLARE_TURN_KEY');
-const CLOUDFLARE_TURN_URLS = defineSecret('CLOUDFLARE_TURN_URLS');
+const CLOUDFLARE_TURN_KEY_ID = defineSecret('CLOUDFLARE_TURN_KEY_ID');
+const CLOUDFLARE_TURN_API_TOKEN = defineSecret('CLOUDFLARE_TURN_API_TOKEN');
 const CLOUDFLARE_TURN_TTL_SECONDS = defineSecret('CLOUDFLARE_TURN_TTL_SECONDS');
 
-const DEFAULT_TURN_URLS = [
-  'turn:global.turn.cloudflare.com:3478?transport=udp',
-  'turn:global.turn.cloudflare.com:3478?transport=tcp',
-  'turns:global.turn.cloudflare.com:5349?transport=tcp',
-];
 const DEFAULT_STUN_URLS = ['stun:stun.l.google.com:19302'];
 const DEFAULT_TURN_TTL_SECONDS = 600;
 
-function parseTurnUrls(rawValue) {
-  if (!rawValue || typeof rawValue !== 'string') {
-    return DEFAULT_TURN_URLS;
-  }
+function sanitizeCloudflareIceServers(iceServers) {
+  if (!Array.isArray(iceServers)) return [];
 
-  const urls = rawValue
-    .split(',')
-    .map((entry) => entry.trim())
+  return iceServers
+    .map((server) => {
+      const urls = Array.isArray(server?.urls)
+        ? server.urls.filter(Boolean)
+        : [server?.urls].filter(Boolean);
+
+      const filteredUrls = urls.filter((url) => !String(url).includes(':53'));
+
+      if (!filteredUrls.length) return null;
+
+      return {
+        urls: filteredUrls,
+        ...(server?.username ? { username: server.username } : {}),
+        ...(server?.credential ? { credential: server.credential } : {}),
+        ...(server?.credentialType ? { credentialType: server.credentialType } : {}),
+      };
+    })
     .filter(Boolean);
-
-  return urls.length ? urls : DEFAULT_TURN_URLS;
 }
 
 function parseTurnTtlSeconds(rawValue) {
   const parsed = Number(rawValue);
   if (!Number.isFinite(parsed)) return DEFAULT_TURN_TTL_SECONDS;
-  return Math.max(60, Math.min(3600, Math.floor(parsed)));
+  return Math.max(60, Math.min(172800, Math.floor(parsed)));
 }
 
 function buildEmailPayload(eventType, payload) {
@@ -119,7 +124,14 @@ function getSafeSecretPreview(value) {
 }
 
 exports.getIceConfig = onRequest(
-  { cors: true, secrets: [CLOUDFLARE_TURN_KEY, CLOUDFLARE_TURN_URLS, CLOUDFLARE_TURN_TTL_SECONDS] },
+  {
+    cors: true,
+    secrets: [
+      CLOUDFLARE_TURN_KEY_ID,
+      CLOUDFLARE_TURN_API_TOKEN,
+      CLOUDFLARE_TURN_TTL_SECONDS,
+    ],
+  },
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).json({ success: false, message: 'Method not allowed' });
@@ -136,48 +148,107 @@ exports.getIceConfig = onRequest(
     try {
       decodedToken = await admin.auth().verifyIdToken(token);
     } catch (error) {
-      logger.warn('Failed to verify Firebase auth token for ICE config.', { error: error.message });
+      logger.warn('Failed to verify Firebase auth token for ICE config.', {
+        error: error.message,
+      });
       res.status(401).json({ success: false, message: 'Unauthorized request.' });
       return;
     }
 
-    const turnKey = CLOUDFLARE_TURN_KEY.value();
-    if (!turnKey) {
-      logger.error('CLOUDFLARE_TURN_KEY missing.');
-      res.status(500).json({ success: false, message: 'Realtime network configuration unavailable.' });
+    const turnKeyId = CLOUDFLARE_TURN_KEY_ID.value();
+    const turnApiToken = CLOUDFLARE_TURN_API_TOKEN.value();
+    const ttl = parseTurnTtlSeconds(CLOUDFLARE_TURN_TTL_SECONDS.value());
+
+    if (!turnKeyId || !turnApiToken) {
+      logger.error('Cloudflare TURN secrets missing.', {
+        hasTurnKeyId: Boolean(turnKeyId),
+        hasTurnApiToken: Boolean(turnApiToken),
+      });
+      res.status(500).json({
+        success: false,
+        message: 'Realtime network configuration unavailable.',
+      });
       return;
     }
 
-    const now = Math.floor(Date.now() / 1000);
-    const ttl = parseTurnTtlSeconds(CLOUDFLARE_TURN_TTL_SECONDS.value());
-    const expiry = now + ttl;
-    const username = `${expiry}:${decodedToken.uid}`;
-    const credential = createHmac('sha1', turnKey).update(username).digest('base64');
-    const turnUrls = parseTurnUrls(CLOUDFLARE_TURN_URLS.value());
-    const stunCount = DEFAULT_STUN_URLS.length;
-    const turnCount = turnUrls.length;
-
-    logger.info('Generated ICE config for authenticated user.', {
-      uid: decodedToken.uid,
-      stunCount,
-      turnCount,
-      ttlSeconds: ttl,
-      expiresAt: expiry * 1000,
-      turnUrls,
-    });
-
-    res.status(200).json({
-      success: true,
-      iceServers: [
-        { urls: DEFAULT_STUN_URLS },
+    try {
+      const cfResponse = await fetch(
+        `https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(
+          turnKeyId,
+        )}/credentials/generate-ice-servers`,
         {
-          urls: turnUrls,
-          username,
-          credential,
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${turnApiToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ ttl }),
         },
-      ],
-      expiresAt: expiry * 1000,
-    });
+      );
+
+      const cfPayload = await cfResponse.json().catch(() => null);
+
+      if (!cfResponse.ok) {
+        logger.error('Cloudflare TURN credential generation failed.', {
+          uid: decodedToken.uid,
+          status: cfResponse.status,
+          payload: cfPayload || null,
+        });
+
+        res.status(500).json({
+          success: false,
+          message: 'Unable to generate realtime network credentials.',
+        });
+        return;
+      }
+
+      const generatedIceServers = sanitizeCloudflareIceServers(cfPayload?.iceServers || []);
+      const combinedIceServers = generatedIceServers.length
+        ? generatedIceServers
+        : [{ urls: DEFAULT_STUN_URLS }];
+
+      const turnServers = combinedIceServers.filter((server) => {
+        const urls = Array.isArray(server.urls) ? server.urls : [server.urls];
+        return urls.some((url) => String(url).startsWith('turn:') || String(url).startsWith('turns:'));
+      });
+
+      const stunServers = combinedIceServers.filter((server) => {
+        const urls = Array.isArray(server.urls) ? server.urls : [server.urls];
+        return urls.some((url) => String(url).startsWith('stun:'));
+      });
+
+      logger.info('Generated Cloudflare ICE config for authenticated user.', {
+        uid: decodedToken.uid,
+        ttlSeconds: ttl,
+        serverCount: combinedIceServers.length,
+        stunCount: stunServers.reduce(
+          (sum, server) => sum + (Array.isArray(server.urls) ? server.urls.length : 1),
+          0,
+        ),
+        turnCount: turnServers.reduce(
+          (sum, server) => sum + (Array.isArray(server.urls) ? server.urls.length : 1),
+          0,
+        ),
+        turnHasUsername: turnServers.some((server) => Boolean(server.username)),
+        turnHasCredential: turnServers.some((server) => Boolean(server.credential)),
+      });
+
+      res.status(200).json({
+        success: true,
+        iceServers: combinedIceServers,
+        ttlSeconds: ttl,
+      });
+    } catch (error) {
+      logger.error('Failed to fetch Cloudflare ICE config.', {
+        uid: decodedToken.uid,
+        error: error.message,
+      });
+
+      res.status(500).json({
+        success: false,
+        message: 'Unable to generate realtime network credentials.',
+      });
+    }
   },
 );
 

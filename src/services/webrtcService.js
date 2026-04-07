@@ -113,6 +113,24 @@ export async function createWebRtcSessionController({
   const restartCollectionRef = collection(db, 'sessions', sessionId, 'webrtcRestartRequests');
 
   const resolvedConfig = buildConfig(iceServers, { forceRelayOnly });
+
+  debugLog('webrtcService', 'Resolved ICE server config.', {
+    forceRelayOnly,
+    iceTransportPolicy: resolvedConfig.iceTransportPolicy || 'all',
+    servers: resolvedConfig.iceServers.map((server) => {
+      const urls = Array.isArray(server.urls) ? server.urls : [server.urls];
+      const hasTurnUrl = urls.some((url) => typeof url === 'string' && url.startsWith('turn:'));
+      return {
+        urls,
+        hasTurnUrl,
+        hasUsername: Boolean(server.username),
+        hasCredential: Boolean(server.credential),
+        credentialType: server.credentialType || null,
+        usernamePreview: server.username ? `${String(server.username).slice(0, 8)}...` : null,
+      };
+    }),
+  });
+
   const resolvedIceUrls = resolvedConfig.iceServers.flatMap((entry) => {
     if (!entry?.urls) return [];
     return Array.isArray(entry.urls) ? entry.urls : [entry.urls];
@@ -124,6 +142,16 @@ export async function createWebRtcSessionController({
   const discoveredCandidateTypes = new Set();
   let relayCandidateDiscovered = false;
   const pc = new RTCPeerConnection(resolvedConfig);
+
+  pc.onicecandidateerror = (event) => {
+    debugLog('webrtcService', 'ICE candidate error.', {
+      url: event.url || null,
+      errorCode: event.errorCode || null,
+      errorText: event.errorText || null,
+      address: event.address || null,
+      port: event.port || null,
+    });
+  };
 
   const localStream = await navigator.mediaDevices.getUserMedia({
     video: true,

@@ -138,6 +138,7 @@ export default function SessionRoomPage() {
   const remoteScreenVideoRef = useRef(null);
 
   const rtcRef = useRef(null);
+  const rtcInitStartedRef = useRef(false);
   const autoJoinAttemptedRef = useRef(false);
   const connectionStartRecordedRef = useRef(false);
   const activeInitKeyRef = useRef('');
@@ -167,12 +168,14 @@ export default function SessionRoomPage() {
     autoJoinAttemptedRef.current = false;
     connectionStartRecordedRef.current = false;
     activeInitKeyRef.current = '';
+    rtcInitStartedRef.current = false;
   }, [session?.id, role]);
 
   useEffect(() => {
     return () => {
       rtcRef.current?.close?.();
       rtcRef.current = null;
+      rtcInitStartedRef.current = false;
     };
   }, []);
 
@@ -223,10 +226,14 @@ export default function SessionRoomPage() {
 
   const initializeCall = useCallback(async ({ shouldJoinStudent }) => {
     if (!session || !user?.uid) return;
+
     const initKey = `${session.id}:${role}`;
-    if (rtcRef.current || isBusy || activeInitKeyRef.current === initKey) {
-      return;
-    }
+
+    if (rtcRef.current) return;
+    if (rtcInitStartedRef.current) return;
+    if (activeInitKeyRef.current === initKey) return;
+
+    rtcInitStartedRef.current = true;
     activeInitKeyRef.current = initKey;
 
     setIsBusy(true);
@@ -302,12 +309,13 @@ export default function SessionRoomPage() {
       rtcRef.current = controller;
       setConnectionMessage(role === 'tutor' ? 'Waiting for student to join…' : 'Connecting…');
     } catch (error) {
+      rtcInitStartedRef.current = false;
       setNetworkError(error.message || 'Unable to start call. Please retry.');
     } finally {
       activeInitKeyRef.current = '';
       setIsBusy(false);
     }
-  }, [forceRelayOnly, isBusy, role, selectedCardId, session, user]);
+  }, [forceRelayOnly, role, selectedCardId, session, user]);
 
   useEffect(() => {
     if (!session) return;
@@ -320,11 +328,11 @@ export default function SessionRoomPage() {
     if (!session) return;
     if (role !== 'student') return;
     if (![SESSION_STATUS.WAITING_STUDENT, SESSION_STATUS.IN_PROGRESS].includes(session.status)) return;
-    if (rtcRef.current || isBusy || autoJoinAttemptedRef.current) return;
+    if (rtcRef.current || autoJoinAttemptedRef.current || rtcInitStartedRef.current) return;
 
     autoJoinAttemptedRef.current = true;
     initializeCall({ shouldJoinStudent: session.status === SESSION_STATUS.WAITING_STUDENT });
-  }, [initializeCall, isBusy, role, session]);
+  }, [initializeCall, role, session]);
 
   useEffect(() => {
     if (!session?.status) return;
@@ -332,6 +340,7 @@ export default function SessionRoomPage() {
 
     rtcRef.current?.close?.();
     rtcRef.current = null;
+    rtcInitStartedRef.current = false;
 
     if (role === 'student') {
       navigate(`/app/student/request/${session.requestId}`, {
@@ -363,6 +372,7 @@ export default function SessionRoomPage() {
   const cancelCurrentClass = async () => {
     rtcRef.current?.close?.();
     rtcRef.current = null;
+    rtcInitStartedRef.current = false;
 
     await updateSession(session.id, {
       ...session,
@@ -387,6 +397,7 @@ export default function SessionRoomPage() {
   const endCurrentSession = async () => {
     rtcRef.current?.close?.();
     rtcRef.current = null;
+    rtcInitStartedRef.current = false;
     await endSession(session);
     navigate('/app/tutor', { replace: true });
   };
