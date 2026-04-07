@@ -1,4 +1,5 @@
 import { getFirebaseClients } from '../firebase/config';
+import { debugLog } from '../utils/devLogger';
 
 const ICE_CONFIG_ENDPOINT = import.meta.env.VITE_ICE_CONFIG_ENDPOINT || '/ice-config';
 
@@ -22,6 +23,23 @@ export async function fetchIceServers() {
   if (!response.ok || !payload.success || !Array.isArray(payload.iceServers)) {
     throw new Error(payload.message || 'Unable to load network relay configuration right now.');
   }
+
+  const flattenUrls = payload.iceServers.flatMap((entry) => {
+    if (!entry?.urls) return [];
+    return Array.isArray(entry.urls) ? entry.urls : [entry.urls];
+  });
+  const stunUrls = flattenUrls.filter((url) => String(url).toLowerCase().startsWith('stun:'));
+  const turnUrls = flattenUrls.filter((url) => String(url).toLowerCase().startsWith('turn:'));
+
+  debugLog('iceServerService', 'Fetched ICE configuration.', {
+    serverCount: payload.iceServers.length,
+    hasStun: stunUrls.length > 0,
+    hasTurn: turnUrls.length > 0,
+    stunCount: stunUrls.length,
+    turnCount: turnUrls.length,
+    urls: flattenUrls,
+    expiresAt: payload.expiresAt || null,
+  });
 
   return payload.iceServers;
 }

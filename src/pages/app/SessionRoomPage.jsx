@@ -140,12 +140,14 @@ export default function SessionRoomPage() {
   const rtcRef = useRef(null);
   const autoJoinAttemptedRef = useRef(false);
   const connectionStartRecordedRef = useRef(false);
+  const activeInitKeyRef = useRef('');
 
   const callSeconds = useLiveSeconds(session?.callStartedAt);
   const billedSeconds = useLiveSeconds(session?.billingStartedAt);
   const runningAmount = (billedSeconds / 60) * BILLING_RULES.DISPLAY_RATE_PER_MINUTE;
   const needsRating = session?.status === SESSION_STATUS.COMPLETED && !session?.ratings?.[role];
   const tldrawLicenseKey = import.meta.env.VITE_TLDRAW_LICENSE_KEY;
+  const forceRelayOnly = String(import.meta.env.VITE_WEBRTC_FORCE_RELAY_ONLY || '').toLowerCase() === 'true';
   const whiteboardRoom = session?.whiteboardRoomId || session?.requestId || session?.id;
   const graceRemaining = Math.max(0, Math.ceil(((session?.joinGraceEndsAt || 0) - Date.now()) / 1000));
 
@@ -164,6 +166,7 @@ export default function SessionRoomPage() {
   useEffect(() => {
     autoJoinAttemptedRef.current = false;
     connectionStartRecordedRef.current = false;
+    activeInitKeyRef.current = '';
   }, [session?.id, role]);
 
   useEffect(() => {
@@ -220,7 +223,11 @@ export default function SessionRoomPage() {
 
   const initializeCall = useCallback(async ({ shouldJoinStudent }) => {
     if (!session || !user?.uid) return;
-    if (rtcRef.current || isBusy) return;
+    const initKey = `${session.id}:${role}`;
+    if (rtcRef.current || isBusy || activeInitKeyRef.current === initKey) {
+      return;
+    }
+    activeInitKeyRef.current = initKey;
 
     setIsBusy(true);
     setNetworkError('');
@@ -242,6 +249,7 @@ export default function SessionRoomPage() {
         role,
         currentUserId: user.uid,
         iceServers,
+        forceRelayOnly,
 
         onLocalStream: (stream) => {
           if (!localVideoRef.current) return;
@@ -296,9 +304,10 @@ export default function SessionRoomPage() {
     } catch (error) {
       setNetworkError(error.message || 'Unable to start call. Please retry.');
     } finally {
+      activeInitKeyRef.current = '';
       setIsBusy(false);
     }
-  }, [isBusy, role, selectedCardId, session, user]);
+  }, [forceRelayOnly, isBusy, role, selectedCardId, session, user]);
 
   useEffect(() => {
     if (!session) return;

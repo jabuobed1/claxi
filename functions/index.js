@@ -154,6 +154,17 @@ exports.getIceConfig = onRequest(
     const username = `${expiry}:${decodedToken.uid}`;
     const credential = createHmac('sha1', turnKey).update(username).digest('base64');
     const turnUrls = parseTurnUrls(CLOUDFLARE_TURN_URLS.value());
+    const stunCount = DEFAULT_STUN_URLS.length;
+    const turnCount = turnUrls.length;
+
+    logger.info('Generated ICE config for authenticated user.', {
+      uid: decodedToken.uid,
+      stunCount,
+      turnCount,
+      ttlSeconds: ttl,
+      expiresAt: expiry * 1000,
+      turnUrls,
+    });
 
     res.status(200).json({
       success: true,

@@ -19,6 +19,7 @@ export default function TutorDashboardPage() {
   const isOnline = user?.onlineStatus === 'online';
   const [now, setNow] = useState(Date.now());
   const [activeRequestId, setActiveRequestId] = useState('');
+  const [requestError, setRequestError] = useState('');
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -35,6 +36,7 @@ export default function TutorDashboardPage() {
   const respond = async (requestId, response) => {
     debugLog('tutorDashboard', 'Tutor responding to request from dashboard.', { requestId, response });
     setActiveRequestId(requestId);
+    setRequestError('');
     try {
       if (response === 'accept') {
         await acceptClassRequest({
@@ -52,7 +54,7 @@ export default function TutorDashboardPage() {
       }
     } catch (error) {
       debugError('tutorDashboard', 'Tutor response failed.', { requestId, response, message: error.message });
-      throw error;
+      setRequestError(error.message || 'Unable to process this request. Please try again.');
     } finally {
       setActiveRequestId('');
     }
@@ -90,6 +92,11 @@ export default function TutorDashboardPage() {
 
       {isOnline ? (
         <SectionCard title="Incoming requests">
+          {requestError ? (
+            <p className="mb-3 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              {requestError}
+            </p>
+          ) : null}
           {requests.length ? (
             <div className="space-y-3">
               {requests.map((request) => {
