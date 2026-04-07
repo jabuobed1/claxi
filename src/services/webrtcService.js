@@ -110,7 +110,16 @@ export async function createWebRtcSessionController({
   const studentCandidatesRef = collection(db, 'sessions', sessionId, 'webrtcStudentCandidates');
   const restartCollectionRef = collection(db, 'sessions', sessionId, 'webrtcRestartRequests');
 
-  const pc = new RTCPeerConnection(buildConfig(iceServers));
+  const resolvedConfig = buildConfig(iceServers);
+  const resolvedIceUrls = resolvedConfig.iceServers.flatMap((entry) => {
+    if (!entry?.urls) return [];
+    return Array.isArray(entry.urls) ? entry.urls : [entry.urls];
+  });
+  debugLog('webrtcService', 'Creating RTCPeerConnection with ICE servers.', {
+    urls: resolvedIceUrls,
+  });
+  const discoveredCandidateTypes = new Set();
+  const pc = new RTCPeerConnection(resolvedConfig);
 
   const localStream = await navigator.mediaDevices.getUserMedia({
     video: true,
@@ -237,9 +246,12 @@ export async function createWebRtcSessionController({
 
   pc.onicecandidate = async (event) => {
     if (!event.candidate) return;
+    const type = getCandidateType(event.candidate.candidate);
+    discoveredCandidateTypes.add(type);
     debugLog('webrtcService', 'Local ICE candidate discovered.', {
-      type: getCandidateType(event.candidate.candidate),
+      type,
       protocol: event.candidate.protocol || null,
+      discoveredTypes: Array.from(discoveredCandidateTypes),
     });
     const destination = role === 'tutor' ? tutorCandidatesRef : studentCandidatesRef;
     await addCandidate(addDoc, destination, event.candidate);
@@ -317,8 +329,11 @@ export async function createWebRtcSessionController({
         if (change.type !== 'added') return;
         try {
           const candidate = hydrateCandidate(change.doc.data());
+          const type = getCandidateType(candidate.candidate);
+          discoveredCandidateTypes.add(type);
           debugLog('webrtcService', 'Remote ICE candidate received.', {
-            type: getCandidateType(candidate.candidate),
+            type,
+            discoveredTypes: Array.from(discoveredCandidateTypes),
           });
           await pc.addIceCandidate(candidate);
         } catch (_) {

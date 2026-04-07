@@ -17,6 +17,7 @@ export default function AvailableRequestsPage() {
   const { requests, isLoading } = useTutorAvailableRequests(user?.uid);
   const [activeRequest, setActiveRequest] = useState(null);
   const [now, setNow] = useState(Date.now());
+  const [requestError, setRequestError] = useState('');
   const onboardingStatus = getTutorOnboardingStatus(user);
   const canAccept = onboardingStatus.complete && user?.onlineStatus === 'online';
 
@@ -32,6 +33,7 @@ export default function AvailableRequestsPage() {
       }
 
       setActiveRequest(requestId);
+      setRequestError('');
       if (response === 'accept') {
         await acceptClassRequest({
           requestId,
@@ -49,6 +51,8 @@ export default function AvailableRequestsPage() {
           tutorId: user.uid,
         });
       }
+    } catch (error) {
+      setRequestError(error.message || 'Unable to process this request. Please try again.');
     } finally {
       setActiveRequest(null);
     }
@@ -64,6 +68,11 @@ export default function AvailableRequestsPage() {
       ) : null}
 
       <SectionCard>
+        {requestError ? (
+          <p className="mb-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">
+            {requestError}
+          </p>
+        ) : null}
         {isLoading ? (
           <LoadingState message="Listening for live tutor offers..." />
         ) : requests.length ? (

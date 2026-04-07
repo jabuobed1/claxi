@@ -15,6 +15,7 @@ export default function TutorOfferOverlay() {
   const onboardingStatus = getTutorOnboardingStatus(user);
   const canAccept = onboardingStatus.complete && user?.onlineStatus === 'online';
   const [activeRequest, setActiveRequest] = useState(null);
+  const [errorMessage, setErrorMessage] = useState('');
   const [now, setNow] = useState(Date.now());
   const audioCtxRef = useRef(null);
   const latestRequestIdRef = useRef(null);
@@ -60,6 +61,7 @@ export default function TutorOfferOverlay() {
     if (!topRequest || !canAccept) return;
     debugLog('tutorOffer', 'Tutor offer response started.', { response, requestId: topRequest.id });
     setActiveRequest(topRequest.id);
+    setErrorMessage('');
     try {
       if (response === 'accept') {
         await acceptClassRequest({
@@ -82,7 +84,7 @@ export default function TutorOfferOverlay() {
       }
     } catch (error) {
       debugError('tutorOffer', 'Tutor offer response failed.', { message: error.message, requestId: topRequest.id });
-      throw error;
+      setErrorMessage(error.message || 'Unable to process this request. Please try again.');
     } finally {
       setActiveRequest(null);
     }
@@ -110,6 +112,11 @@ export default function TutorOfferOverlay() {
       <div className="mb-3 h-2 overflow-hidden rounded-full bg-zinc-200">
         <div className={`h-full ${progressColor} transition-all`} style={{ width: `${progress}%` }} />
       </div>
+      {errorMessage ? (
+        <p className="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
+          {errorMessage}
+        </p>
+      ) : null}
 
       <p className="mb-3 text-sm text-zinc-700">{topRequest.description || 'Student sent a request with attachment(s).'}</p>
 
