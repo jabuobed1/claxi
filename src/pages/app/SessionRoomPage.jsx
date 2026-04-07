@@ -140,6 +140,7 @@ export default function SessionRoomPage() {
   const rtcRef = useRef(null);
   const autoJoinAttemptedRef = useRef(false);
   const connectionStartRecordedRef = useRef(false);
+  const activeInitKeyRef = useRef('');
 
   const callSeconds = useLiveSeconds(session?.callStartedAt);
   const billedSeconds = useLiveSeconds(session?.billingStartedAt);
@@ -164,6 +165,7 @@ export default function SessionRoomPage() {
   useEffect(() => {
     autoJoinAttemptedRef.current = false;
     connectionStartRecordedRef.current = false;
+    activeInitKeyRef.current = '';
   }, [session?.id, role]);
 
   useEffect(() => {
@@ -220,7 +222,11 @@ export default function SessionRoomPage() {
 
   const initializeCall = useCallback(async ({ shouldJoinStudent }) => {
     if (!session || !user?.uid) return;
-    if (rtcRef.current || isBusy) return;
+    const initKey = `${session.id}:${role}`;
+    if (rtcRef.current || isBusy || activeInitKeyRef.current === initKey) {
+      return;
+    }
+    activeInitKeyRef.current = initKey;
 
     setIsBusy(true);
     setNetworkError('');
@@ -296,6 +302,7 @@ export default function SessionRoomPage() {
     } catch (error) {
       setNetworkError(error.message || 'Unable to start call. Please retry.');
     } finally {
+      activeInitKeyRef.current = '';
       setIsBusy(false);
     }
   }, [isBusy, role, selectedCardId, session, user]);
