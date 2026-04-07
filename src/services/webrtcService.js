@@ -5,10 +5,11 @@ const DEFAULT_ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
 const CONNECTION_TIMEOUT_MS = 12000;
 const MAX_ICE_RESTART_ATTEMPTS = 2;
 
-function buildConfig(iceServers) {
+function buildConfig(iceServers, { forceRelayOnly = false } = {}) {
   return {
     iceServers: Array.isArray(iceServers) && iceServers.length ? iceServers : DEFAULT_ICE_SERVERS,
     iceCandidatePoolSize: 4,
+    ...(forceRelayOnly ? { iceTransportPolicy: 'relay' } : {}),
   };
 }
 
@@ -80,6 +81,7 @@ export async function createWebRtcSessionController({
   role,
   currentUserId,
   iceServers,
+  forceRelayOnly = false,
   onRemoteStream,
   onRemoteScreenStream,
   onLocalStream,
@@ -110,15 +112,17 @@ export async function createWebRtcSessionController({
   const studentCandidatesRef = collection(db, 'sessions', sessionId, 'webrtcStudentCandidates');
   const restartCollectionRef = collection(db, 'sessions', sessionId, 'webrtcRestartRequests');
 
-  const resolvedConfig = buildConfig(iceServers);
+  const resolvedConfig = buildConfig(iceServers, { forceRelayOnly });
   const resolvedIceUrls = resolvedConfig.iceServers.flatMap((entry) => {
     if (!entry?.urls) return [];
     return Array.isArray(entry.urls) ? entry.urls : [entry.urls];
   });
   debugLog('webrtcService', 'Creating RTCPeerConnection with ICE servers.', {
+    forceRelayOnly,
     urls: resolvedIceUrls,
   });
   const discoveredCandidateTypes = new Set();
+  let relayCandidateDiscovered = false;
   const pc = new RTCPeerConnection(resolvedConfig);
 
   const localStream = await navigator.mediaDevices.getUserMedia({
@@ -248,6 +252,7 @@ export async function createWebRtcSessionController({
     if (!event.candidate) return;
     const type = getCandidateType(event.candidate.candidate);
     discoveredCandidateTypes.add(type);
+    if (type === 'relay') relayCandidateDiscovered = true;
     debugLog('webrtcService', 'Local ICE candidate discovered.', {
       type,
       protocol: event.candidate.protocol || null,
@@ -262,6 +267,12 @@ export async function createWebRtcSessionController({
     debugLog('webrtcService', 'connectionState changed.', { state: pc.connectionState });
 
     if (pc.connectionState === 'connected') {
+      if (forceRelayOnly) {
+        debugLog('webrtcService', 'Relay-only debug result.', {
+          relayCandidateDiscovered,
+          discoveredTypes: Array.from(discoveredCandidateTypes),
+        });
+      }
       onConnectionMessage?.('Connected');
       logSelectedPair(pc);
       if (connectTimer) clearTimeout(connectTimer);
@@ -269,6 +280,13 @@ export async function createWebRtcSessionController({
     }
 
     if (['failed', 'disconnected'].includes(pc.connectionState)) {
+      if (forceRelayOnly && !relayCandidateDiscovered) {
+        debugLog('webrtcService', 'TURN failure diagnostic (relay-only mode).', {
+          message: 'No relay candidates were discovered before connection failure.',
+          discoveredTypes: Array.from(discoveredCandidateTypes),
+          urls: resolvedIceUrls,
+        });
+      }
       onConnectionMessage?.('Reconnecting…');
     }
   };
@@ -278,6 +296,12 @@ export async function createWebRtcSessionController({
     if (!['failed', 'disconnected'].includes(pc.iceConnectionState)) return;
 
     if (reconnectAttempts >= MAX_ICE_RESTART_ATTEMPTS) {
+      if (forceRelayOnly && !relayCandidateDiscovered) {
+        debugLog('webrtcService', 'TURN failure diagnostic (relay-only retries exhausted).', {
+          discoveredTypes: Array.from(discoveredCandidateTypes),
+          urls: resolvedIceUrls,
+        });
+      }
       onNetworkFailure?.('Your network is blocking the connection. Please retry or switch network.');
       return;
     }
@@ -331,6 +355,7 @@ export async function createWebRtcSessionController({
           const candidate = hydrateCandidate(change.doc.data());
           const type = getCandidateType(candidate.candidate);
           discoveredCandidateTypes.add(type);
+          if (type === 'relay') relayCandidateDiscovered = true;
           debugLog('webrtcService', 'Remote ICE candidate received.', {
             type,
             discoveredTypes: Array.from(discoveredCandidateTypes),

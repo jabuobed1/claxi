@@ -147,6 +147,7 @@ export default function SessionRoomPage() {
   const runningAmount = (billedSeconds / 60) * BILLING_RULES.DISPLAY_RATE_PER_MINUTE;
   const needsRating = session?.status === SESSION_STATUS.COMPLETED && !session?.ratings?.[role];
   const tldrawLicenseKey = import.meta.env.VITE_TLDRAW_LICENSE_KEY;
+  const forceRelayOnly = String(import.meta.env.VITE_WEBRTC_FORCE_RELAY_ONLY || '').toLowerCase() === 'true';
   const whiteboardRoom = session?.whiteboardRoomId || session?.requestId || session?.id;
   const graceRemaining = Math.max(0, Math.ceil(((session?.joinGraceEndsAt || 0) - Date.now()) / 1000));
 
@@ -248,6 +249,7 @@ export default function SessionRoomPage() {
         role,
         currentUserId: user.uid,
         iceServers,
+        forceRelayOnly,
 
         onLocalStream: (stream) => {
           if (!localVideoRef.current) return;
@@ -305,7 +307,7 @@ export default function SessionRoomPage() {
       activeInitKeyRef.current = '';
       setIsBusy(false);
     }
-  }, [isBusy, role, selectedCardId, session, user]);
+  }, [forceRelayOnly, isBusy, role, selectedCardId, session, user]);
 
   useEffect(() => {
     if (!session) return;
