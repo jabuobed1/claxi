@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   Camera,
   CameraOff,
@@ -126,6 +126,7 @@ function VideoCard({ title, videoRef, muted = false, rightSlot = null }) {
 
 export default function SessionRoomPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const role = user?.role === 'tutor' ? 'tutor' : 'student';
   const { sessions: studentSessions } = useStudentSessions(user?.uid);
@@ -157,6 +158,7 @@ export default function SessionRoomPage() {
 
   const rtcRef = useRef(null);
   const autoJoinAttemptedRef = useRef(false);
+  const connectionStartRecordedRef = useRef(false);
 
   const callSeconds = useLiveSeconds(session?.callStartedAt);
   const billedSeconds = useLiveSeconds(session?.billingStartedAt);
@@ -172,6 +174,7 @@ export default function SessionRoomPage() {
 
   useEffect(() => {
     autoJoinAttemptedRef.current = false;
+    connectionStartRecordedRef.current = false;
   }, [session?.id, role]);
 
   useEffect(() => {
@@ -276,10 +279,21 @@ export default function SessionRoomPage() {
 
         onSessionState: async (state) => {
           if (state !== 'connected') return;
+          if (connectionStartRecordedRef.current) return;
+          connectionStartRecordedRef.current = true;
+
+          const updates = {};
           if (!session.callStartedAt) {
+            updates.callStartedAt = Date.now();
+          }
+          if (!session.billingStartedAt) {
+            updates.billingStartedAt = Date.now();
+          }
+
+          if (Object.keys(updates).length > 0) {
             await updateSession(session.id, {
               ...session,
-              callStartedAt: Date.now(),
+              ...updates,
             });
           }
         },
@@ -311,6 +325,24 @@ export default function SessionRoomPage() {
     initializeCall({ shouldJoinStudent: session.status === SESSION_STATUS.WAITING_STUDENT });
   }, [initializeCall, isBusy, role, session]);
 
+  useEffect(() => {
+    if (!session?.status) return;
+    if (session.status !== SESSION_STATUS.CANCELED) return;
+
+    rtcRef.current?.close?.();
+    rtcRef.current = null;
+
+    if (role === 'student') {
+      navigate(`/app/student/request/${session.requestId}`, {
+        replace: true,
+        state: { requestId: session.requestId },
+      });
+      return;
+    }
+
+    navigate('/app/tutor/sessions', { replace: true });
+  }, [navigate, role, session?.requestId, session?.status]);
+
   if (!session) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-950 p-6">
@@ -339,12 +371,23 @@ export default function SessionRoomPage() {
       canceledBy: role,
       canceledReason: role === 'tutor' ? 'Canceled by tutor.' : 'Canceled by student.',
     });
+
+    if (role === 'student') {
+      navigate(`/app/student/request/${session.requestId}`, {
+        replace: true,
+        state: { requestId: session.requestId },
+      });
+      return;
+    }
+
+    navigate('/app/tutor/sessions', { replace: true });
   };
 
   const endCurrentSession = async () => {
     rtcRef.current?.close?.();
     rtcRef.current = null;
     await endSession(session);
+    navigate('/app/tutor', { replace: true });
   };
 
   const submitRating = async (event) => {
@@ -565,10 +608,14 @@ export default function SessionRoomPage() {
 
             <div className="mt-2 hidden flex-wrap items-center gap-2 sm:flex">
               <StatusPill icon={Clock3}>Call {formatDuration(callSeconds)}</StatusPill>
-              <StatusPill icon={BadgeDollarSign}>Billable {formatDuration(billedSeconds)}</StatusPill>
-              <StatusPill icon={BadgeDollarSign} tone="info">
-                R{runningAmount.toFixed(2)}
-              </StatusPill>
+              {role === 'tutor' ? (
+                <>
+                  <StatusPill icon={BadgeDollarSign}>Billable {formatDuration(billedSeconds)}</StatusPill>
+                  <StatusPill icon={BadgeDollarSign} tone="info">
+                    R{runningAmount.toFixed(2)}
+                  </StatusPill>
+                </>
+              ) : null}
               {role === 'student' && session.status === SESSION_STATUS.WAITING_STUDENT ? (
                 <StatusPill icon={Clock3} tone="warning">
                   Join window {graceRemaining}s
@@ -636,7 +683,9 @@ export default function SessionRoomPage() {
               <p className="mt-1 text-sm font-medium text-zinc-100">{session.topic}</p>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <StatusPill icon={Clock3}>Call {formatDuration(callSeconds)}</StatusPill>
-                <StatusPill icon={BadgeDollarSign}>R{runningAmount.toFixed(2)}</StatusPill>
+                {role === 'tutor' ? (
+                  <StatusPill icon={BadgeDollarSign}>R{runningAmount.toFixed(2)}</StatusPill>
+                ) : null}
               </div>
             </div>
 

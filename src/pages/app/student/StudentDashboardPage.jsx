@@ -1,13 +1,12 @@
 import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Clock3, CreditCard, Paperclip, Send, X, FileText, ImageIcon } from 'lucide-react';
+import { CreditCard, Paperclip, Send, X, FileText, ImageIcon } from 'lucide-react';
 import OnboardingStatusBanner from '../../../components/app/OnboardingStatusBanner';
 import { useAuth } from '../../../hooks/useAuth';
 import { useStudentRequests } from '../../../hooks/useClassRequests';
 import { createClassRequest } from '../../../services/classRequestService';
 import { uploadUserFile } from '../../../services/storageService';
-import { getStudentOnboardingStatus } from '../../../utils/onboarding';
-import { getLessonPrice, LESSON_DURATION_OPTIONS } from '../../../utils/pricing';
+import { BILLING_RULES, getStudentOnboardingStatus } from '../../../utils/onboarding';
 import { REQUEST_STATUSES } from '../../../utils/requestStatus';
 
 export default function StudentDashboardPage() {
@@ -15,7 +14,6 @@ export default function StudentDashboardPage() {
   const navigate = useNavigate();
   const textareaRef = useRef(null);
   const [topic, setTopic] = useState('');
-  const [durationMinutes, setDurationMinutes] = useState(10);
   const [cardId, setCardId] = useState(
     user?.paymentMethods?.find((card) => card.isDefault)?.id || user?.paymentMethods?.[0]?.id || ''
   );
@@ -25,9 +23,8 @@ export default function StudentDashboardPage() {
   const { requests } = useStudentRequests(user?.uid);
 
   const onboardingStatus = getStudentOnboardingStatus(user);
-  const selectedPrice = getLessonPrice(durationMinutes);
   const hasRequestContent = Boolean(topic.trim()) || attachments.length > 0;
-  const canSend = onboardingStatus.complete && hasRequestContent && Boolean(cardId) && Boolean(durationMinutes);
+  const canSend = onboardingStatus.complete && hasRequestContent && Boolean(cardId);
   const activeOrOngoingRequest = requests.find((request) =>
     [
       REQUEST_STATUSES.PENDING,
@@ -117,7 +114,7 @@ export default function StudentDashboardPage() {
         description: topic.trim(),
         preferredDate: '',
         preferredTime: '',
-        duration: `${durationMinutes} mins`,
+        duration: 'Per-minute billing',
         meetingProviderPreference: 'any',
         mode: 'online',
         imageAttachment: uploadedAttachments.map((file) => file.fileName).join(', '),
@@ -133,7 +130,6 @@ export default function StudentDashboardPage() {
         state: {
           requestId,
           topic: requestText,
-          durationMinutes,
         },
       });
     } catch (requestError) {
@@ -274,21 +270,6 @@ export default function StudentDashboardPage() {
                     </select>
                   </label>
 
-                  <label className="inline-flex h-11 min-w-[52px] items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 text-zinc-700 transition hover:border-emerald-300 hover:bg-emerald-50 sm:min-w-[155px]">
-                    <Clock3 className="h-4 w-4 shrink-0" />
-                    <span className="hidden text-xs font-semibold text-zinc-500 sm:inline">Minutes</span>
-                    <select
-                      value={durationMinutes}
-                      onChange={(event) => setDurationMinutes(Number(event.target.value))}
-                      className="bg-transparent text-xs text-zinc-800 outline-none"
-                    >
-                      {LESSON_DURATION_OPTIONS.map((minutes) => (
-                        <option key={minutes} value={minutes}>
-                          {minutes}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
                 </div>
 
                 <button
@@ -302,7 +283,7 @@ export default function StudentDashboardPage() {
                   }`}
                 >
                   <Send className="h-4 w-4" />
-                  {isSubmitting ? 'Requesting...' : `Request Class • R${selectedPrice}`}
+                  {isSubmitting ? 'Requesting...' : `Request R${BILLING_RULES.DISPLAY_RATE_PER_MINUTE}/min`}
                 </button>
               </div>
 
