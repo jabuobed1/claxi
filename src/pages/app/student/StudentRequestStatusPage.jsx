@@ -55,7 +55,7 @@ function getStatusMeta(status) {
       label: 'Tutor accepted',
       tone: 'violet',
       icon: CheckCircle2,
-      badge: 'Preparing your class access',
+      badge: 'Your session is ready. Joining now.',
     };
   }
 
@@ -223,6 +223,7 @@ export default function StudentRequestStatusPage() {
   const topic = request?.topic || state?.topic || 'Your request';
   const duration = request?.duration || `${durationMinutes} mins`;
   const canJoin =
+    currentStatus === REQUEST_STATUSES.ACCEPTED ||
     currentStatus === REQUEST_STATUSES.WAITING_STUDENT ||
     currentStatus === REQUEST_STATUSES.IN_PROGRESS ||
     currentStatus === REQUEST_STATUSES.IN_SESSION;
