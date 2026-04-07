@@ -4,7 +4,7 @@ const { defineSecret } = require('firebase-functions/params');
 const { logger } = require('firebase-functions');
 const admin = require('firebase-admin');
 const { Resend } = require('resend');
-const { randomUUID } = require('crypto');
+const { randomUUID, createHmac } = require('crypto');
 
 admin.initializeApp();
 
@@ -13,6 +13,36 @@ const db = admin.firestore();
 const PAYSTACK_SECRET_KEY = defineSecret('PAYSTACK_SECRET_KEY');
 const RESEND_API_KEY = defineSecret('RESEND_API_KEY');
 const EMAIL_FROM = defineSecret('EMAIL_FROM');
+const CLOUDFLARE_TURN_KEY = defineSecret('CLOUDFLARE_TURN_KEY');
+const CLOUDFLARE_TURN_URLS = defineSecret('CLOUDFLARE_TURN_URLS');
+const CLOUDFLARE_TURN_TTL_SECONDS = defineSecret('CLOUDFLARE_TURN_TTL_SECONDS');
+
+const DEFAULT_TURN_URLS = [
+  'turn:global.turn.cloudflare.com:3478?transport=udp',
+  'turn:global.turn.cloudflare.com:3478?transport=tcp',
+  'turns:global.turn.cloudflare.com:5349?transport=tcp',
+];
+const DEFAULT_STUN_URLS = ['stun:stun.l.google.com:19302'];
+const DEFAULT_TURN_TTL_SECONDS = 600;
+
+function parseTurnUrls(rawValue) {
+  if (!rawValue || typeof rawValue !== 'string') {
+    return DEFAULT_TURN_URLS;
+  }
+
+  const urls = rawValue
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+  return urls.length ? urls : DEFAULT_TURN_URLS;
+}
+
+function parseTurnTtlSeconds(rawValue) {
+  const parsed = Number(rawValue);
+  if (!Number.isFinite(parsed)) return DEFAULT_TURN_TTL_SECONDS;
+  return Math.max(60, Math.min(3600, Math.floor(parsed)));
+}
 
 function buildEmailPayload(eventType, payload) {
   switch (eventType) {
@@ -87,6 +117,58 @@ function getSafeSecretPreview(value) {
     length: value.length,
   };
 }
+
+exports.getIceConfig = onRequest(
+  { cors: true, secrets: [CLOUDFLARE_TURN_KEY, CLOUDFLARE_TURN_URLS, CLOUDFLARE_TURN_TTL_SECONDS] },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      res.status(405).json({ success: false, message: 'Method not allowed' });
+      return;
+    }
+
+    const token = getBearerToken(req);
+    if (!token) {
+      res.status(401).json({ success: false, message: 'Unauthorized request.' });
+      return;
+    }
+
+    let decodedToken;
+    try {
+      decodedToken = await admin.auth().verifyIdToken(token);
+    } catch (error) {
+      logger.warn('Failed to verify Firebase auth token for ICE config.', { error: error.message });
+      res.status(401).json({ success: false, message: 'Unauthorized request.' });
+      return;
+    }
+
+    const turnKey = CLOUDFLARE_TURN_KEY.value();
+    if (!turnKey) {
+      logger.error('CLOUDFLARE_TURN_KEY missing.');
+      res.status(500).json({ success: false, message: 'Realtime network configuration unavailable.' });
+      return;
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    const ttl = parseTurnTtlSeconds(CLOUDFLARE_TURN_TTL_SECONDS.value());
+    const expiry = now + ttl;
+    const username = `${expiry}:${decodedToken.uid}`;
+    const credential = createHmac('sha1', turnKey).update(username).digest('base64');
+    const turnUrls = parseTurnUrls(CLOUDFLARE_TURN_URLS.value());
+
+    res.status(200).json({
+      success: true,
+      iceServers: [
+        { urls: DEFAULT_STUN_URLS },
+        {
+          urls: turnUrls,
+          username,
+          credential,
+        },
+      ],
+      expiresAt: expiry * 1000,
+    });
+  },
+);
 
 exports.verifyPaystack = onRequest({ cors: true, secrets: [PAYSTACK_SECRET_KEY] }, async (req, res) => {
   if (req.method !== 'POST') {

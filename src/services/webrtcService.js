@@ -1,14 +1,54 @@
 import { getFirebaseClients } from '../firebase/config';
+import { debugLog } from '../utils/devLogger';
 
-const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
+const DEFAULT_ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
 const CONNECTION_TIMEOUT_MS = 12000;
 const MAX_ICE_RESTART_ATTEMPTS = 2;
 
-function buildConfig() {
+function buildConfig(iceServers) {
   return {
-    iceServers: ICE_SERVERS,
+    iceServers: Array.isArray(iceServers) && iceServers.length ? iceServers : DEFAULT_ICE_SERVERS,
     iceCandidatePoolSize: 4,
   };
+}
+
+function getCandidateType(candidateText = '') {
+  const match = candidateText.match(/\btyp\s([a-z]+)/i);
+  return match?.[1]?.toLowerCase() || 'unknown';
+}
+
+async function logSelectedPair(pc) {
+  try {
+    const stats = await pc.getStats();
+    let selectedPair = null;
+    stats.forEach((report) => {
+      if (report.type === 'transport' && report.selectedCandidatePairId) {
+        selectedPair = stats.get(report.selectedCandidatePairId) || selectedPair;
+      }
+      if (report.type === 'candidate-pair' && report.nominated && report.state === 'succeeded') {
+        selectedPair = selectedPair || report;
+      }
+    });
+
+    if (!selectedPair) {
+      debugLog('webrtcService', 'Connected, but selected ICE pair is unavailable.');
+      return;
+    }
+
+    const local = stats.get(selectedPair.localCandidateId);
+    const remote = stats.get(selectedPair.remoteCandidateId);
+    const relayUsed = local?.candidateType === 'relay' || remote?.candidateType === 'relay';
+
+    debugLog('webrtcService', 'Selected ICE candidate pair.', {
+      relayUsed,
+      localType: local?.candidateType || null,
+      remoteType: remote?.candidateType || null,
+      localProtocol: local?.protocol || null,
+      remoteProtocol: remote?.protocol || null,
+    });
+  } catch (error) {
+    debugLog('webrtcService', 'Failed to inspect selected ICE candidate pair.', { message: error.message });
+  }
 }
 
 async function addCandidate(addDoc, candidateCollectionRef, candidate) {
@@ -39,6 +79,7 @@ export async function createWebRtcSessionController({
   sessionId,
   role,
   currentUserId,
+  iceServers,
   onRemoteStream,
   onRemoteScreenStream,
   onLocalStream,
@@ -69,7 +110,7 @@ export async function createWebRtcSessionController({
   const studentCandidatesRef = collection(db, 'sessions', sessionId, 'webrtcStudentCandidates');
   const restartCollectionRef = collection(db, 'sessions', sessionId, 'webrtcRestartRequests');
 
-  const pc = new RTCPeerConnection(buildConfig());
+  const pc = new RTCPeerConnection(buildConfig(iceServers));
 
   const localStream = await navigator.mediaDevices.getUserMedia({
     video: true,
@@ -196,15 +237,21 @@ export async function createWebRtcSessionController({
 
   pc.onicecandidate = async (event) => {
     if (!event.candidate) return;
+    debugLog('webrtcService', 'Local ICE candidate discovered.', {
+      type: getCandidateType(event.candidate.candidate),
+      protocol: event.candidate.protocol || null,
+    });
     const destination = role === 'tutor' ? tutorCandidatesRef : studentCandidatesRef;
     await addCandidate(addDoc, destination, event.candidate);
   };
 
   pc.onconnectionstatechange = () => {
     onSessionState?.(pc.connectionState);
+    debugLog('webrtcService', 'connectionState changed.', { state: pc.connectionState });
 
     if (pc.connectionState === 'connected') {
       onConnectionMessage?.('Connected');
+      logSelectedPair(pc);
       if (connectTimer) clearTimeout(connectTimer);
       return;
     }
@@ -215,6 +262,7 @@ export async function createWebRtcSessionController({
   };
 
   pc.oniceconnectionstatechange = async () => {
+    debugLog('webrtcService', 'iceConnectionState changed.', { state: pc.iceConnectionState });
     if (!['failed', 'disconnected'].includes(pc.iceConnectionState)) return;
 
     if (reconnectAttempts >= MAX_ICE_RESTART_ATTEMPTS) {
@@ -268,7 +316,11 @@ export async function createWebRtcSessionController({
       snapshot.docChanges().forEach(async (change) => {
         if (change.type !== 'added') return;
         try {
-          await pc.addIceCandidate(hydrateCandidate(change.doc.data()));
+          const candidate = hydrateCandidate(change.doc.data());
+          debugLog('webrtcService', 'Remote ICE candidate received.', {
+            type: getCandidateType(candidate.candidate),
+          });
+          await pc.addIceCandidate(candidate);
         } catch (_) {
           // Ignore stale ICE candidate errors during reconnect.
         }
@@ -484,5 +536,5 @@ export async function createWebRtcSessionController({
 }
 
 export function getDefaultIceServers() {
-  return ICE_SERVERS;
+  return DEFAULT_ICE_SERVERS;
 }

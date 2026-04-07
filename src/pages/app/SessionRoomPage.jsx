@@ -25,6 +25,7 @@ import {
   updateSession,
 } from '../../services/sessionService';
 import { createWebRtcSessionController } from '../../services/webrtcService';
+import { fetchIceServers } from '../../services/iceServerService';
 
 function useLiveSeconds(startTs) {
   const [tick, setTick] = useState(Date.now());
@@ -234,10 +235,13 @@ export default function SessionRoomPage() {
         await joinSessionAsStudent(session, selected?.id || null, selected?.last4 || null);
       }
 
+      const iceServers = await fetchIceServers();
+
       const controller = await createWebRtcSessionController({
         sessionId: session.id,
         role,
         currentUserId: user.uid,
+        iceServers,
 
         onLocalStream: (stream) => {
           if (!localVideoRef.current) return;
