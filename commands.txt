@@ -7,7 +7,7 @@ Run:
 
 git status
 git add .
-git commit -m "Commit before Cloudflare setup - 07.04.2026 - 3."
+git commit -m "Commit before Cloudflare setup - 07.04.2026 - 4."
 git push origin main
 
 (This ensures Codex sees your latest work from GitHub)
@@ -78,3 +78,11 @@ tldraw-2026-07-11/WyJTRDBGY2RKbyIsWyIqIl0sMTYsIjIwMjYtMDctMTEiXQ.WkJSY+NfQF8pJPY
 
 VITE_DEBUG_LOGS
 true
+
+Cloudflare:
+
+API Token
+65bf4bbcc8f9b42180d8c5600869ff215f9388e8ef0506adae6d88f0ffe0a3e2
+
+Turn Token ID
+6154c9e492e8c63d329d5f30a99ed3ce
