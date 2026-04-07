@@ -7,7 +7,7 @@ Run:
 
 git status
 git add .
-git commit -m "Commit before Cloudflare setup - 07.04.2026 - 4."
+git commit -m "Commit after first Cloudflare setup - 07.04.2026 - 4."
 git push origin main
 
 (This ensures Codex sees your latest work from GitHub)
@@ -82,7 +82,15 @@ true
 Cloudflare:
 
 API Token
+firebase functions:secrets:set CLOUDFLARE_TURN_API_TOKEN
 65bf4bbcc8f9b42180d8c5600869ff215f9388e8ef0506adae6d88f0ffe0a3e2
 
 Turn Token ID
+firebase functions:secrets:set CLOUDFLARE_TURN_KEY
 6154c9e492e8c63d329d5f30a99ed3ce
+
+firebase functions:secrets:set CLOUDFLARE_TURN_URLS
+turn:turn.cloudflare.com:3478?transport=udp,turn:turn.cloudflare.com:3478?transport=tcp
+
+firebase functions:secrets:set CLOUDFLARE_TURN_TTL_SECONDS
+600
