@@ -202,7 +202,6 @@ export async function joinSessionAsStudent(session, selectedCardId, selectedCard
     ...session,
     status: SESSION_STATUS.IN_PROGRESS,
     studentJoinedAt: Date.now(),
-    billingStartedAt: Date.now(),
     selectedCardId,
     selectedCardLast4,
   });

@@ -5,12 +5,10 @@ import SectionCard from '../../../components/ui/SectionCard';
 import FormField from '../../../components/ui/FormField';
 import { useAuth } from '../../../hooks/useAuth';
 import { getStudentOnboardingStatus } from '../../../utils/onboarding';
-import { LESSON_DURATION_OPTIONS } from '../../../utils/pricing';
 
 const initialForm = {
   topic: '',
   description: '',
-  durationMinutes: 10,
 };
 
 export default function RequestClassPage() {
@@ -25,7 +23,6 @@ export default function RequestClassPage() {
       state: {
         topic: form.topic,
         description: form.description,
-        durationMinutes: Number(form.durationMinutes),
         cardId: user?.paymentMethods?.find((card) => card.isDefault)?.id || user?.paymentMethods?.[0]?.id || '',
       },
     });
@@ -61,13 +58,6 @@ export default function RequestClassPage() {
             onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
             required
           />
-          <label className="block text-sm font-semibold text-zinc-700">
-            Duration
-            <select value={form.durationMinutes} onChange={(event) => setForm((prev) => ({ ...prev, durationMinutes: Number(event.target.value) }))} className="mt-2 w-full rounded-2xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900">
-              {LESSON_DURATION_OPTIONS.map((minutes) => <option key={minutes} value={minutes}>{minutes} minutes</option>)}
-            </select>
-          </label>
-
           <button type="submit" className="inline-flex rounded-2xl bg-brand px-5 py-3 text-sm font-bold text-white transition hover:bg-brand-dark">
             Continue to request
           </button>

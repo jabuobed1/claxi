@@ -201,7 +201,6 @@ export default function StudentRequestStatusPage() {
   const { user } = useAuth();
   const { requestId: requestIdParam } = useParams();
   const { state } = useLocation();
-  const durationMinutes = Number(state?.durationMinutes || 10);
   const requestId = requestIdParam || state?.requestId || '';
   const { request } = useStudentRequest(requestId);
   const { sessions } = useStudentSessions(user?.uid);
@@ -221,7 +220,7 @@ export default function StudentRequestStatusPage() {
   const progressIndex = getProgressIndex(currentStatus);
 
   const topic = request?.topic || state?.topic || 'Your request';
-  const duration = request?.duration || `${durationMinutes} mins`;
+  const duration = request?.duration || 'Per-minute billing';
   const canJoin =
     currentStatus === REQUEST_STATUSES.ACCEPTED ||
     currentStatus === REQUEST_STATUSES.WAITING_STUDENT ||
