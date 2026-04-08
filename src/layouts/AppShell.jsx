@@ -19,20 +19,23 @@ export default function AppShell() {
 
   return (
     <div className="min-h-screen bg-[#f4f5f7] px-3 py-3 text-zinc-900 md:px-6 md:py-6">
-      <div className="mx-auto grid max-w-7xl gap-4 md:grid-cols-[260px_1fr]">
+      <div className="mx-auto grid max-w-7xl gap-4 md:grid-cols-[280px_1fr] md:gap-6">
         <div className="hidden md:block md:sticky md:top-6 md:h-[calc(100vh-3rem)]">
           <Sidebar role={activeRole} />
         </div>
 
-        <div>
-          {activeRole === 'tutor' && !isSessionRoute ? <TutorOfferOverlay /> : null}
-          <SessionRatingPrompt />
-          <Topbar
-            name={user?.fullName || user?.displayName || 'Claxi User'}
-            role={activeRole}
-            onOpenNav={() => setIsNavOpen(true)}
-          />
-          <Outlet />
+        <div className="relative">
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-48 rounded-[2rem] bg-gradient-to-r from-emerald-100/60 via-white to-emerald-50/30" />
+          <div className="relative z-10">
+            {activeRole === 'tutor' && !isSessionRoute ? <TutorOfferOverlay /> : null}
+            <SessionRatingPrompt />
+            <Topbar
+              name={user?.fullName || user?.displayName || 'Claxi User'}
+              role={activeRole}
+              onOpenNav={() => setIsNavOpen(true)}
+            />
+            <Outlet />
+          </div>
         </div>
       </div>
 
@@ -40,7 +43,7 @@ export default function AppShell() {
         <div className="fixed inset-0 z-50" role="dialog" aria-modal="true">
           <button
             type="button"
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-zinc-950/45 backdrop-blur-[2px]"
             aria-label="Close navigation"
             onClick={() => setIsNavOpen(false)}
           />
