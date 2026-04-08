@@ -25,8 +25,8 @@ export default function AppBottomNav({ role = 'student' }) {
   const links = navConfig(role);
 
   return (
-    <div className="pointer-events-none fixed bottom-4 left-1/2 z-40 -translate-x-1/2 px-3 md:hidden">
-      <div className="pointer-events-auto inline-flex items-center gap-1 rounded-[28px] border border-zinc-200/80 bg-white/95 px-2 py-2 shadow-[0_12px_40px_rgba(15,23,42,0.14)] backdrop-blur">
+    <div className="pointer-events-none fixed bottom-4 left-1/2 z-40 w-full max-w-md -translate-x-1/2 px-3 md:hidden">
+      <div className="pointer-events-auto grid grid-cols-5 items-center gap-1 rounded-[26px] border border-zinc-200/90 bg-white/95 px-2 py-2 shadow-[0_16px_40px_rgba(15,23,42,0.16)] backdrop-blur">
         {links.map(({ to, icon: Icon, label, end }) => (
           <NavLink
             key={to}
@@ -35,10 +35,13 @@ export default function AppBottomNav({ role = 'student' }) {
             aria-label={label}
             title={label}
             className={({ isActive }) =>
-              `flex h-11 min-w-11 items-center justify-center rounded-2xl border transition ${isActive ? 'border-zinc-900 bg-zinc-900 text-white' : 'border-transparent text-zinc-600 hover:bg-zinc-100'}`
+              `flex h-11 min-w-11 flex-col items-center justify-center rounded-2xl border transition ${isActive
+                ? 'border-emerald-100 bg-emerald-50 text-brand'
+                : 'border-transparent text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800'}`
             }
           >
-            <Icon className="h-5 w-5" />
+            <Icon className="h-4 w-4" />
+            <span className="mt-0.5 text-[10px] font-semibold">{label}</span>
           </NavLink>
         ))}
       </div>

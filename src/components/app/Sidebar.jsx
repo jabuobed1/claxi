@@ -1,9 +1,9 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { LogOut, UserCircle2, X } from 'lucide-react';
+import { GraduationCap, LogOut, UserCircle2, X } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { getRoleNavigation } from '../../constants/navigation';
 
-const baseClass = 'flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold transition-colors';
+const baseClass = 'group flex items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold transition-all';
 
 export default function Sidebar({ role, onNavigate, mobile = false }) {
   const links = getRoleNavigation(role);
@@ -17,17 +17,24 @@ export default function Sidebar({ role, onNavigate, mobile = false }) {
   };
 
   return (
-    <aside className="flex h-full w-full flex-col rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm">
-      <div className="mb-6 flex items-center justify-between px-2">
-        <Link to="/app" onClick={onNavigate} className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand font-black text-white">C</div>
+    <aside className="flex h-full w-full flex-col rounded-[2rem] border border-zinc-200/90 bg-white/95 p-4 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur">
+      <div className="mb-6 flex items-center justify-between px-2 pt-1">
+        <Link to="/app" onClick={onNavigate} className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand text-white shadow-sm">
+            <GraduationCap className="h-5 w-5" />
+          </div>
           <div>
-            <p className="text-sm text-zinc-600">Claxi</p>
-            <p className="text-xs uppercase text-zinc-500">{role}</p>
+            <p className="text-sm font-bold tracking-tight text-zinc-900">Claxi</p>
+            <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">{role} workspace</p>
           </div>
         </Link>
         {mobile ? (
-          <button type="button" onClick={onNavigate} className="rounded-xl border border-zinc-200 p-2 text-zinc-600" aria-label="Close navigation">
+          <button
+            type="button"
+            onClick={onNavigate}
+            className="rounded-xl border border-zinc-200 p-2 text-zinc-600"
+            aria-label="Close navigation"
+          >
             <X className="h-4 w-4" />
           </button>
         ) : null}
@@ -41,21 +48,28 @@ export default function Sidebar({ role, onNavigate, mobile = false }) {
             end={Boolean(end)}
             onClick={onNavigate}
             className={({ isActive }) =>
-              `${baseClass} ${isActive ? 'bg-brand text-white' : 'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900'}`
+              `${baseClass} ${isActive
+                ? 'bg-brand text-white shadow-sm shadow-emerald-200'
+                : 'text-zinc-700 hover:bg-zinc-100/90 hover:text-zinc-900'}`
             }
           >
-            <Icon className="h-4 w-4" />
-            {label}
+            <Icon className="h-4 w-4 transition-transform group-hover:scale-110" />
+            <span>{label}</span>
           </NavLink>
         ))}
       </nav>
+
+      <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-3 text-xs text-emerald-800">
+        <p className="font-semibold">Tip</p>
+        <p className="mt-1 leading-relaxed">Keep your profile and availability up to date for a smoother matching experience.</p>
+      </div>
 
       <div className="mt-auto border-t border-zinc-200 pt-4">
         <NavLink
           to="/app/profile"
           onClick={onNavigate}
           className={({ isActive }) =>
-            `${baseClass} ${isActive ? 'bg-black text-white' : 'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900'}`
+            `${baseClass} ${isActive ? 'bg-zinc-900 text-white' : 'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900'}`
           }
         >
           <UserCircle2 className="h-4 w-4" />
