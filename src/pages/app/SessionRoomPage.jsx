@@ -413,7 +413,7 @@ export default function SessionRoomPage() {
 
   useEffect(() => {
     if (!session?.status) return;
-    if (session.status !== SESSION_STATUS.CANCELED) return;
+    if (![SESSION_STATUS.CANCELED, SESSION_STATUS.CANCELED_DURING].includes(session.status)) return;
 
     rtcRef.current?.close?.();
     rtcRef.current = null;
@@ -430,6 +430,17 @@ export default function SessionRoomPage() {
     }
 
     navigate('/app/tutor/sessions', { replace: true });
+  }, [navigate, role, session?.requestId, session?.status]);
+
+  useEffect(() => {
+    if (!session?.status) return;
+    if (session.status !== SESSION_STATUS.COMPLETED) return;
+    if (role !== 'student') return;
+
+    navigate(`/app/student/request/${session.requestId}`, {
+      replace: true,
+      state: { requestId: session.requestId },
+    });
   }, [navigate, role, session?.requestId, session?.status]);
 
   useEffect(() => {
@@ -476,7 +487,7 @@ export default function SessionRoomPage() {
 
     if (session.requestId) {
       await updateClassRequest(session.requestId, {
-        status: REQUEST_STATUSES.CANCELED,
+        status: REQUEST_STATUSES.CANCELED_DURING,
         canceledAt: endedAt,
         canceledBy: role,
         canceledReason: cancellationReason,
@@ -490,7 +501,7 @@ export default function SessionRoomPage() {
     setShowStudentControls(false);
 
     await updateSession(session.id, {
-      status: SESSION_STATUS.CANCELED,
+      status: SESSION_STATUS.CANCELED_DURING,
       endedAt,
       canceledAt: endedAt,
       canceledBy: role,
@@ -519,6 +530,15 @@ export default function SessionRoomPage() {
     rtcInitStartedRef.current = false;
     setRemoteScreenStreamObj(null);
     await endSession(session);
+
+    if (role === 'student') {
+      navigate(`/app/student/request/${session.requestId}`, {
+        replace: true,
+        state: { requestId: session.requestId },
+      });
+      return;
+    }
+
     navigate('/app/tutor', { replace: true });
   };
 
@@ -699,7 +719,9 @@ export default function SessionRoomPage() {
         {role === 'tutor' ? renderTutorStage() : renderStudentStage()}
 
         <div
-          className={`absolute bottom-4 left-4 top-4 z-30 flex items-center ${
+          className={`absolute z-30 ${
+            role === 'student' ? 'bottom-4 left-4' : 'bottom-4 left-4 top-4 flex items-center'
+          } ${
             role === 'student'
               ? showStudentOverlay
                 ? 'opacity-100'
