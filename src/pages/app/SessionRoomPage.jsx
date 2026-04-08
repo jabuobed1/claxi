@@ -26,6 +26,8 @@ import {
 import { createWebRtcSessionController } from '../../services/webrtcService';
 import { fetchIceServers } from '../../services/iceServerService';
 import { debugLog } from '../../utils/devLogger';
+import { updateClassRequest } from '../../services/classRequestService';
+import { REQUEST_STATUSES } from '../../utils/requestStatus';
 
 function useLiveSeconds(startTs) {
   const [tick, setTick] = useState(Date.now());
@@ -471,6 +473,15 @@ export default function SessionRoomPage() {
     const sessionSecondsForCancellation = Math.max(callSeconds, billedSeconds);
     const shouldChargeForCancellation = sessionSecondsForCancellation >= 30;
     const endedAt = Date.now();
+
+    if (session.requestId) {
+      await updateClassRequest(session.requestId, {
+        status: REQUEST_STATUSES.CANCELED,
+        canceledAt: endedAt,
+        canceledBy: role,
+        canceledReason: cancellationReason,
+      });
+    }
 
     rtcRef.current?.close?.();
     rtcRef.current = null;
