@@ -7,7 +7,7 @@ Run:
 
 git status
 git add .
-git commit -m "Commit after a few changes to try and solve the not connecting situation - 08.04.2026 - 1."
+git commit -m "Commit before changing the font - 08.04.2026 - 2."
 git push origin main
 
 (This ensures Codex sees your latest work from GitHub)

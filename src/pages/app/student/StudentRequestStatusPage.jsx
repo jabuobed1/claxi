@@ -233,6 +233,13 @@ export default function StudentRequestStatusPage() {
   const shouldAutoOpenSession = canJoin && Boolean(matchingSession?.id);
 
   useEffect(() => {
+    console.log('request status:', currentStatus);
+    console.log('requestId:', requestId);
+    console.log('sessions:', sessions);
+    console.log('matchingSession:', matchingSession);
+  }, [currentStatus, requestId, sessions, matchingSession]);
+
+  useEffect(() => {
     if (!shouldAutoOpenSession) return;
     navigate(`/app/session/${matchingSession.id}`, { replace: true });
   }, [matchingSession?.id, navigate, shouldAutoOpenSession]);

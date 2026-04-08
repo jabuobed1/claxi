@@ -336,27 +336,60 @@ export async function submitSessionRating(session, role, payload) {
   return updatedSession;
 }
 
-export async function findSessionIdByRequestAndTutor({ requestId, tutorId, maxAttempts = 8, delayMs = 350 }) {
+export async function findSessionIdByRequestAndTutor({
+  requestId,
+  tutorId,
+  maxAttempts = 8,
+  delayMs = 350,
+}) {
   if (!requestId || !tutorId) return null;
 
   const clients = await getFirebaseClients();
   if (!clients) {
-    const match = getMockSessions().find((item) => item.requestId === requestId && item.tutorId === tutorId);
+    const request = getMockRequests().find((item) => item.id === requestId);
+    if (request?.sessionId) return request.sessionId;
+
+    const match = getMockSessions().find(
+      (item) => item.requestId === requestId && item.tutorId === tutorId,
+    );
     return match?.id || null;
   }
 
   const { db, firestoreModule } = clients;
-  const { collection, getDocs, query, where } = firestoreModule;
+  const { collection, doc, getDoc, getDocs, query, where } = firestoreModule;
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    const snapshot = await getDocs(query(
-      collection(db, 'sessions'),
-      where('requestId', '==', requestId),
-      where('tutorId', '==', tutorId),
-    ));
-    if (snapshot.docs.length) {
+    const requestSnap = await getDoc(doc(db, 'classRequests', requestId));
+    if (requestSnap.exists()) {
+      const requestData = requestSnap.data() || {};
+      if (
+        requestData.sessionId
+        && requestData.tutorId === tutorId
+      ) {
+        return requestData.sessionId;
+      }
+    }
+
+    const snapshot = await getDocs(
+      query(
+        collection(db, 'sessions'),
+        where('requestId', '==', requestId),
+        where('tutorId', '==', tutorId),
+      ),
+    );
+
+    if (snapshot.docs.length === 1) {
       return snapshot.docs[0].id;
     }
+
+    if (snapshot.docs.length > 1) {
+      const exactMatch = snapshot.docs.find((item) => item.id === requestId);
+      if (exactMatch) {
+        return exactMatch.id;
+      }
+      return snapshot.docs[0].id;
+    }
+
     if (attempt < maxAttempts - 1) {
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }

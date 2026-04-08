@@ -816,9 +816,39 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
 
   if (!clients) {
     const existing = getMockRequests().find((item) => item.id === requestId);
-    if (!existing || existing.currentOfferTutorId !== tutorId) return;
+    if (!existing) return;
 
     if (response === 'accept') {
+      const existingSessionId = existing.sessionId || requestId;
+      const existingSession = getMockSessions().find(
+        (item) =>
+          item.id === existingSessionId
+          || (item.requestId === requestId && item.tutorId === tutorId),
+      );
+
+      if (
+        existing.status === REQUEST_STATUS.ACCEPTED
+        && existing.tutorId === tutorId
+        && existingSession
+      ) {
+        debugLog('classRequestService', 'Mock accept reused existing session.', {
+          requestId,
+          tutorId,
+          sessionId: existingSession.id,
+        });
+        return { sessionId: existingSession.id, reused: true };
+      }
+
+      if (existing.currentOfferTutorId !== tutorId) {
+        throw new Error('This request is no longer assigned to you.');
+      }
+
+      if (!canTransitionRequest(existing.status, REQUEST_STATUS.ACCEPTED)) {
+        throw new Error('This request cannot be accepted in its current state.');
+      }
+
+      const sessionId = existingSession?.id || existing.sessionId || requestId;
+
       const next = getMockRequests().map((item) =>
         item.id === requestId
           ? {
@@ -826,142 +856,31 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
               tutorId,
               tutorName: tutorName || existing.tutorName || 'Tutor',
               tutorEmail: tutorEmail || existing.tutorEmail || '',
+              sessionId,
               currentOfferTutorId: null,
               offerExpiresAt: null,
-              statusDetail: 'Tutor accepted. Session is being prepared.',
+              statusDetail: 'Tutor accepted. Session is ready to join.',
               updatedAt: new Date().toISOString(),
             }
           : item,
       );
       setMockRequests(next);
 
-      const session = {
-        id: crypto.randomUUID(),
-        requestId,
-        studentId: existing.studentId,
-        studentName: existing.studentName,
-        studentEmail: existing.studentEmail,
-        tutorId,
-        tutorName: tutorName || existing.tutorName || 'Tutor',
-        tutorEmail: tutorEmail || existing.tutorEmail || '',
-        subject: 'Mathematics',
-        topic: existing.topic,
-        scheduledDate: existing.preferredDate,
-        scheduledTime: existing.preferredTime,
-        duration: existing.duration,
-        meetingProvider: MEETING_PROVIDERS.WEBRTC,
-        meetingLink: '',
-        meetingId: '',
-        meetingPassword: '',
-        webrtc: {
-          ready: true,
-          status: 'tutor_waiting',
-          tutorReadyAt: Date.now(),
-          studentReadyAt: null,
-          offer: null,
-          answer: null,
-          lastRestartAt: null,
-        },
-        whiteboardRoomId: existing.whiteboardRoomId || requestId,
-        notes: '',
-        requestAttachment: existing.attachment || null,
-        requestDescription: existing.description || '',
-        status: SESSION_STATUS.WAITING_STUDENT,
-        joinGraceEndsAt: Date.now() + 2 * 60 * 1000,
-        callStartedAt: null,
-        studentJoinedAt: null,
-        billingStartedAt: null,
-        billedSeconds: 0,
-        totalAmount: 0,
-        payoutBreakdown: {
-          platformFeeRate: PLATFORM_FEE_RATE,
-          tutorRate: TUTOR_PAYOUT_RATE,
-          tutorAmount: 0,
-          platformAmount: 0,
-        },
-        ratings: {
-          student: null,
-          tutor: null,
-        },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setMockSessions([session, ...getMockSessions()]);
-      return;
-    }
-
-    const queue = (existing.tutorQueue || []).filter((id) => id !== tutorId);
-    const updated = getMockRequests().map((item) =>
-      item.id === requestId
-        ? {
-            ...updateRequestStatusSafe(item, queue.length ? REQUEST_STATUS.MATCHING : REQUEST_STATUS.NO_TUTOR_AVAILABLE),
-            tutorQueue: queue,
-            currentOfferTutorId: null,
-            offerExpiresAt: null,
-            updatedAt: new Date().toISOString(),
-          }
-        : item,
-    );
-    setMockRequests(updated);
-    await assignNextTutorOffer(requestId);
-    return;
-  }
-
-  const { db, firestoreModule } = clients;
-  const { doc, runTransaction, collection, serverTimestamp } = firestoreModule;
-
-  debugLog('classRequestService', 'Tutor offer transaction started.', { requestId, tutorId, response });
-  try {
-    await runTransaction(db, async (transaction) => {
-      const requestRef = doc(db, 'classRequests', requestId);
-      const requestSnap = await transaction.get(requestRef);
-      if (!requestSnap.exists()) throw new Error('Request not found.');
-
-      const requestData = requestSnap.data();
-      debugLog('classRequestService', 'Tutor offer transaction request state.', {
-        requestId,
-        status: requestData.status || null,
-        currentOfferTutorId: requestData.currentOfferTutorId || null,
-      });
-
-      if (requestData.currentOfferTutorId !== tutorId) {
-        throw new Error('This request is no longer assigned to you.');
-      }
-
-      if (response === 'accept') {
-        if (!canTransitionRequest(requestData.status, REQUEST_STATUS.ACCEPTED)) {
-          throw new Error('This request cannot be accepted in its current state.');
-        }
-
-        transaction.update(requestRef, {
-          tutorId,
-          tutorName: tutorName || 'Tutor',
-          tutorEmail: tutorEmail || '',
-          status: REQUEST_STATUS.ACCEPTED,
-          currentOfferTutorId: null,
-          offerExpiresAt: null,
-          statusDetail: 'Tutor accepted. Session is ready to join.',
-          updatedAt: serverTimestamp(),
-        });
-
-        const sessionRef = doc(collection(db, 'sessions'));
-        debugLog('classRequestService', 'Tutor offer transaction creating session.', {
+      if (!existingSession) {
+        const session = {
+          id: sessionId,
           requestId,
-          sessionId: sessionRef.id,
-        });
-        transaction.set(sessionRef, {
-          requestId,
-          studentId: requestData.studentId,
-          studentName: requestData.studentName,
-          studentEmail: requestData.studentEmail,
+          studentId: existing.studentId,
+          studentName: existing.studentName,
+          studentEmail: existing.studentEmail,
           tutorId,
-          tutorName: tutorName || requestData.tutorName || 'Tutor',
-          tutorEmail: tutorEmail || requestData.tutorEmail || '',
+          tutorName: tutorName || existing.tutorName || 'Tutor',
+          tutorEmail: tutorEmail || existing.tutorEmail || '',
           subject: 'Mathematics',
-          topic: requestData.topic,
-          scheduledDate: requestData.preferredDate,
-          scheduledTime: requestData.preferredTime,
-          duration: requestData.duration,
+          topic: existing.topic,
+          scheduledDate: existing.preferredDate,
+          scheduledTime: existing.preferredTime,
+          duration: existing.duration,
           meetingProvider: MEETING_PROVIDERS.WEBRTC,
           meetingLink: '',
           meetingId: '',
@@ -975,10 +894,10 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
             answer: null,
             lastRestartAt: null,
           },
-          whiteboardRoomId: requestData.whiteboardRoomId || requestId,
+          whiteboardRoomId: existing.whiteboardRoomId || requestId,
           notes: '',
-          requestAttachment: requestData.attachment || null,
-          requestDescription: requestData.description || '',
+          requestAttachment: existing.attachment || null,
+          requestDescription: existing.description || '',
           status: SESSION_STATUS.WAITING_STUDENT,
           joinGraceEndsAt: Date.now() + 2 * 60 * 1000,
           callStartedAt: null,
@@ -996,26 +915,256 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
             student: null,
             tutor: null,
           },
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-      } else {
-        const queue = (requestData.tutorQueue || []).filter((id) => id !== tutorId);
-        const nextStatus = queue.length ? REQUEST_STATUS.MATCHING : REQUEST_STATUS.NO_TUTOR_AVAILABLE;
-        if (!canTransitionRequest(requestData.status, nextStatus)) {
-          throw new Error('This request cannot be declined in its current state.');
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+
+        setMockSessions([
+          session,
+          ...getMockSessions().filter((item) => item.id !== sessionId),
+        ]);
+      }
+
+      return { sessionId, reused: Boolean(existingSession) };
+    }
+
+    if (existing.currentOfferTutorId !== tutorId) {
+      throw new Error('This request is no longer assigned to you.');
+    }
+
+    const queue = (existing.tutorQueue || []).filter((id) => id !== tutorId);
+    const nextStatus = queue.length ? REQUEST_STATUS.MATCHING : REQUEST_STATUS.NO_TUTOR_AVAILABLE;
+
+    if (!canTransitionRequest(existing.status, nextStatus)) {
+      throw new Error('This request cannot be declined in its current state.');
+    }
+
+    const updated = getMockRequests().map((item) =>
+      item.id === requestId
+        ? {
+            ...updateRequestStatusSafe(item, nextStatus),
+            tutorQueue: queue,
+            currentOfferTutorId: null,
+            offerExpiresAt: null,
+            updatedAt: new Date().toISOString(),
+          }
+        : item,
+    );
+
+    setMockRequests(updated);
+    await assignNextTutorOffer(requestId);
+    return { sessionId: null, reused: false };
+  }
+
+  const { db, firestoreModule } = clients;
+  const { doc, runTransaction, serverTimestamp } = firestoreModule;
+
+  debugLog('classRequestService', 'Tutor offer transaction started.', {
+    requestId,
+    tutorId,
+    response,
+  });
+
+  try {
+    const transactionResult = await runTransaction(db, async (transaction) => {
+      const requestRef = doc(db, 'classRequests', requestId);
+      const requestSnap = await transaction.get(requestRef);
+
+      if (!requestSnap.exists()) throw new Error('Request not found.');
+
+      const requestData = requestSnap.data();
+      const resolvedTutorName = tutorName || requestData.tutorName || 'Tutor';
+      const resolvedTutorEmail = tutorEmail || requestData.tutorEmail || '';
+      const sessionId = requestData.sessionId || requestId;
+      const sessionRef = doc(db, 'sessions', sessionId);
+      const sessionSnap = await transaction.get(sessionRef);
+
+      debugLog('classRequestService', 'Tutor offer transaction request state.', {
+        requestId,
+        status: requestData.status || null,
+        currentOfferTutorId: requestData.currentOfferTutorId || null,
+        existingSessionId: requestData.sessionId || null,
+      });
+
+      if (response === 'accept') {
+        const alreadyAcceptedBySameTutor =
+          requestData.status === REQUEST_STATUS.ACCEPTED
+          && requestData.tutorId === tutorId;
+
+        if (alreadyAcceptedBySameTutor && sessionSnap.exists()) {
+          debugLog('classRequestService', 'Tutor offer transaction reused existing accepted session.', {
+            requestId,
+            tutorId,
+            sessionId,
+          });
+          return { sessionId, reused: true };
         }
+
+        if (requestData.currentOfferTutorId !== tutorId && !alreadyAcceptedBySameTutor) {
+          throw new Error('This request is no longer assigned to you.');
+        }
+
+        if (!alreadyAcceptedBySameTutor && !canTransitionRequest(requestData.status, REQUEST_STATUS.ACCEPTED)) {
+          throw new Error('This request cannot be accepted in its current state.');
+        }
+
         transaction.update(requestRef, {
-          tutorQueue: queue,
-          status: nextStatus,
+          tutorId,
+          tutorName: resolvedTutorName,
+          tutorEmail: resolvedTutorEmail,
+          sessionId,
+          status: REQUEST_STATUS.ACCEPTED,
           currentOfferTutorId: null,
           offerExpiresAt: null,
-          statusDetail: 'Tutor declined. Matching another tutor.',
+          statusDetail: 'Tutor accepted. Session is ready to join.',
           updatedAt: serverTimestamp(),
         });
+
+        if (!sessionSnap.exists()) {
+          debugLog('classRequestService', 'Tutor offer transaction creating session.', {
+            requestId,
+            sessionId,
+          });
+
+          transaction.set(
+            sessionRef,
+            {
+              requestId,
+              studentId: requestData.studentId,
+              studentName: requestData.studentName,
+              studentEmail: requestData.studentEmail,
+              tutorId,
+              tutorName: resolvedTutorName,
+              tutorEmail: resolvedTutorEmail,
+              subject: 'Mathematics',
+              topic: requestData.topic,
+              scheduledDate: requestData.preferredDate,
+              scheduledTime: requestData.preferredTime,
+              duration: requestData.duration,
+              meetingProvider: MEETING_PROVIDERS.WEBRTC,
+              meetingLink: '',
+              meetingId: '',
+              meetingPassword: '',
+              webrtc: {
+                ready: true,
+                status: 'tutor_waiting',
+                tutorReadyAt: Date.now(),
+                studentReadyAt: null,
+                offer: null,
+                answer: null,
+                lastRestartAt: null,
+              },
+              whiteboardRoomId: requestData.whiteboardRoomId || requestId,
+              notes: '',
+              requestAttachment: requestData.attachment || null,
+              requestDescription: requestData.description || '',
+              status: SESSION_STATUS.WAITING_STUDENT,
+              joinGraceEndsAt: Date.now() + 2 * 60 * 1000,
+              callStartedAt: null,
+              studentJoinedAt: null,
+              billingStartedAt: null,
+              billedSeconds: 0,
+              totalAmount: 0,
+              payoutBreakdown: {
+                platformFeeRate: PLATFORM_FEE_RATE,
+                tutorRate: TUTOR_PAYOUT_RATE,
+                tutorAmount: 0,
+                platformAmount: 0,
+              },
+              ratings: {
+                student: null,
+                tutor: null,
+              },
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true },
+          );
+        } else {
+          debugLog('classRequestService', 'Tutor offer transaction reused existing session document.', {
+            requestId,
+            sessionId,
+          });
+
+          transaction.set(
+            sessionRef,
+            {
+              requestId,
+              studentId: requestData.studentId,
+              studentName: requestData.studentName,
+              studentEmail: requestData.studentEmail,
+              tutorId,
+              tutorName: resolvedTutorName,
+              tutorEmail: resolvedTutorEmail,
+              topic: requestData.topic,
+              scheduledDate: requestData.preferredDate,
+              scheduledTime: requestData.preferredTime,
+              duration: requestData.duration,
+              whiteboardRoomId: requestData.whiteboardRoomId || requestId,
+              requestAttachment: requestData.attachment || null,
+              requestDescription: requestData.description || '',
+              status: SESSION_STATUS.WAITING_STUDENT,
+              joinGraceEndsAt: Date.now() + 2 * 60 * 1000,
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true },
+          );
+        }
+
+        return { sessionId, reused: sessionSnap.exists() };
       }
+
+      if (requestData.currentOfferTutorId !== tutorId) {
+        throw new Error('This request is no longer assigned to you.');
+      }
+
+      const queue = (requestData.tutorQueue || []).filter((id) => id !== tutorId);
+      const nextStatus = queue.length ? REQUEST_STATUS.MATCHING : REQUEST_STATUS.NO_TUTOR_AVAILABLE;
+
+      if (!canTransitionRequest(requestData.status, nextStatus)) {
+        throw new Error('This request cannot be declined in its current state.');
+      }
+
+      transaction.update(requestRef, {
+        tutorQueue: queue,
+        status: nextStatus,
+        currentOfferTutorId: null,
+        offerExpiresAt: null,
+        statusDetail: 'Tutor declined. Matching another tutor.',
+        updatedAt: serverTimestamp(),
+      });
+
+      return { sessionId: null, reused: false };
     });
-    debugLog('classRequestService', 'Tutor offer transaction succeeded.', { requestId, tutorId, response });
+
+    debugLog('classRequestService', 'Tutor offer transaction succeeded.', {
+      requestId,
+      tutorId,
+      response,
+      sessionId: transactionResult?.sessionId || null,
+      reused: Boolean(transactionResult?.reused),
+    });
+
+    if (response === 'accept') {
+      await Promise.all([
+        createNotification({
+          userId: tutorId,
+          title: 'Call ready',
+          message: 'You accepted the request. Start the call now.',
+          type: 'request_accepted',
+          requestId,
+        }),
+        queueEmailEvent(EMAIL_EVENT_TYPES.REQUEST_ACCEPTED, {
+          requestId,
+          tutorId,
+        }),
+      ]);
+
+      return transactionResult;
+    }
+
+    await assignNextTutorOffer(requestId);
+    return transactionResult;
   } catch (error) {
     debugError('classRequestService', 'Tutor offer transaction failed.', {
       requestId,
@@ -1025,31 +1174,26 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
     });
     throw new Error(error.message || 'Unable to process this request right now. Please retry.');
   }
-
-  if (response === 'accept') {
-    await Promise.all([
-      createNotification({
-        userId: tutorId,
-        title: 'Call ready',
-        message: 'You accepted the request. Start the call now.',
-        type: 'request_accepted',
-        requestId,
-      }),
-      queueEmailEvent(EMAIL_EVENT_TYPES.REQUEST_ACCEPTED, {
-        requestId,
-        tutorId,
-      }),
-    ]);
-    return;
-  }
-
-  await assignNextTutorOffer(requestId);
 }
 
 export async function acceptClassRequest({ requestId, tutorId, tutorName, tutorEmail }) {
   debugLog('classRequestService', 'Accepting class request.', { requestId, tutorId });
-  const result = await handleTutorOfferResponse({ requestId, tutorId, tutorName, tutorEmail, response: 'accept' });
-  debugLog('classRequestService', 'Class request accepted.', { requestId, tutorId });
+
+  const result = await handleTutorOfferResponse({
+    requestId,
+    tutorId,
+    tutorName,
+    tutorEmail,
+    response: 'accept',
+  });
+
+  debugLog('classRequestService', 'Class request accepted.', {
+    requestId,
+    tutorId,
+    sessionId: result?.sessionId || null,
+    reused: Boolean(result?.reused),
+  });
+
   return result;
 }
 

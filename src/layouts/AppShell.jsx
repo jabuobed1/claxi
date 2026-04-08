@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from '../components/app/Sidebar';
 import Topbar from '../components/app/Topbar';
 import TutorOfferOverlay from '../components/app/TutorOfferOverlay';
@@ -8,8 +8,14 @@ import { useAuth } from '../hooks/useAuth';
 
 export default function AppShell() {
   const { user } = useAuth();
+  const location = useLocation();
   const activeRole = String(user?.activeRole || user?.role || 'student').toLowerCase();
   const [isNavOpen, setIsNavOpen] = useState(false);
+
+  const isSessionRoute = useMemo(
+    () => location.pathname.startsWith('/app/session/'),
+    [location.pathname],
+  );
 
   return (
     <div className="min-h-screen bg-[#f4f5f7] px-3 py-3 text-zinc-900 md:px-6 md:py-6">
@@ -19,7 +25,7 @@ export default function AppShell() {
         </div>
 
         <div>
-          {activeRole === 'tutor' ? <TutorOfferOverlay /> : null}
+          {activeRole === 'tutor' && !isSessionRoute ? <TutorOfferOverlay /> : null}
           <SessionRatingPrompt />
           <Topbar
             name={user?.fullName || user?.displayName || 'Claxi User'}

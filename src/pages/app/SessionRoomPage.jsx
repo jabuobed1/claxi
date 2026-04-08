@@ -133,6 +133,7 @@ export default function SessionRoomPage() {
   const [isPortraitMobile, setIsPortraitMobile] = useState(false);
   const [isLocalScreenSharing, setIsLocalScreenSharing] = useState(false);
   const [isRemoteScreenSharing, setIsRemoteScreenSharing] = useState(false);
+  const [remoteScreenStreamObj, setRemoteScreenStreamObj] = useState(null);
 
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
@@ -170,6 +171,7 @@ export default function SessionRoomPage() {
     connectionStartRecordedRef.current = false;
     activeInitKeyRef.current = '';
     rtcInitStartedRef.current = false;
+    setRemoteScreenStreamObj(null);
   }, [session?.id, role]);
 
   useEffect(() => {
@@ -177,8 +179,18 @@ export default function SessionRoomPage() {
       rtcRef.current?.close?.();
       rtcRef.current = null;
       rtcInitStartedRef.current = false;
+      setRemoteScreenStreamObj(null);
     };
   }, []);
+
+  useEffect(() => {
+    if (!remoteScreenVideoRef.current) return;
+    remoteScreenVideoRef.current.srcObject = remoteScreenStreamObj || null;
+
+    debugLog('sessionRoom', 'Attached remote screen stream to student video element.', {
+      hasStream: Boolean(remoteScreenStreamObj),
+    });
+  }, [remoteScreenStreamObj, isRemoteScreenSharing]);
 
   useEffect(() => {
     const updateViewportFlags = () => {
@@ -286,15 +298,21 @@ export default function SessionRoomPage() {
         },
 
         onRemoteScreenStream: (stream) => {
-          if (!remoteScreenVideoRef.current) return;
-          remoteScreenVideoRef.current.srcObject = stream || null;
+          debugLog('sessionRoom', 'Received remote screen stream callback.', {
+            hasStream: Boolean(stream),
+          });
+          setRemoteScreenStreamObj(stream || null);
         },
 
         onScreenShareStateChange: ({ local, remote }) => {
           setIsLocalScreenSharing(Boolean(local));
           setIsRemoteScreenSharing(Boolean(remote));
-          if (!remote && remoteScreenVideoRef.current) {
-            remoteScreenVideoRef.current.srcObject = null;
+
+          if (!remote) {
+            setRemoteScreenStreamObj(null);
+            if (remoteScreenVideoRef.current) {
+              remoteScreenVideoRef.current.srcObject = null;
+            }
           }
         },
 
@@ -368,6 +386,7 @@ export default function SessionRoomPage() {
     rtcRef.current?.close?.();
     rtcRef.current = null;
     rtcInitStartedRef.current = false;
+    setRemoteScreenStreamObj(null);
 
     if (role === 'student') {
       navigate(`/app/student/request/${session.requestId}`, {
@@ -400,6 +419,7 @@ export default function SessionRoomPage() {
     rtcRef.current?.close?.();
     rtcRef.current = null;
     rtcInitStartedRef.current = false;
+    setRemoteScreenStreamObj(null);
 
     await updateSession(session.id, {
       ...session,
@@ -425,6 +445,7 @@ export default function SessionRoomPage() {
     rtcRef.current?.close?.();
     rtcRef.current = null;
     rtcInitStartedRef.current = false;
+    setRemoteScreenStreamObj(null);
     await endSession(session);
     navigate('/app/tutor', { replace: true });
   };
@@ -527,6 +548,7 @@ export default function SessionRoomPage() {
           ref={remoteScreenVideoRef}
           autoPlay
           playsInline
+          muted={false}
           className="h-full w-full object-contain"
         />
       ) : (
