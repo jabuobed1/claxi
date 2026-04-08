@@ -1219,6 +1219,51 @@ export async function declineClassRequest({ requestId, tutorId }) {
   return result;
 }
 
+export async function updateClassRequest(requestId, updates = {}) {
+  if (!requestId) throw new Error('Request id is required.');
+
+  const clients = await getFirebaseClients();
+
+  if (!clients) {
+    const existing = getMockRequests().find((item) => item.id === requestId);
+    if (!existing) throw new Error('Class request not found.');
+    if (updates.status && !canTransitionRequest(existing.status, updates.status)) {
+      throw new Error(`Invalid request transition: ${existing.status} -> ${updates.status}`);
+    }
+
+    const next = getMockRequests().map((item) =>
+      item.id === requestId
+        ? {
+            ...item,
+            ...updates,
+            updatedAt: new Date().toISOString(),
+          }
+        : item,
+    );
+    setMockRequests(next);
+    return next.find((item) => item.id === requestId) || null;
+  }
+
+  const { db, firestoreModule } = clients;
+  const { doc, getDoc, serverTimestamp, updateDoc } = firestoreModule;
+  const requestRef = doc(db, 'classRequests', requestId);
+  const requestSnap = await getDoc(requestRef);
+  if (!requestSnap.exists()) throw new Error('Class request not found.');
+
+  const existing = requestSnap.data() || {};
+  if (updates.status && !canTransitionRequest(existing.status, updates.status)) {
+    throw new Error(`Invalid request transition: ${existing.status} -> ${updates.status}`);
+  }
+
+  await updateDoc(requestRef, {
+    ...updates,
+    updatedAt: serverTimestamp(),
+  });
+
+  const refreshed = await getDoc(requestRef);
+  return { id: refreshed.id, ...refreshed.data() };
+}
+
 export async function cancelClassRequest({ requestId, canceledBy, reason }) {
   debugLog('classRequestService', 'Canceling class request.', { requestId, canceledBy });
   const clients = await getFirebaseClients();

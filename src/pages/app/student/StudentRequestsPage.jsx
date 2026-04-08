@@ -8,7 +8,7 @@ import RequestCard from '../../../components/app/RequestCard';
 import { useAuth } from '../../../hooks/useAuth';
 import { useStudentRequests } from '../../../hooks/useClassRequests';
 
-const filters = ['all', 'pending', 'matching', 'offered', 'accepted', 'in_progress', 'completed', 'expired', 'canceled'];
+const filters = ['all', 'pending', 'matching', 'offered', 'accepted', 'in_progress', 'completed', 'expired', 'canceled', 'canceled_during'];
 
 export default function StudentRequestsPage() {
   const navigate = useNavigate();

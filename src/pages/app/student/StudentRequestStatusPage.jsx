@@ -27,6 +27,7 @@ function getStatusCopy(status) {
   if (status === REQUEST_STATUSES.NO_TUTOR_AVAILABLE) return 'No available tutor';
   if (status === REQUEST_STATUSES.COMPLETED) return 'Your session is complete';
   if (status === REQUEST_STATUSES.CANCELED) return 'This request has been canceled';
+  if (status === REQUEST_STATUSES.CANCELED_DURING) return 'This request was canceled during class';
   if (status === REQUEST_STATUSES.EXPIRED) return 'Request expired';
   return 'Preparing your request';
 }
@@ -101,6 +102,15 @@ function getStatusMeta(status) {
       tone: 'rose',
       icon: XCircle,
       badge: 'This request is no longer active',
+    };
+  }
+
+  if (status === REQUEST_STATUSES.CANCELED_DURING) {
+    return {
+      label: 'Canceled During Class',
+      tone: 'rose',
+      icon: XCircle,
+      badge: 'This class was canceled after the session started',
     };
   }
 
@@ -244,7 +254,12 @@ export default function StudentRequestStatusPage() {
     navigate(`/app/session/${matchingSession.id}`, { replace: true });
   }, [matchingSession?.id, navigate, shouldAutoOpenSession]);
 
-  const canCancel = ![REQUEST_STATUSES.CANCELED, REQUEST_STATUSES.COMPLETED, REQUEST_STATUSES.EXPIRED].includes(currentStatus);
+  const canCancel = ![
+    REQUEST_STATUSES.CANCELED,
+    REQUEST_STATUSES.CANCELED_DURING,
+    REQUEST_STATUSES.COMPLETED,
+    REQUEST_STATUSES.EXPIRED,
+  ].includes(currentStatus);
 
   const submitCancel = async () => {
     if (!request?.id || !cancelReason.trim()) return;

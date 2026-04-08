@@ -39,6 +39,10 @@ export const statusConfig = {
     label: 'Canceled',
     className: 'bg-rose-500/10 text-rose-400 border-rose-500/30',
   },
+  [REQUEST_STATUSES.CANCELED_DURING]: {
+    label: 'Canceled During Class',
+    className: 'bg-rose-500/10 text-rose-400 border-rose-500/30',
+  },
   [REQUEST_STATUSES.EXPIRED]: {
     label: 'Expired',
     className: 'bg-zinc-500/10 text-zinc-500 border-zinc-300',
