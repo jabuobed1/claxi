@@ -18,6 +18,97 @@ function getCandidateType(candidateText = '') {
   return match?.[1]?.toLowerCase() || 'unknown';
 }
 
+function getMediaErrorMessage(error) {
+  const name = error?.name || 'UnknownError';
+  const message = error?.message || 'Unknown media device error.';
+
+  if (name === 'NotAllowedError') {
+    return 'Camera or microphone permission was denied. Please allow access and retry.';
+  }
+
+  if (name === 'NotFoundError') {
+    return 'No camera or microphone device was found.';
+  }
+
+  if (name === 'NotReadableError') {
+    return 'Your camera or microphone is already being used by another application.';
+  }
+
+  if (name === 'OverconstrainedError') {
+    return 'The requested camera settings are not supported on this device.';
+  }
+
+  if (message.toLowerCase().includes('timeout starting video source')) {
+    return 'The camera took too long to start. Please close other apps using the camera and retry.';
+  }
+
+  return message;
+}
+
+async function getLocalMediaStream() {
+  const fullConstraints = {
+    audio: true,
+    video: {
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
+      facingMode: 'user',
+    },
+  };
+
+  try {
+    debugLog('webrtcService', 'Requesting local media (audio + video).', {
+      constraints: fullConstraints,
+    });
+
+    const stream = await navigator.mediaDevices.getUserMedia(fullConstraints);
+
+    debugLog('webrtcService', 'Local media acquired (audio + video).', {
+      audioTracks: stream.getAudioTracks().length,
+      videoTracks: stream.getVideoTracks().length,
+    });
+
+    return {
+      stream,
+      mode: 'audio_video',
+    };
+  } catch (error) {
+    debugLog('webrtcService', 'Failed to get local media (audio + video).', {
+      name: error?.name || null,
+      message: error?.message || null,
+    });
+  }
+
+  try {
+    const audioOnlyConstraints = {
+      audio: true,
+      video: false,
+    };
+
+    debugLog('webrtcService', 'Retrying local media with audio only.', {
+      constraints: audioOnlyConstraints,
+    });
+
+    const stream = await navigator.mediaDevices.getUserMedia(audioOnlyConstraints);
+
+    debugLog('webrtcService', 'Local media acquired (audio only fallback).', {
+      audioTracks: stream.getAudioTracks().length,
+      videoTracks: stream.getVideoTracks().length,
+    });
+
+    return {
+      stream,
+      mode: 'audio_only',
+    };
+  } catch (error) {
+    debugLog('webrtcService', 'Failed to get local media (audio only fallback).', {
+      name: error?.name || null,
+      message: error?.message || null,
+    });
+
+    throw new Error(getMediaErrorMessage(error));
+  }
+}
+
 async function logSelectedPair(pc) {
   try {
     const stats = await pc.getStats();
@@ -48,7 +139,9 @@ async function logSelectedPair(pc) {
       remoteProtocol: remote?.protocol || null,
     });
   } catch (error) {
-    debugLog('webrtcService', 'Failed to inspect selected ICE candidate pair.', { message: error.message });
+    debugLog('webrtcService', 'Failed to inspect selected ICE candidate pair.', {
+      message: error.message,
+    });
   }
 }
 
@@ -119,7 +212,11 @@ export async function createWebRtcSessionController({
     iceTransportPolicy: resolvedConfig.iceTransportPolicy || 'all',
     servers: resolvedConfig.iceServers.map((server) => {
       const urls = Array.isArray(server.urls) ? server.urls : [server.urls];
-      const hasTurnUrl = urls.some((url) => typeof url === 'string' && url.startsWith('turn:'));
+      const hasTurnUrl = urls.some(
+        (url) =>
+          typeof url === 'string'
+          && (url.startsWith('turn:') || url.startsWith('turns:')),
+      );
       return {
         urls,
         hasTurnUrl,
@@ -135,10 +232,12 @@ export async function createWebRtcSessionController({
     if (!entry?.urls) return [];
     return Array.isArray(entry.urls) ? entry.urls : [entry.urls];
   });
+
   debugLog('webrtcService', 'Creating RTCPeerConnection with ICE servers.', {
     forceRelayOnly,
     urls: resolvedIceUrls,
   });
+
   const discoveredCandidateTypes = new Set();
   let relayCandidateDiscovered = false;
   const pc = new RTCPeerConnection(resolvedConfig);
@@ -153,9 +252,10 @@ export async function createWebRtcSessionController({
     });
   };
 
-  const localStream = await navigator.mediaDevices.getUserMedia({
-    video: true,
-    audio: true,
+  const { stream: localStream, mode: localMediaMode } = await getLocalMediaStream();
+
+  debugLog('webrtcService', 'Using local media mode.', {
+    mode: localMediaMode,
   });
 
   onLocalStream?.(localStream);
@@ -172,11 +272,6 @@ export async function createWebRtcSessionController({
     cameraSender = pc.addTrack(cameraTrack, localStream);
   }
 
-  /**
-   * IMPORTANT:
-   * We pre-create a dedicated second video transceiver for screen share.
-   * This allows camera + screen share to exist separately.
-   */
   const screenTransceiver = pc.addTransceiver('video', {
     direction: role === 'tutor' ? 'sendrecv' : 'recvonly',
   });
@@ -237,9 +332,6 @@ export async function createWebRtcSessionController({
 
     if (incomingTrack.kind !== 'video' && incomingTrack.kind !== 'audio') return;
 
-    /**
-     * Remote screen share track
-     */
     if (incomingTrack.kind === 'video' && screenMid && incomingMid === screenMid) {
       remoteScreenStream.getTracks().forEach((track) => remoteScreenStream.removeTrack(track));
       remoteScreenStream.addTrack(incomingTrack);
@@ -257,9 +349,6 @@ export async function createWebRtcSessionController({
       return;
     }
 
-    /**
-     * Regular remote audio/video stream
-     */
     const alreadyExists = remoteCameraStream.getTracks().some((track) => track.id === incomingTrack.id);
     if (!alreadyExists) {
       remoteCameraStream.addTrack(incomingTrack);
@@ -281,11 +370,13 @@ export async function createWebRtcSessionController({
     const type = getCandidateType(event.candidate.candidate);
     discoveredCandidateTypes.add(type);
     if (type === 'relay') relayCandidateDiscovered = true;
+
     debugLog('webrtcService', 'Local ICE candidate discovered.', {
       type,
       protocol: event.candidate.protocol || null,
       discoveredTypes: Array.from(discoveredCandidateTypes),
     });
+
     const destination = role === 'tutor' ? tutorCandidatesRef : studentCandidatesRef;
     await addCandidate(addDoc, destination, event.candidate);
   };
@@ -307,6 +398,11 @@ export async function createWebRtcSessionController({
       return;
     }
 
+    if (pc.connectionState === 'connecting') {
+      onConnectionMessage?.('Connecting…');
+      return;
+    }
+
     if (['failed', 'disconnected'].includes(pc.connectionState)) {
       if (forceRelayOnly && !relayCandidateDiscovered) {
         debugLog('webrtcService', 'TURN failure diagnostic (relay-only mode).', {
@@ -321,6 +417,13 @@ export async function createWebRtcSessionController({
 
   pc.oniceconnectionstatechange = async () => {
     debugLog('webrtcService', 'iceConnectionState changed.', { state: pc.iceConnectionState });
+
+    if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+      onConnectionMessage?.('Connected');
+      if (connectTimer) clearTimeout(connectTimer);
+      return;
+    }
+
     if (!['failed', 'disconnected'].includes(pc.iceConnectionState)) return;
 
     if (reconnectAttempts >= MAX_ICE_RESTART_ATTEMPTS) {
@@ -384,13 +487,17 @@ export async function createWebRtcSessionController({
           const type = getCandidateType(candidate.candidate);
           discoveredCandidateTypes.add(type);
           if (type === 'relay') relayCandidateDiscovered = true;
+
           debugLog('webrtcService', 'Remote ICE candidate received.', {
             type,
             discoveredTypes: Array.from(discoveredCandidateTypes),
           });
+
           await pc.addIceCandidate(candidate);
-        } catch (_) {
-          // Ignore stale ICE candidate errors during reconnect.
+        } catch (error) {
+          debugLog('webrtcService', 'Failed to add remote ICE candidate.', {
+            message: error.message,
+          });
         }
       });
     }),
@@ -402,7 +509,9 @@ export async function createWebRtcSessionController({
       const webrtc = data.webrtc || {};
 
       if (typeof webrtc?.screenShare?.active === 'boolean') {
-        isRemoteScreenSharing = role === 'student' ? Boolean(webrtc.screenShare.active) : isRemoteScreenSharing;
+        isRemoteScreenSharing = role === 'student'
+          ? Boolean(webrtc.screenShare.active)
+          : isRemoteScreenSharing;
         emitScreenShareState();
 
         if (!webrtc.screenShare.active) {
@@ -411,8 +520,14 @@ export async function createWebRtcSessionController({
       }
 
       if (role === 'tutor') {
+        debugLog('webrtcService', 'Tutor evaluating remote answer.', {
+          hasAnswer: Boolean(webrtc.answer),
+          hasCurrentRemoteDescription: Boolean(pc.currentRemoteDescription),
+        });
+
         if (webrtc.answer && !pc.currentRemoteDescription) {
           await pc.setRemoteDescription(new RTCSessionDescription(webrtc.answer));
+          debugLog('webrtcService', 'Tutor applied remote answer.');
           await setDoc(
             sessionRef,
             { webrtc: { ...webrtc, status: 'connected' }, updatedAt: Date.now() },
@@ -425,12 +540,22 @@ export async function createWebRtcSessionController({
       const offerRevision = Number(webrtc.offerRevision || 0);
       if (!webrtc.offer) return;
 
+      debugLog('webrtcService', 'Student evaluating remote offer.', {
+        hasOffer: Boolean(webrtc.offer),
+        offerRevision,
+        latestOfferRevision,
+        hasCurrentRemoteDescription: Boolean(pc.currentRemoteDescription),
+      });
+
       const shouldHandleOffer = !pc.currentRemoteDescription || offerRevision > latestOfferRevision;
       if (!shouldHandleOffer) return;
 
       latestOfferRevision = offerRevision;
 
       await pc.setRemoteDescription(new RTCSessionDescription(webrtc.offer));
+      debugLog('webrtcService', 'Student applied remote offer.', {
+        offerRevision,
+      });
 
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
@@ -448,6 +573,10 @@ export async function createWebRtcSessionController({
         },
         { merge: true },
       );
+
+      debugLog('webrtcService', 'Student created and saved answer.', {
+        offerRevision,
+      });
 
       setConnectionTimeout();
     }),
@@ -585,8 +714,6 @@ export async function createWebRtcSessionController({
     localStream.getTracks().forEach((track) => track.stop());
 
     pc.getSenders().forEach((sender) => {
-      // Avoid stopping shared underlying local tracks twice if already handled,
-      // but this is still safe enough in practice.
       sender.track?.stop?.();
     });
 

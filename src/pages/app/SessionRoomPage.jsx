@@ -26,6 +26,7 @@ import {
 } from '../../services/sessionService';
 import { createWebRtcSessionController } from '../../services/webrtcService';
 import { fetchIceServers } from '../../services/iceServerService';
+import { debugLog } from '../../utils/devLogger';
 
 function useLiveSeconds(startTs) {
   const [tick, setTick] = useState(Date.now());
@@ -138,10 +139,10 @@ export default function SessionRoomPage() {
   const remoteScreenVideoRef = useRef(null);
 
   const rtcRef = useRef(null);
-  const rtcInitStartedRef = useRef(false);
   const autoJoinAttemptedRef = useRef(false);
   const connectionStartRecordedRef = useRef(false);
   const activeInitKeyRef = useRef('');
+  const rtcInitStartedRef = useRef(false);
 
   const callSeconds = useLiveSeconds(session?.callStartedAt);
   const billedSeconds = useLiveSeconds(session?.billingStartedAt);
@@ -229,9 +230,18 @@ export default function SessionRoomPage() {
 
     const initKey = `${session.id}:${role}`;
 
-    if (rtcRef.current) return;
-    if (rtcInitStartedRef.current) return;
-    if (activeInitKeyRef.current === initKey) return;
+    if (rtcRef.current) {
+      debugLog('sessionRoom', 'Skipping init because rtcRef already exists.', { initKey });
+      return;
+    }
+    if (rtcInitStartedRef.current) {
+      debugLog('sessionRoom', 'Skipping init because initialization already started.', { initKey });
+      return;
+    }
+    if (activeInitKeyRef.current === initKey) {
+      debugLog('sessionRoom', 'Skipping init because initKey is already active.', { initKey });
+      return;
+    }
 
     rtcInitStartedRef.current = true;
     activeInitKeyRef.current = initKey;
@@ -240,6 +250,13 @@ export default function SessionRoomPage() {
     setNetworkError('');
 
     try {
+      debugLog('sessionRoom', 'Initializing call.', {
+        sessionId: session.id,
+        role,
+        shouldJoinStudent,
+        forceRelayOnly,
+      });
+
       if (shouldJoinStudent) {
         const selected =
           (user?.paymentMethods || []).find((card) => card.id === selectedCardId)
@@ -308,8 +325,18 @@ export default function SessionRoomPage() {
 
       rtcRef.current = controller;
       setConnectionMessage(role === 'tutor' ? 'Waiting for student to join…' : 'Connecting…');
+
+      debugLog('sessionRoom', 'WebRTC controller created successfully.', {
+        sessionId: session.id,
+        role,
+      });
     } catch (error) {
       rtcInitStartedRef.current = false;
+      debugLog('sessionRoom', 'Failed to initialize call.', {
+        sessionId: session?.id || null,
+        role,
+        message: error.message,
+      });
       setNetworkError(error.message || 'Unable to start call. Please retry.');
     } finally {
       activeInitKeyRef.current = '';
@@ -328,11 +355,11 @@ export default function SessionRoomPage() {
     if (!session) return;
     if (role !== 'student') return;
     if (![SESSION_STATUS.WAITING_STUDENT, SESSION_STATUS.IN_PROGRESS].includes(session.status)) return;
-    if (rtcRef.current || autoJoinAttemptedRef.current || rtcInitStartedRef.current) return;
+    if (rtcRef.current || isBusy || autoJoinAttemptedRef.current || rtcInitStartedRef.current) return;
 
     autoJoinAttemptedRef.current = true;
     initializeCall({ shouldJoinStudent: session.status === SESSION_STATUS.WAITING_STUDENT });
-  }, [initializeCall, role, session]);
+  }, [initializeCall, isBusy, role, session]);
 
   useEffect(() => {
     if (!session?.status) return;
@@ -589,7 +616,7 @@ export default function SessionRoomPage() {
           <div className="absolute bottom-4 right-4 z-30">
             <button
               onClick={() => initializeCall({ shouldJoinStudent: true })}
-              disabled={isBusy}
+              disabled={isBusy || rtcInitStartedRef.current}
               className="rounded-2xl border border-emerald-500/20 bg-emerald-500 px-5 py-3 text-sm font-bold text-white shadow-2xl transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
               type="button"
             >
