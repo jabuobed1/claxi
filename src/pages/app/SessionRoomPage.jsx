@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
-  AlertTriangle,
   BadgeDollarSign,
   Clock3,
   Mic,
@@ -78,6 +77,7 @@ function RailButton({
   danger = false,
   disabled = false,
   active = false,
+  compact = false,
 }) {
   const classes = danger
     ? 'border-rose-500/20 bg-rose-500 text-white hover:bg-rose-600'
@@ -91,9 +91,11 @@ function RailButton({
       disabled={disabled}
       title={label}
       type="button"
-      className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl border shadow-sm transition disabled:cursor-not-allowed disabled:opacity-45 ${classes}`}
+      className={`inline-flex items-center justify-center rounded-2xl border shadow-sm transition disabled:cursor-not-allowed disabled:opacity-45 ${
+        compact ? 'h-10 w-10 md:h-12 md:w-12' : 'h-12 w-12'
+      } ${classes}`}
     >
-      <Icon className="h-4.5 w-4.5" />
+      <Icon className={compact ? 'h-4 w-4 md:h-4.5 md:w-4.5' : 'h-4.5 w-4.5'} />
     </button>
   );
 }
@@ -134,6 +136,7 @@ export default function SessionRoomPage() {
   const [isLocalScreenSharing, setIsLocalScreenSharing] = useState(false);
   const [isRemoteScreenSharing, setIsRemoteScreenSharing] = useState(false);
   const [remoteScreenStreamObj, setRemoteScreenStreamObj] = useState(null);
+  const [showStudentControls, setShowStudentControls] = useState(true);
 
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
@@ -144,10 +147,11 @@ export default function SessionRoomPage() {
   const connectionStartRecordedRef = useRef(false);
   const activeInitKeyRef = useRef('');
   const rtcInitStartedRef = useRef(false);
+  const hadSessionRef = useRef(false);
+  const studentControlsTimeoutRef = useRef(null);
 
   const callSeconds = useLiveSeconds(session?.callStartedAt);
   const billedSeconds = useLiveSeconds(session?.billingStartedAt);
-  const runningAmount = (billedSeconds / 60) * BILLING_RULES.DISPLAY_RATE_PER_MINUTE;
   const needsRating = session?.status === SESSION_STATUS.COMPLETED && !session?.ratings?.[role];
   const tldrawLicenseKey = import.meta.env.VITE_TLDRAW_LICENSE_KEY;
   const forceRelayOnly = String(import.meta.env.VITE_WEBRTC_FORCE_RELAY_ONLY || '').toLowerCase() === 'true';
@@ -167,11 +171,18 @@ export default function SessionRoomPage() {
   }, [connectionMessage, networkError]);
 
   useEffect(() => {
+    if (session) {
+      hadSessionRef.current = true;
+    }
+  }, [session]);
+
+  useEffect(() => {
     autoJoinAttemptedRef.current = false;
     connectionStartRecordedRef.current = false;
     activeInitKeyRef.current = '';
     rtcInitStartedRef.current = false;
     setRemoteScreenStreamObj(null);
+    setShowStudentControls(true);
   }, [session?.id, role]);
 
   useEffect(() => {
@@ -180,6 +191,9 @@ export default function SessionRoomPage() {
       rtcRef.current = null;
       rtcInitStartedRef.current = false;
       setRemoteScreenStreamObj(null);
+      if (studentControlsTimeoutRef.current) {
+        clearTimeout(studentControlsTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -236,6 +250,25 @@ export default function SessionRoomPage() {
 
     tryLockLandscape();
   }, [isMobileViewport]);
+
+  useEffect(() => {
+    if (role !== 'student') return;
+    if (!showStudentControls) return;
+
+    if (studentControlsTimeoutRef.current) {
+      clearTimeout(studentControlsTimeoutRef.current);
+    }
+
+    studentControlsTimeoutRef.current = setTimeout(() => {
+      setShowStudentControls(false);
+    }, 5000);
+
+    return () => {
+      if (studentControlsTimeoutRef.current) {
+        clearTimeout(studentControlsTimeoutRef.current);
+      }
+    };
+  }, [role, showStudentControls]);
 
   const initializeCall = useCallback(async ({ shouldJoinStudent }) => {
     if (!session || !user?.uid) return;
@@ -333,10 +366,7 @@ export default function SessionRoomPage() {
           }
 
           if (Object.keys(updates).length > 0) {
-            await updateSession(session.id, {
-              ...session,
-              ...updates,
-            });
+            await updateSession(session.id, updates);
           }
         },
       });
@@ -387,6 +417,7 @@ export default function SessionRoomPage() {
     rtcRef.current = null;
     rtcInitStartedRef.current = false;
     setRemoteScreenStreamObj(null);
+    setShowStudentControls(false);
 
     if (role === 'student') {
       navigate(`/app/student/request/${session.requestId}`, {
@@ -399,35 +430,65 @@ export default function SessionRoomPage() {
     navigate('/app/tutor/sessions', { replace: true });
   }, [navigate, role, session?.requestId, session?.status]);
 
-  if (!session) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-950 p-6">
-        <div className="w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-900 p-6 text-center shadow-2xl">
-          <p className="text-sm text-zinc-400">Session not found or no access.</p>
-          <Link
-            to="/app"
-            className="mt-4 inline-flex rounded-2xl bg-brand px-4 py-2 text-sm font-bold text-white"
-          >
-            Back to dashboard
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (session) return;
+    if (!hadSessionRef.current) return;
 
-  const cancelCurrentClass = async () => {
     rtcRef.current?.close?.();
     rtcRef.current = null;
     rtcInitStartedRef.current = false;
     setRemoteScreenStreamObj(null);
+    setShowStudentControls(false);
+
+    if (role === 'student') {
+      navigate('/app/student/request', { replace: true });
+      return;
+    }
+
+    navigate('/app/tutor/sessions', { replace: true });
+  }, [navigate, role, session]);
+
+  const askCancellationReason = () => {
+    const reason = window.prompt('Please tell us why you want to cancel this class.');
+
+    if (reason === null) return null;
+
+    const trimmedReason = reason.trim();
+    if (!trimmedReason) {
+      setNetworkError('Please enter a cancellation reason before canceling the class.');
+      return null;
+    }
+
+    return trimmedReason;
+  };
+
+  const cancelCurrentClass = async () => {
+    if (!session) return;
+
+    const cancellationReason = askCancellationReason();
+    if (!cancellationReason) return;
+
+    const sessionSecondsForCancellation = Math.max(callSeconds, billedSeconds);
+    const shouldChargeForCancellation = sessionSecondsForCancellation >= 30;
+    const endedAt = Date.now();
+
+    rtcRef.current?.close?.();
+    rtcRef.current = null;
+    rtcInitStartedRef.current = false;
+    setRemoteScreenStreamObj(null);
+    setShowStudentControls(false);
 
     await updateSession(session.id, {
-      ...session,
       status: SESSION_STATUS.CANCELED,
-      endedAt: Date.now(),
-      canceledAt: Date.now(),
+      endedAt,
+      canceledAt: endedAt,
       canceledBy: role,
-      canceledReason: role === 'tutor' ? 'Canceled by tutor.' : 'Canceled by student.',
+      canceledReason: cancellationReason,
+      chargeOnCancellation: shouldChargeForCancellation,
+      cancellationChargeApplies: shouldChargeForCancellation,
+      cancellationBillableSeconds: shouldChargeForCancellation ? sessionSecondsForCancellation : 0,
+      billingEndedAt: endedAt,
+      ...(shouldChargeForCancellation ? {} : { billingStartedAt: null }),
     });
 
     if (role === 'student') {
@@ -485,6 +546,12 @@ export default function SessionRoomPage() {
     }
   };
 
+  const toggleStudentControls = () => {
+    setShowStudentControls((prev) => !prev);
+  };
+
+  const controlsCompact = isMobileViewport;
+  const showStudentOverlay = role !== 'student' || !isMobileViewport || showStudentControls;
   const closeHref = role === 'tutor' ? '/app/tutor/sessions' : '/app';
 
   const renderTutorStageHeader = () => (
@@ -503,7 +570,11 @@ export default function SessionRoomPage() {
   );
 
   const renderStudentStageHeader = () => (
-    <div className="pointer-events-none absolute left-20 right-4 top-4 z-20">
+    <div
+      className={`absolute left-20 right-4 top-4 z-20 transition-opacity duration-200 ${
+        showStudentOverlay ? 'opacity-100' : 'pointer-events-none opacity-0'
+      }`}
+    >
       <div className="rounded-[22px] border border-white/10 bg-[#161b25]/88 p-3 shadow-2xl backdrop-blur-md">
         <div className="flex flex-wrap items-center gap-2">
           <StageBadge icon={Clock3}>Call length {formatDuration(callSeconds)}</StageBadge>
@@ -540,7 +611,18 @@ export default function SessionRoomPage() {
   );
 
   const renderStudentStage = () => (
-    <div className="relative h-full w-full overflow-hidden bg-black">
+    <div
+      className="relative h-full w-full overflow-hidden bg-black"
+      onClick={toggleStudentControls}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          toggleStudentControls();
+        }
+      }}
+    >
       {renderStudentStageHeader()}
 
       {isRemoteScreenSharing ? (
@@ -567,6 +649,22 @@ export default function SessionRoomPage() {
     </div>
   );
 
+  if (!session) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-zinc-950 p-6">
+        <div className="w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-900 p-6 text-center shadow-2xl">
+          <p className="text-sm text-zinc-400">Session not found or no access.</p>
+          <Link
+            to="/app"
+            className="mt-4 inline-flex rounded-2xl bg-brand px-4 py-2 text-sm font-bold text-white"
+          >
+            Back to dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 h-screen w-screen overflow-hidden bg-[#0B0F19] text-white">
       {isPortraitMobile ? (
@@ -589,22 +687,24 @@ export default function SessionRoomPage() {
       <div className="relative h-full w-full">
         {role === 'tutor' ? renderTutorStage() : renderStudentStage()}
 
-        <div className="absolute bottom-4 left-4 top-4 z-30 flex items-center">
+        <div
+          className={`absolute bottom-4 left-4 top-4 z-30 flex items-center ${
+            role === 'student'
+              ? showStudentOverlay
+                ? 'opacity-100'
+                : 'pointer-events-none opacity-0'
+              : 'opacity-100'
+          } transition-opacity duration-200`}
+          onClick={(event) => event.stopPropagation()}
+        >
           <div className="flex flex-col gap-2 rounded-[24px] border border-white/10 bg-[#161b25]/88 p-2 shadow-2xl backdrop-blur-md">
-            <Link
-              to={closeHref}
-              title="Close"
-              className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-[#1f2430]/95 text-zinc-100 shadow-sm transition hover:bg-[#272d3a]"
-            >
-              <X className="h-4.5 w-4.5" />
-            </Link>
-
             <RailButton
               onClick={toggleMute}
               icon={isMuted ? MicOff : Mic}
               label={isMuted ? 'Unmute' : 'Mute'}
               disabled={!rtcRef.current}
               active={!isMuted}
+              compact={controlsCompact}
             />
 
             {role === 'tutor' ? (
@@ -614,6 +714,7 @@ export default function SessionRoomPage() {
                 label={isLocalScreenSharing ? 'Stop share' : 'Share screen'}
                 disabled={!rtcRef.current}
                 active={isLocalScreenSharing}
+                compact={controlsCompact}
               />
             ) : null}
 
@@ -621,6 +722,7 @@ export default function SessionRoomPage() {
               onClick={cancelCurrentClass}
               icon={X}
               label="Cancel"
+              compact={controlsCompact}
             />
 
             {role === 'tutor' ? (
@@ -629,13 +731,18 @@ export default function SessionRoomPage() {
                 icon={PhoneOff}
                 label="End class"
                 danger
+                compact={controlsCompact}
               />
             ) : null}
           </div>
         </div>
 
         {role === 'student' && !rtcRef.current && session.status === SESSION_STATUS.WAITING_STUDENT ? (
-          <div className="absolute bottom-4 right-4 z-30">
+          <div
+            className={`absolute bottom-4 right-4 z-30 transition-opacity duration-200 ${
+              showStudentOverlay ? 'opacity-100' : 'pointer-events-none opacity-0'
+            }`}
+          >
             <button
               onClick={() => initializeCall({ shouldJoinStudent: true })}
               disabled={isBusy || rtcInitStartedRef.current}

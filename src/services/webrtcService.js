@@ -216,6 +216,17 @@ export async function createWebRtcSessionController({
   const pendingRemoteCandidates = [];
   const pc = new RTCPeerConnection(resolvedConfig);
 
+  let reconnectAttempts = 0;
+  let isClosed = false;
+  let connectTimer = null;
+  let activeScreenStream = null;
+  let latestOfferRevision = 0;
+  let latestAppliedAnswerSdp = null;
+  let isLocalScreenSharing = false;
+  let isRemoteScreenSharing = false;
+  let currentRemoteScreenTrackId = null;
+  const unsubscribers = [];
+
   async function flushPendingRemoteCandidates() {
     if (!pc.remoteDescription) return;
     if (!pendingRemoteCandidates.length) return;
@@ -261,79 +272,11 @@ export async function createWebRtcSessionController({
   }
 
   const screenTransceiver = pc.addTransceiver('video', {
-    direction: role === 'tutor' ? 'sendrecv' : 'recvonly',
+    direction: role === 'tutor' ? 'sendonly' : 'recvonly',
   });
 
   const remoteCameraStream = new MediaStream();
   const remoteScreenStream = new MediaStream();
-
-  const attachRemoteScreenReceiverTrack = () => {
-    const receiverTrack = screenTransceiver?.receiver?.track;
-    if (!receiverTrack) {
-      debugLog('webrtcService', 'No screen receiver track available yet.');
-      return;
-    }
-
-    const alreadyAdded = remoteScreenStream.getTracks().some((track) => track.id === receiverTrack.id);
-    if (!alreadyAdded) {
-      remoteScreenStream.addTrack(receiverTrack);
-    }
-
-    debugLog('webrtcService', 'Attached screen receiver track.', {
-      id: receiverTrack.id,
-      kind: receiverTrack.kind,
-      muted: receiverTrack.muted,
-      readyState: receiverTrack.readyState,
-    });
-
-    const handleUnmute = () => {
-      isRemoteScreenSharing = true;
-      debugLog('webrtcService', 'Remote screen receiver track unmuted.', {
-        id: receiverTrack.id,
-        readyState: receiverTrack.readyState,
-      });
-      onRemoteScreenStream?.(remoteScreenStream);
-      emitScreenShareState();
-    };
-
-    const handleMute = () => {
-      isRemoteScreenSharing = false;
-      debugLog('webrtcService', 'Remote screen receiver track muted.', {
-        id: receiverTrack.id,
-        readyState: receiverTrack.readyState,
-      });
-      onRemoteScreenStream?.(null);
-      emitScreenShareState();
-    };
-
-    const handleEnded = () => {
-      remoteScreenStream.getTracks().forEach((track) => remoteScreenStream.removeTrack(track));
-      isRemoteScreenSharing = false;
-      debugLog('webrtcService', 'Remote screen receiver track ended.', {
-        id: receiverTrack.id,
-        readyState: receiverTrack.readyState,
-      });
-      onRemoteScreenStream?.(null);
-      emitScreenShareState();
-    };
-
-    receiverTrack.onunmute = handleUnmute;
-    receiverTrack.onmute = handleMute;
-    receiverTrack.onended = handleEnded;
-
-    if (!receiverTrack.muted && receiverTrack.readyState === 'live') {
-      handleUnmute();
-    }
-  };
-
-  let reconnectAttempts = 0;
-  let isClosed = false;
-  let connectTimer = null;
-  let activeScreenStream = null;
-  let latestOfferRevision = 0;
-  let isLocalScreenSharing = false;
-  let isRemoteScreenSharing = false;
-  const unsubscribers = [];
 
   const setConnectionTimeout = () => {
     if (connectTimer) clearTimeout(connectTimer);
@@ -371,6 +314,131 @@ export async function createWebRtcSessionController({
     );
   };
 
+  const publishUpdatedOffer = async (status = 'connecting') => {
+    const sessionSnap = await getDoc(sessionRef);
+    const existing = sessionSnap.data()?.webrtc || {};
+    const nextRevision = Number(existing.offerRevision || 0) + 1;
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+
+    await setDoc(
+      sessionRef,
+      {
+        webrtc: {
+          offer: serializeSessionDescription(offer),
+          answer: null,
+          offerRevision: nextRevision,
+          status,
+        },
+        updatedAt: Date.now(),
+      },
+      { merge: true },
+    );
+
+    latestOfferRevision = nextRevision;
+
+    debugLog('webrtcService', 'Published updated WebRTC offer.', {
+      offerRevision: nextRevision,
+      status,
+    });
+  };
+
+  const clearRemoteScreenStream = () => {
+    remoteScreenStream.getTracks().forEach((track) => {
+      remoteScreenStream.removeTrack(track);
+    });
+    currentRemoteScreenTrackId = null;
+    isRemoteScreenSharing = false;
+    onRemoteScreenStream?.(null);
+    emitScreenShareState();
+  };
+
+  const attachRemoteScreenReceiverTrack = () => {
+    if (role !== 'student') return;
+
+    const receiverTrack = screenTransceiver?.receiver?.track;
+    if (!receiverTrack) {
+      debugLog('webrtcService', 'No screen receiver track available yet.');
+      return;
+    }
+
+    if (currentRemoteScreenTrackId && currentRemoteScreenTrackId !== receiverTrack.id) {
+      remoteScreenStream.getTracks().forEach((track) => {
+        remoteScreenStream.removeTrack(track);
+      });
+    }
+
+    const alreadyAdded = remoteScreenStream.getTracks().some((track) => track.id === receiverTrack.id);
+    if (!alreadyAdded) {
+      remoteScreenStream.addTrack(receiverTrack);
+    }
+
+    currentRemoteScreenTrackId = receiverTrack.id;
+
+    debugLog('webrtcService', 'Attached screen receiver track.', {
+      id: receiverTrack.id,
+      kind: receiverTrack.kind,
+      muted: receiverTrack.muted,
+      readyState: receiverTrack.readyState,
+    });
+
+    const publishRemoteScreenStream = () => {
+      const videoTrack = remoteScreenStream.getVideoTracks()[0] || null;
+      const hasUsableTrack =
+        Boolean(videoTrack)
+        && videoTrack.readyState === 'live'
+        && !videoTrack.muted;
+
+      isRemoteScreenSharing = hasUsableTrack;
+      onRemoteScreenStream?.(hasUsableTrack ? remoteScreenStream : null);
+      emitScreenShareState();
+    };
+
+    const handleUnmute = () => {
+      debugLog('webrtcService', 'Remote screen receiver track unmuted.', {
+        id: receiverTrack.id,
+        readyState: receiverTrack.readyState,
+      });
+      publishRemoteScreenStream();
+    };
+
+    const handleMute = () => {
+      debugLog('webrtcService', 'Remote screen receiver track muted.', {
+        id: receiverTrack.id,
+        readyState: receiverTrack.readyState,
+      });
+      isRemoteScreenSharing = false;
+      onRemoteScreenStream?.(null);
+      emitScreenShareState();
+    };
+
+    const handleEnded = () => {
+      remoteScreenStream.getTracks().forEach((track) => {
+        if (track.id === receiverTrack.id || track.readyState === 'ended') {
+          remoteScreenStream.removeTrack(track);
+        }
+      });
+
+      debugLog('webrtcService', 'Remote screen receiver track ended.', {
+        id: receiverTrack.id,
+        readyState: receiverTrack.readyState,
+      });
+
+      isRemoteScreenSharing = false;
+      onRemoteScreenStream?.(null);
+      emitScreenShareState();
+    };
+
+    receiverTrack.onunmute = handleUnmute;
+    receiverTrack.onmute = handleMute;
+    receiverTrack.onended = handleEnded;
+
+    if (!receiverTrack.muted && receiverTrack.readyState === 'live') {
+      publishRemoteScreenStream();
+    }
+  };
+
   pc.ontrack = (event) => {
     const incomingTrack = event.track;
     const incomingMid = event.transceiver?.mid;
@@ -387,8 +455,60 @@ export async function createWebRtcSessionController({
 
     if (incomingTrack.kind !== 'video' && incomingTrack.kind !== 'audio') return;
 
-    if (incomingTrack.kind === 'video' && screenMid && incomingMid === screenMid) {
-      attachRemoteScreenReceiverTrack();
+    if (role === 'student' && incomingTrack.kind === 'video') {
+      const alreadyExists = remoteScreenStream.getTracks().some((track) => track.id === incomingTrack.id);
+      if (!alreadyExists) {
+        remoteScreenStream.getTracks().forEach((track) => remoteScreenStream.removeTrack(track));
+        remoteScreenStream.addTrack(incomingTrack);
+      }
+
+      currentRemoteScreenTrackId = incomingTrack.id;
+
+      const publishScreenState = () => {
+        const hasUsableTrack =
+          incomingTrack.readyState === 'live' && !incomingTrack.muted;
+
+        isRemoteScreenSharing = hasUsableTrack;
+        onRemoteScreenStream?.(hasUsableTrack ? remoteScreenStream : null);
+        emitScreenShareState();
+      };
+
+      incomingTrack.onunmute = () => {
+        debugLog('webrtcService', 'Remote screen track unmuted from ontrack.', {
+          id: incomingTrack.id,
+          readyState: incomingTrack.readyState,
+        });
+        publishScreenState();
+      };
+
+      incomingTrack.onmute = () => {
+        debugLog('webrtcService', 'Remote screen track muted from ontrack.', {
+          id: incomingTrack.id,
+          readyState: incomingTrack.readyState,
+        });
+        isRemoteScreenSharing = false;
+        onRemoteScreenStream?.(null);
+        emitScreenShareState();
+      };
+
+      incomingTrack.onended = () => {
+        debugLog('webrtcService', 'Remote screen track ended from ontrack.', {
+          id: incomingTrack.id,
+          readyState: incomingTrack.readyState,
+        });
+
+        remoteScreenStream.getTracks().forEach((track) => {
+          if (track.id === incomingTrack.id || track.readyState === 'ended') {
+            remoteScreenStream.removeTrack(track);
+          }
+        });
+
+        isRemoteScreenSharing = false;
+        onRemoteScreenStream?.(null);
+        emitScreenShareState();
+      };
+
+      publishScreenState();
       return;
     }
 
@@ -497,7 +617,6 @@ export async function createWebRtcSessionController({
         sessionRef,
         {
           webrtc: {
-            ...(sessionSnap.data()?.webrtc || {}),
             offer: serializeSessionDescription(offer),
             answer: null,
             offerRevision: revision,
@@ -561,35 +680,47 @@ export async function createWebRtcSessionController({
       const data = snapshot.data() || {};
       const webrtc = data.webrtc || {};
 
-      if (typeof webrtc?.screenShare?.active === 'boolean') {
-        isRemoteScreenSharing = role === 'student'
-          ? Boolean(webrtc.screenShare.active)
-          : isRemoteScreenSharing;
-        emitScreenShareState();
-
+      if (typeof webrtc?.screenShare?.active === 'boolean' && role === 'student') {
         if (!webrtc.screenShare.active) {
-          onRemoteScreenStream?.(null);
+          clearRemoteScreenStream();
+        } else {
+          emitScreenShareState();
         }
       }
 
       if (role === 'tutor') {
+        const answerSdp = webrtc.answer?.sdp || null;
+
         debugLog('webrtcService', 'Tutor evaluating remote answer.', {
           hasAnswer: Boolean(webrtc.answer),
           hasCurrentRemoteDescription: Boolean(pc.currentRemoteDescription),
         });
 
-        if (webrtc.answer && !pc.currentRemoteDescription) {
-          await pc.setRemoteDescription(new RTCSessionDescription(webrtc.answer));
-          debugLog('webrtcService', 'Tutor applied remote answer.');
-          await flushPendingRemoteCandidates();
-          attachRemoteScreenReceiverTrack();
+        const shouldHandleAnswer =
+          Boolean(webrtc.answer)
+          && Boolean(answerSdp)
+          && answerSdp !== latestAppliedAnswerSdp
+          && pc.signalingState === 'have-local-offer';
 
+        if (shouldHandleAnswer) {
+          await pc.setRemoteDescription(new RTCSessionDescription(webrtc.answer));
+          latestAppliedAnswerSdp = answerSdp;
+
+          debugLog('webrtcService', 'Tutor applied remote answer.');
+
+          await flushPendingRemoteCandidates();
           await setDoc(
             sessionRef,
-            { webrtc: { ...webrtc, status: 'connected' }, updatedAt: Date.now() },
+            {
+              webrtc: {
+                status: 'connected',
+              },
+              updatedAt: Date.now(),
+            },
             { merge: true },
           );
         }
+
         return;
       }
 
@@ -614,7 +745,6 @@ export async function createWebRtcSessionController({
       });
 
       await flushPendingRemoteCandidates();
-      attachRemoteScreenReceiverTrack();
 
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
@@ -623,7 +753,6 @@ export async function createWebRtcSessionController({
         sessionRef,
         {
           webrtc: {
-            ...webrtc,
             answer: serializeSessionDescription(answer),
             studentReadyAt: Date.now(),
             status: 'connecting',
@@ -700,10 +829,11 @@ export async function createWebRtcSessionController({
     activeScreenStream = null;
 
     await switchScreenTrack(null);
+    await updateScreenShareDocState(false);
 
     isLocalScreenSharing = false;
     emitScreenShareState();
-    await updateScreenShareDocState(false);
+    await publishUpdatedOffer('connected');
     debugLog('webrtcService', 'Tutor stopped screen share.');
     onConnectionMessage?.('Screen sharing ended');
   };
@@ -727,6 +857,7 @@ export async function createWebRtcSessionController({
     activeScreenStream = screenStream;
 
     await switchScreenTrack(screenTrack);
+    await updateScreenShareDocState(true);
 
     debugLog('webrtcService', 'Tutor started screen share track.', {
       id: screenTrack.id,
@@ -737,7 +868,7 @@ export async function createWebRtcSessionController({
 
     isLocalScreenSharing = true;
     emitScreenShareState();
-    await updateScreenShareDocState(true);
+    await publishUpdatedOffer('screen_sharing');
     onConnectionMessage?.('Screen sharing started');
 
     screenTrack.addEventListener('ended', async () => {
@@ -766,6 +897,7 @@ export async function createWebRtcSessionController({
       activeScreenStream.getTracks().forEach((track) => track.stop());
     }
 
+    clearRemoteScreenStream();
     localStream.getTracks().forEach((track) => track.stop());
 
     pc.getSenders().forEach((sender) => {

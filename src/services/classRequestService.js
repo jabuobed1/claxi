@@ -428,7 +428,7 @@ async function refreshActiveMatchingRequests(studentId) {
       .map((item) => assignNextTutorOffer(item.id)),
   );
   return;
-}
+  }
   const { db, firestoreModule } = clients;
   const { collection, getDocs, query, where, doc, updateDoc, serverTimestamp } = firestoreModule;
   const baseQuery = query(
@@ -501,10 +501,29 @@ async function refreshActiveMatchingRequests(studentId) {
       }
     }
 
+    const latestSnap = await firestoreModule.getDoc(requestRef);
+    if (!latestSnap.exists()) continue;
+
+    const latestRequest = latestSnap.data();
+    const activeStatuses = [
+      REQUEST_STATUS.PENDING,
+      REQUEST_STATUS.MATCHING,
+      REQUEST_STATUS.OFFERED,
+      REQUEST_STATUS.NO_TUTOR_AVAILABLE,
+    ];
+
+    if (!activeStatuses.includes(latestRequest.status)) {
+      continue;
+    }
+
+    if (latestRequest.tutorId) {
+      continue;
+    }
+
     await updateDoc(requestRef, {
       tutorQueue: queue,
       currentOfferTutorId,
-      offerExpiresAt: currentOfferTutorId ? request.offerExpiresAt || null : null,
+      offerExpiresAt: currentOfferTutorId ? latestRequest.offerExpiresAt || null : null,
       status: nextStatus,
       statusDetail: nextStatusDetail,
       updatedAt: serverTimestamp(),
@@ -660,30 +679,26 @@ export function subscribeToStudentRequests(studentId, callback) {
 
 export function subscribeToRequestById(requestId, callback) {
   let unsub = () => {};
-  let refreshInterval = null;
+
   getFirebaseClients().then((clients) => {
     if (!clients) {
       const emit = () => callback(getMockRequests().find((item) => item.id === requestId) || null);
       emit();
       window.addEventListener('storage', emit);
       unsub = () => window.removeEventListener('storage', emit);
-      refreshInterval = setInterval(() => {
-        refreshActiveMatchingRequests();
-      }, 5000);
       return;
     }
+
     const { db, firestoreModule } = clients;
     const { doc, onSnapshot } = firestoreModule;
+
     unsub = onSnapshot(doc(db, 'classRequests', requestId), (snapshot) => {
       callback(snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null);
     });
-    refreshInterval = setInterval(() => {
-      refreshActiveMatchingRequests();
-    }, 5000);
   });
+
   return () => {
     unsub();
-    if (refreshInterval) clearInterval(refreshInterval);
   };
 }
 
