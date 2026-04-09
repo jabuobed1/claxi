@@ -224,6 +224,7 @@ export async function createWebRtcSessionController({
   let latestAppliedAnswerSdp = null;
   let isLocalScreenSharing = false;
   let isRemoteScreenSharing = false;
+  let remoteScreenShareSignaled = false;
   let currentRemoteScreenTrackId = null;
   const unsubscribers = [];
 
@@ -293,6 +294,18 @@ export async function createWebRtcSessionController({
     });
   };
 
+  const computeRemoteScreenLiveState = () => {
+    const remoteVideoTrack = remoteScreenStream.getVideoTracks()[0] || null;
+    const hasUsableTrack =
+      Boolean(remoteVideoTrack)
+      && remoteVideoTrack.readyState === 'live'
+      && !remoteVideoTrack.muted;
+
+    isRemoteScreenSharing = remoteScreenShareSignaled && hasUsableTrack;
+    onRemoteScreenStream?.(isRemoteScreenSharing ? remoteScreenStream : null);
+    emitScreenShareState();
+  };
+
   const updateScreenShareDocState = async (active) => {
     const sessionSnap = await getDoc(sessionRef);
     const existing = sessionSnap.data()?.webrtc || {};
@@ -349,6 +362,7 @@ export async function createWebRtcSessionController({
       remoteScreenStream.removeTrack(track);
     });
     currentRemoteScreenTrackId = null;
+    remoteScreenShareSignaled = false;
     isRemoteScreenSharing = false;
     onRemoteScreenStream?.(null);
     emitScreenShareState();
@@ -384,15 +398,7 @@ export async function createWebRtcSessionController({
     });
 
     const publishRemoteScreenStream = () => {
-      const videoTrack = remoteScreenStream.getVideoTracks()[0] || null;
-      const hasUsableTrack =
-        Boolean(videoTrack)
-        && videoTrack.readyState === 'live'
-        && !videoTrack.muted;
-
-      isRemoteScreenSharing = hasUsableTrack;
-      onRemoteScreenStream?.(hasUsableTrack ? remoteScreenStream : null);
-      emitScreenShareState();
+      computeRemoteScreenLiveState();
     };
 
     const handleUnmute = () => {
@@ -409,8 +415,7 @@ export async function createWebRtcSessionController({
         readyState: receiverTrack.readyState,
       });
       isRemoteScreenSharing = false;
-      onRemoteScreenStream?.(null);
-      emitScreenShareState();
+      computeRemoteScreenLiveState();
     };
 
     const handleEnded = () => {
@@ -426,8 +431,7 @@ export async function createWebRtcSessionController({
       });
 
       isRemoteScreenSharing = false;
-      onRemoteScreenStream?.(null);
-      emitScreenShareState();
+      computeRemoteScreenLiveState();
     };
 
     receiverTrack.onunmute = handleUnmute;
@@ -465,12 +469,7 @@ export async function createWebRtcSessionController({
       currentRemoteScreenTrackId = incomingTrack.id;
 
       const publishScreenState = () => {
-        const hasUsableTrack =
-          incomingTrack.readyState === 'live' && !incomingTrack.muted;
-
-        isRemoteScreenSharing = hasUsableTrack;
-        onRemoteScreenStream?.(hasUsableTrack ? remoteScreenStream : null);
-        emitScreenShareState();
+        computeRemoteScreenLiveState();
       };
 
       incomingTrack.onunmute = () => {
@@ -487,8 +486,7 @@ export async function createWebRtcSessionController({
           readyState: incomingTrack.readyState,
         });
         isRemoteScreenSharing = false;
-        onRemoteScreenStream?.(null);
-        emitScreenShareState();
+        computeRemoteScreenLiveState();
       };
 
       incomingTrack.onended = () => {
@@ -504,8 +502,7 @@ export async function createWebRtcSessionController({
         });
 
         isRemoteScreenSharing = false;
-        onRemoteScreenStream?.(null);
-        emitScreenShareState();
+        computeRemoteScreenLiveState();
       };
 
       publishScreenState();
@@ -681,10 +678,11 @@ export async function createWebRtcSessionController({
       const webrtc = data.webrtc || {};
 
       if (typeof webrtc?.screenShare?.active === 'boolean' && role === 'student') {
+        remoteScreenShareSignaled = webrtc.screenShare.active;
         if (!webrtc.screenShare.active) {
           clearRemoteScreenStream();
         } else {
-          emitScreenShareState();
+          computeRemoteScreenLiveState();
         }
       }
 
