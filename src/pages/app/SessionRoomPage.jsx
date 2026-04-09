@@ -28,6 +28,7 @@ import { fetchIceServers } from '../../services/iceServerService';
 import { debugLog } from '../../utils/devLogger';
 import { updateClassRequest } from '../../services/classRequestService';
 import { REQUEST_STATUSES } from '../../utils/requestStatus';
+import { startSessionScreenRecording, stopSessionScreenRecording } from '../../services/storageService';
 
 function useLiveSeconds(startTs) {
   const [tick, setTick] = useState(Date.now());
@@ -122,7 +123,7 @@ export default function SessionRoomPage() {
   const sessions = role === 'tutor' ? tutorSessions : studentSessions;
   const session = sessions.find((item) => item.id === id);
 
-  const [ratingForm, setRatingForm] = useState({ overall: '5', topic: '5', comment: '' });
+  const [ratingForm, setRatingForm] = useState({ overall: 5, comment: '' });
   const [isSaving, setIsSaving] = useState(false);
   const [selectedCardId] = useState(
     user?.paymentMethods?.find((card) => card.isDefault)?.id
@@ -151,6 +152,7 @@ export default function SessionRoomPage() {
   const rtcInitStartedRef = useRef(false);
   const hadSessionRef = useRef(false);
   const studentControlsTimeoutRef = useRef(null);
+  const isRecordingRef = useRef(false);
 
   const callSeconds = useLiveSeconds(session?.callStartedAt);
   const billedSeconds = useLiveSeconds(session?.billingStartedAt);
@@ -192,11 +194,41 @@ export default function SessionRoomPage() {
       rtcRef.current = null;
       rtcInitStartedRef.current = false;
       setRemoteScreenStreamObj(null);
+      if (isRecordingRef.current && session?.id) {
+        stopSessionScreenRecording({ sessionId: session.id }).finally(() => {
+          isRecordingRef.current = false;
+        });
+      }
       if (studentControlsTimeoutRef.current) {
         clearTimeout(studentControlsTimeoutRef.current);
       }
     };
-  }, []);
+  }, [session?.id]);
+
+  useEffect(() => {
+    if (role !== 'student' || !session?.id) return;
+
+    const shouldStart = isRemoteScreenSharing && Boolean(remoteScreenStreamObj);
+
+    if (shouldStart && !isRecordingRef.current) {
+      const started = startSessionScreenRecording({
+        sessionId: session.id,
+        stream: remoteScreenStreamObj,
+      });
+      if (started) {
+        isRecordingRef.current = true;
+        debugLog('sessionRoom', 'Started student screen recording.', { sessionId: session.id });
+      }
+      return;
+    }
+
+    if (!shouldStart && isRecordingRef.current) {
+      stopSessionScreenRecording({ sessionId: session.id })
+        .finally(() => {
+          isRecordingRef.current = false;
+        });
+    }
+  }, [isRemoteScreenSharing, remoteScreenStreamObj, role, session?.id]);
 
   useEffect(() => {
     if (!remoteScreenVideoRef.current) return;
@@ -547,11 +579,24 @@ export default function SessionRoomPage() {
 
     await submitSessionRating(session, role, {
       overall: Number(ratingForm.overall),
-      topic: Number(ratingForm.topic),
       comment: ratingForm.comment,
     });
 
     setIsSaving(false);
+  };
+
+  const markRatingDone = async () => {
+    if (!session || isSaving) return;
+    setIsSaving(true);
+
+    try {
+      await submitSessionRating(session, role, {
+        overall: Number(ratingForm.overall || 5),
+        comment: ratingForm.comment || '',
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const toggleMute = () => {
@@ -796,40 +841,26 @@ export default function SessionRoomPage() {
             </div>
 
             <form className="mt-5 grid gap-4" onSubmit={submitRating}>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <label className="text-sm text-zinc-300">
-                  Overall
-                  <select
-                    value={ratingForm.overall}
-                    onChange={(event) =>
-                      setRatingForm((prev) => ({ ...prev, overall: event.target.value }))
-                    }
-                    className="mt-2 w-full rounded-2xl border border-zinc-700 bg-zinc-900 px-3 py-3 text-sm text-zinc-100 outline-none transition focus:border-brand"
-                  >
-                    {[1, 2, 3, 4, 5].map((value) => (
-                      <option key={`overall-${value}`} value={String(value)}>
-                        {value}/5
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="text-sm text-zinc-300">
-                  Topic specific
-                  <select
-                    value={ratingForm.topic}
-                    onChange={(event) =>
-                      setRatingForm((prev) => ({ ...prev, topic: event.target.value }))
-                    }
-                    className="mt-2 w-full rounded-2xl border border-zinc-700 bg-zinc-900 px-3 py-3 text-sm text-zinc-100 outline-none transition focus:border-brand"
-                  >
-                    {[1, 2, 3, 4, 5].map((value) => (
-                      <option key={`topic-${value}`} value={String(value)}>
-                        {value}/5
-                      </option>
-                    ))}
-                  </select>
-                </label>
+              <div>
+                <p className="text-sm text-zinc-300">Overall rating</p>
+                <div className="mt-3 flex items-center gap-2">
+                  {[1, 2, 3, 4, 5].map((value) => {
+                    const isActive = value <= Number(ratingForm.overall || 0);
+                    return (
+                      <button
+                        key={`overall-star-${value}`}
+                        type="button"
+                        onClick={() => setRatingForm((prev) => ({ ...prev, overall: value }))}
+                        className="rounded-xl p-1.5 transition hover:scale-105"
+                        aria-label={`Rate ${value} star${value > 1 ? 's' : ''}`}
+                      >
+                        <Star
+                          className={`h-7 w-7 ${isActive ? 'fill-amber-300 text-amber-300' : 'text-zinc-600'}`}
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <label className="text-sm text-zinc-300">
@@ -845,7 +876,23 @@ export default function SessionRoomPage() {
                 />
               </label>
 
-              <div className="flex justify-end">
+              <div className="flex flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  disabled={isSaving}
+                  onClick={markRatingDone}
+                  className="rounded-2xl border border-zinc-700 px-5 py-3 text-sm font-semibold text-zinc-200 transition hover:bg-zinc-800 disabled:opacity-50"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  disabled={isSaving}
+                  onClick={markRatingDone}
+                  className="rounded-2xl border border-zinc-700 px-5 py-3 text-sm font-semibold text-zinc-200 transition hover:bg-zinc-800 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
                 <button
                   type="submit"
                   disabled={isSaving}
