@@ -1,8 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { debugError, debugLog } from '../../utils/devLogger';
 
-const EXCALIDRAW_JS_URL = 'https://esm.sh/@excalidraw/excalidraw@0.18.0?bundle&external=react,react-dom';
-const EXCALIDRAW_CSS_URL = 'https://esm.sh/@excalidraw/excalidraw@0.18.0/dist/excalidraw.min.css';
+const EXCALIDRAW_JS_URLS = [
+  'https://esm.sh/@excalidraw/excalidraw@0.18.0?bundle&external=react,react-dom',
+  'https://cdn.jsdelivr.net/npm/@excalidraw/excalidraw@0.18.0/+esm',
+];
+
+const EXCALIDRAW_CSS_URLS = [
+  'https://esm.sh/@excalidraw/excalidraw@0.18.0/dist/excalidraw.min.css',
+  'https://cdn.jsdelivr.net/npm/@excalidraw/excalidraw@0.18.0/dist/excalidraw.min.css',
+];
 
 function readInitialScene(persistenceKey) {
   if (typeof window === 'undefined') return null;
@@ -34,9 +41,37 @@ function ensureStylesheet() {
 
   const link = document.createElement('link');
   link.rel = 'stylesheet';
-  link.href = EXCALIDRAW_CSS_URL;
+  link.href = EXCALIDRAW_CSS_URLS[0];
   link.setAttribute('data-excalidraw-css', 'true');
+  link.onerror = () => {
+    if (link.href !== EXCALIDRAW_CSS_URLS[1]) {
+      link.href = EXCALIDRAW_CSS_URLS[1];
+    }
+  };
   document.head.appendChild(link);
+}
+
+async function loadExcalidrawModule() {
+  let lastError = null;
+
+  for (const moduleUrl of EXCALIDRAW_JS_URLS) {
+    try {
+      debugLog('whiteboard', 'Attempting Excalidraw module load.', { moduleUrl });
+      const module = await import(/* @vite-ignore */ moduleUrl);
+      if (module?.Excalidraw) {
+        return module.Excalidraw;
+      }
+      throw new Error('Excalidraw export missing.');
+    } catch (error) {
+      lastError = error;
+      debugError('whiteboard', 'Excalidraw module load attempt failed.', {
+        moduleUrl,
+        message: error?.message,
+      });
+    }
+  }
+
+  throw lastError || new Error('Unable to load Excalidraw module.');
 }
 
 export default function ExcalidrawEmbed({ roomId }) {
@@ -77,17 +112,9 @@ export default function ExcalidrawEmbed({ roomId }) {
         ensureStylesheet();
         debugLog('whiteboard', 'Loading Excalidraw runtime module.');
 
-        const module = await import(/* @vite-ignore */ EXCALIDRAW_JS_URL);
+        const sdkComponent = await loadExcalidrawModule();
 
         if (canceled) return;
-
-        const sdkComponent = module?.Excalidraw || null;
-
-        if (!sdkComponent) {
-          debugError('whiteboard', 'SDK module missing Excalidraw export.');
-          setLoadError('Whiteboard failed to initialize (missing Excalidraw export).');
-          return;
-        }
 
         debugLog('whiteboard', 'Excalidraw loaded successfully.');
         setExcalidrawComponent(() => sdkComponent);
@@ -96,7 +123,10 @@ export default function ExcalidrawEmbed({ roomId }) {
         debugError('whiteboard', 'Whiteboard SDK load failed.', {
           message: error?.message,
         });
-        setLoadError(error?.message || 'Unable to load whiteboard SDK.');
+        setLoadError(
+          error?.message
+            || 'Unable to load whiteboard SDK. Check network/CSP access to Excalidraw CDN URLs.'
+        );
       }
     }
 
