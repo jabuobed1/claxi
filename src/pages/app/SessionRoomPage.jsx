@@ -719,7 +719,7 @@ export default function SessionRoomPage() {
 
         <div
           className={`absolute z-30 ${
-            role === 'student' ? 'bottom-4 left-4' : 'bottom-4 left-4 top-4 flex items-center'
+            role === 'student' ? 'bottom-2 left-2' : 'bottom-2 right-2 top-2 flex items-center'
           } ${
             role === 'student'
               ? showStudentOverlay
