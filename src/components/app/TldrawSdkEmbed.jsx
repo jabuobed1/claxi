@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
-import 'tldraw/tldraw.css';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import '@excalidraw/excalidraw/index.css';
 import { debugError, debugLog } from '../../utils/devLogger';
 
-export default function TldrawSdkEmbed({ roomId, licenseKey }) {
-  const [TldrawComponent, setTldrawComponent] = useState(null);
+export default function TldrawSdkEmbed({ roomId }) {
+  const [ExcalidrawComponent, setExcalidrawComponent] = useState(null);
   const [loadError, setLoadError] = useState('');
 
   const persistenceKey = useMemo(
@@ -11,34 +11,59 @@ export default function TldrawSdkEmbed({ roomId, licenseKey }) {
     [roomId]
   );
 
+  const initialData = useMemo(() => {
+    try {
+      const persisted = localStorage.getItem(persistenceKey);
+      if (!persisted) return undefined;
+      return JSON.parse(persisted);
+    } catch {
+      return undefined;
+    }
+  }, [persistenceKey]);
+
+  const handleChange = useCallback((elements, appState, files) => {
+    try {
+      localStorage.setItem(
+        persistenceKey,
+        JSON.stringify({
+          elements,
+          appState,
+          files,
+        })
+      );
+    } catch {
+      // Ignore persistence failures (e.g. storage quota).
+    }
+  }, [persistenceKey]);
+
   useEffect(() => {
     let canceled = false;
 
     async function loadSdk() {
       try {
         setLoadError('');
-        debugLog('tldraw', 'Loading tldraw SDK runtime module.');
+        debugLog('whiteboard', 'Loading Excalidraw runtime module.');
 
-        const module = await import('tldraw');
+        const module = await import('@excalidraw/excalidraw');
 
         if (canceled) return;
 
-        const sdkComponent = module?.Tldraw || null;
+        const sdkComponent = module?.Excalidraw || null;
 
         if (!sdkComponent) {
-          debugError('tldraw', 'SDK module missing Tldraw export.');
-          setLoadError('Whiteboard failed to initialize (missing Tldraw export).');
+          debugError('whiteboard', 'SDK module missing Excalidraw export.');
+          setLoadError('Whiteboard failed to initialize (missing Excalidraw export).');
           return;
         }
 
-        debugLog('tldraw', 'tldraw SDK loaded successfully.');
-        setTldrawComponent(() => sdkComponent);
+        debugLog('whiteboard', 'Excalidraw loaded successfully.');
+        setExcalidrawComponent(() => sdkComponent);
       } catch (error) {
         if (canceled) return;
-        debugError('tldraw', 'Whiteboard SDK load failed.', {
+        debugError('whiteboard', 'Whiteboard SDK load failed.', {
           message: error?.message,
         });
-        setLoadError(error?.message || 'Unable to load tldraw SDK.');
+        setLoadError(error?.message || 'Unable to load whiteboard SDK.');
       }
     }
 
@@ -60,7 +85,7 @@ export default function TldrawSdkEmbed({ roomId, licenseKey }) {
     );
   }
 
-  if (!TldrawComponent) {
+  if (!ExcalidrawComponent) {
     return (
       <div className="flex h-full items-center justify-center p-4 text-center text-xs text-zinc-500">
         Loading collaborative whiteboard SDK...
@@ -69,9 +94,8 @@ export default function TldrawSdkEmbed({ roomId, licenseKey }) {
   }
 
   return (
-    <TldrawComponent
-      persistenceKey={persistenceKey}
-      licenseKey={licenseKey || undefined}
-    />
+    <div className="h-full w-full">
+      <ExcalidrawComponent initialData={initialData} onChange={handleChange} />
+    </div>
   );
 }

@@ -160,7 +160,6 @@ export default function SessionRoomPage() {
   const callSeconds = useLiveSeconds(session?.callStartedAt);
   const billedSeconds = useLiveSeconds(session?.billingStartedAt);
   const needsRating = session?.status === SESSION_STATUS.COMPLETED && !session?.ratings?.[role];
-  const tldrawLicenseKey = import.meta.env.VITE_TLDRAW_LICENSE_KEY;
   const forceRelayOnly = String(import.meta.env.VITE_WEBRTC_FORCE_RELAY_ONLY || '').toLowerCase() === 'true';
   const whiteboardRoom = session?.whiteboardRoomId || session?.requestId || session?.id;
   const graceRemaining = Math.max(0, Math.ceil(((session?.joinGraceEndsAt || 0) - Date.now()) / 1000));
@@ -760,7 +759,7 @@ export default function SessionRoomPage() {
     <div className="relative h-full w-full overflow-hidden bg-[#0f141d]">
       {renderTutorStageHeader()}
       <div className="absolute inset-0">
-        <TldrawSdkEmbed roomId={whiteboardRoom} licenseKey={tldrawLicenseKey} />
+        <TldrawSdkEmbed roomId={whiteboardRoom} />
       </div>
     </div>
   );
