@@ -1,15 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { debugError, debugLog } from '../../utils/devLogger';
-
-const EXCALIDRAW_JS_URLS = [
-  'https://esm.sh/@excalidraw/excalidraw@0.18.0?bundle&external=react,react-dom',
-  'https://cdn.jsdelivr.net/npm/@excalidraw/excalidraw@0.18.0/+esm',
-];
-
-const EXCALIDRAW_CSS_URLS = [
-  'https://esm.sh/@excalidraw/excalidraw@0.18.0/dist/excalidraw.min.css',
-  'https://cdn.jsdelivr.net/npm/@excalidraw/excalidraw@0.18.0/dist/excalidraw.min.css',
-];
+import { useCallback, useMemo } from 'react';
+import { Excalidraw } from '@excalidraw/excalidraw';
+import '@excalidraw/excalidraw/index.css';
+import { debugError } from '../../utils/devLogger';
 
 function readInitialScene(persistenceKey) {
   if (typeof window === 'undefined') return null;
@@ -33,57 +25,16 @@ function readInitialScene(persistenceKey) {
   }
 }
 
-function ensureStylesheet() {
-  if (typeof document === 'undefined') return;
-
-  const existing = document.querySelector('link[data-excalidraw-css="true"]');
-  if (existing) return;
-
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.href = EXCALIDRAW_CSS_URLS[0];
-  link.setAttribute('data-excalidraw-css', 'true');
-  link.onerror = () => {
-    if (link.href !== EXCALIDRAW_CSS_URLS[1]) {
-      link.href = EXCALIDRAW_CSS_URLS[1];
-    }
-  };
-  document.head.appendChild(link);
-}
-
-async function loadExcalidrawModule() {
-  let lastError = null;
-
-  for (const moduleUrl of EXCALIDRAW_JS_URLS) {
-    try {
-      debugLog('whiteboard', 'Attempting Excalidraw module load.', { moduleUrl });
-      const module = await import(/* @vite-ignore */ moduleUrl);
-      if (module?.Excalidraw) {
-        return module.Excalidraw;
-      }
-      throw new Error('Excalidraw export missing.');
-    } catch (error) {
-      lastError = error;
-      debugError('whiteboard', 'Excalidraw module load attempt failed.', {
-        moduleUrl,
-        message: error?.message,
-      });
-    }
-  }
-
-  throw lastError || new Error('Unable to load Excalidraw module.');
-}
-
 export default function ExcalidrawEmbed({ roomId }) {
-  const [ExcalidrawComponent, setExcalidrawComponent] = useState(null);
-  const [loadError, setLoadError] = useState('');
-
   const persistenceKey = useMemo(
     () => `claxi-${roomId || 'session-board'}`,
     [roomId]
   );
 
-  const initialData = useMemo(() => readInitialScene(persistenceKey), [persistenceKey]);
+  const initialData = useMemo(
+    () => readInitialScene(persistenceKey),
+    [persistenceKey]
+  );
 
   const handleSceneChange = useCallback(
     (elements, appState, files) => {
@@ -103,63 +54,12 @@ export default function ExcalidrawEmbed({ roomId }) {
     [persistenceKey]
   );
 
-  useEffect(() => {
-    let canceled = false;
-
-    async function loadSdk() {
-      try {
-        setLoadError('');
-        ensureStylesheet();
-        debugLog('whiteboard', 'Loading Excalidraw runtime module.');
-
-        const sdkComponent = await loadExcalidrawModule();
-
-        if (canceled) return;
-
-        debugLog('whiteboard', 'Excalidraw loaded successfully.');
-        setExcalidrawComponent(() => sdkComponent);
-      } catch (error) {
-        if (canceled) return;
-        debugError('whiteboard', 'Whiteboard SDK load failed.', {
-          message: error?.message,
-        });
-        setLoadError(
-          error?.message
-            || 'Unable to load whiteboard SDK. Check network/CSP access to Excalidraw CDN URLs.'
-        );
-      }
-    }
-
-    loadSdk();
-
-    return () => {
-      canceled = true;
-    };
-  }, []);
-
-  if (loadError) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 p-4 text-center">
-        <p className="text-sm font-semibold text-rose-600">
-          Whiteboard is temporarily unavailable.
-        </p>
-        <p className="text-xs text-zinc-500">{loadError}</p>
-      </div>
-    );
-  }
-
-  if (!ExcalidrawComponent) {
-    return (
-      <div className="flex h-full items-center justify-center p-4 text-center text-xs text-zinc-500">
-        Loading collaborative whiteboard SDK...
-      </div>
-    );
-  }
-
   return (
-    <ExcalidrawComponent
-      initialData={initialData || undefined}
-      onChange={handleSceneChange}
-    />
+    <div className="h-full w-full">
+      <Excalidraw
+        initialData={initialData || undefined}
+        onChange={handleSceneChange}
+      />
+    </div>
   );
 }
