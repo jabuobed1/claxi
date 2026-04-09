@@ -6,7 +6,7 @@ export default defineConfig({
   build: {
     sourcemap: false,
     reportCompressedSize: false,
-    chunkSizeWarningLimit: 1200,
+    chunkSizeWarningLimit: 4000,
   },
   server: {
     proxy: {
