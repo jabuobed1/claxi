@@ -152,6 +152,11 @@ export default function SessionRoomPage() {
   const hadSessionRef = useRef(false);
   const studentControlsTimeoutRef = useRef(null);
 
+  const remoteScreenRecorderRef = useRef(null);
+  const remoteScreenChunksRef = useRef([]);
+  const remoteScreenDownloadUrlRef = useRef(null);
+  const wasRemoteScreenActiveRef = useRef(false);
+
   const callSeconds = useLiveSeconds(session?.callStartedAt);
   const billedSeconds = useLiveSeconds(session?.billingStartedAt);
   const needsRating = session?.status === SESSION_STATUS.COMPLETED && !session?.ratings?.[role];
@@ -189,12 +194,23 @@ export default function SessionRoomPage() {
 
   useEffect(() => {
     return () => {
+      stopRemoteScreenRecording({ shouldDownload: true });
       rtcRef.current?.close?.();
       rtcRef.current = null;
       rtcInitStartedRef.current = false;
       setRemoteScreenStreamObj(null);
+
       if (studentControlsTimeoutRef.current) {
         clearTimeout(studentControlsTimeoutRef.current);
+      }
+
+      if (remoteScreenRecorderRef.current && remoteScreenRecorderRef.current.state !== 'inactive') {
+        remoteScreenRecorderRef.current.stop();
+      }
+
+      if (remoteScreenDownloadUrlRef.current) {
+        URL.revokeObjectURL(remoteScreenDownloadUrlRef.current);
+        remoteScreenDownloadUrlRef.current = null;
       }
     };
   }, []);
@@ -207,6 +223,23 @@ export default function SessionRoomPage() {
       hasStream: Boolean(remoteScreenStreamObj),
     });
   }, [remoteScreenStreamObj, isRemoteScreenSharing]);
+
+  useEffect(() => {
+    if (role !== 'student') return;
+
+    const hasActiveScreen = Boolean(remoteScreenStreamObj);
+
+    if (hasActiveScreen && !wasRemoteScreenActiveRef.current) {
+      wasRemoteScreenActiveRef.current = true;
+      startRemoteScreenRecording(remoteScreenStreamObj);
+      return;
+    }
+
+    if (!hasActiveScreen && wasRemoteScreenActiveRef.current) {
+      wasRemoteScreenActiveRef.current = false;
+      stopRemoteScreenRecording({ shouldDownload: true });
+    }
+  }, [role, remoteScreenStreamObj, startRemoteScreenRecording, stopRemoteScreenRecording]);
 
   useEffect(() => {
     const updateViewportFlags = () => {
@@ -271,6 +304,94 @@ export default function SessionRoomPage() {
       }
     };
   }, [role, showStudentControls]);
+
+  const downloadRecordedRemoteScreen = useCallback(() => {
+    if (!remoteScreenChunksRef.current.length || !session?.id) return;
+
+    const blob = new Blob(remoteScreenChunksRef.current, { type: 'video/webm' });
+    remoteScreenChunksRef.current = [];
+
+    if (remoteScreenDownloadUrlRef.current) {
+      URL.revokeObjectURL(remoteScreenDownloadUrlRef.current);
+      remoteScreenDownloadUrlRef.current = null;
+    }
+
+    const url = URL.createObjectURL(blob);
+    remoteScreenDownloadUrlRef.current = url;
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `claxi-remote-screen-${session.id}-${Date.now()}.webm`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    debugLog('sessionRoom', 'Downloaded recorded remote screen.', {
+      sessionId: session.id,
+      size: blob.size,
+    });
+  }, [session?.id]);
+
+  const stopRemoteScreenRecording = useCallback(({ shouldDownload = true } = {}) => {
+    const recorder = remoteScreenRecorderRef.current;
+
+    if (recorder && recorder.state !== 'inactive') {
+      recorder.onstop = () => {
+        remoteScreenRecorderRef.current = null;
+        if (shouldDownload) {
+          downloadRecordedRemoteScreen();
+        } else {
+          remoteScreenChunksRef.current = [];
+        }
+      };
+
+      recorder.stop();
+      return;
+    }
+
+    remoteScreenRecorderRef.current = null;
+
+    if (!shouldDownload) {
+      remoteScreenChunksRef.current = [];
+    }
+  }, [downloadRecordedRemoteScreen]);
+
+  const startRemoteScreenRecording = useCallback((stream) => {
+    if (!stream || role !== 'student') return;
+    if (remoteScreenRecorderRef.current && remoteScreenRecorderRef.current.state !== 'inactive') return;
+
+    remoteScreenChunksRef.current = [];
+
+    let mimeType = '';
+    if (window.MediaRecorder?.isTypeSupported?.('video/webm;codecs=vp8')) {
+      mimeType = 'video/webm;codecs=vp8';
+    } else if (window.MediaRecorder?.isTypeSupported?.('video/webm')) {
+      mimeType = 'video/webm';
+    }
+
+    const recorder = mimeType
+      ? new MediaRecorder(stream, { mimeType })
+      : new MediaRecorder(stream);
+
+    recorder.ondataavailable = (event) => {
+      if (event.data && event.data.size > 0) {
+        remoteScreenChunksRef.current.push(event.data);
+      }
+    };
+
+    recorder.onstop = () => {
+      remoteScreenRecorderRef.current = null;
+      downloadRecordedRemoteScreen();
+    };
+
+    recorder.start(1000);
+    remoteScreenRecorderRef.current = recorder;
+
+    debugLog('sessionRoom', 'Started recording remote screen stream.', {
+      sessionId: session?.id || null,
+      mimeType: mimeType || 'browser-default',
+    });
+  }, [downloadRecordedRemoteScreen, role, session?.id]);
 
   const initializeCall = useCallback(async ({ shouldJoinStudent }) => {
     if (!session || !user?.uid) return;
@@ -414,7 +535,8 @@ export default function SessionRoomPage() {
   useEffect(() => {
     if (!session?.status) return;
     if (![SESSION_STATUS.CANCELED, SESSION_STATUS.CANCELED_DURING].includes(session.status)) return;
-
+    
+    stopRemoteScreenRecording({ shouldDownload: true });
     rtcRef.current?.close?.();
     rtcRef.current = null;
     rtcInitStartedRef.current = false;
@@ -447,6 +569,7 @@ export default function SessionRoomPage() {
     if (session) return;
     if (!hadSessionRef.current) return;
 
+    stopRemoteScreenRecording({ shouldDownload: true });
     rtcRef.current?.close?.();
     rtcRef.current = null;
     rtcInitStartedRef.current = false;
@@ -493,7 +616,7 @@ export default function SessionRoomPage() {
         canceledReason: cancellationReason,
       });
     }
-
+    stopRemoteScreenRecording({ shouldDownload: true });
     rtcRef.current?.close?.();
     rtcRef.current = null;
     rtcInitStartedRef.current = false;
@@ -525,6 +648,7 @@ export default function SessionRoomPage() {
   };
 
   const endCurrentSession = async () => {
+    stopRemoteScreenRecording({ shouldDownload: true });
     rtcRef.current?.close?.();
     rtcRef.current = null;
     rtcInitStartedRef.current = false;

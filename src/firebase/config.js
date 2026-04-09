@@ -15,9 +15,9 @@ const firebaseConfig = {
 
 export const hasFirebaseEnv = Boolean(
   firebaseConfig.apiKey &&
-    firebaseConfig.authDomain &&
-    firebaseConfig.projectId &&
-    firebaseConfig.appId,
+  firebaseConfig.authDomain &&
+  firebaseConfig.projectId &&
+  firebaseConfig.appId,
 );
 
 let cachedClients = null;
