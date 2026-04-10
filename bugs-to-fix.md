@@ -455,7 +455,7 @@ Remove or DEV-gate noisy logs.
 ---
 
 ## Phase 06 — Environment safety (mock fallback hardening) (High)
-**Status:** `NOT STARTED`
+**Status:** `DONE` ✅
 
 ### Problem
 App can silently fall back to mock mode if Firebase env is missing.
@@ -476,6 +476,36 @@ Fail safely in production when required env is missing.
 
 ### Validation checks
 - Start app with missing env in production mode and confirm blocking error behavior.
+
+### Phase 06 completion notes ✅
+#### What was implemented
+- Added strict Firebase environment validation in `src/firebase/config.js` for required production keys:
+  - `VITE_FIREBASE_API_KEY`
+  - `VITE_FIREBASE_AUTH_DOMAIN`
+  - `VITE_FIREBASE_PROJECT_ID`
+  - `VITE_FIREBASE_APP_ID`
+- Added `FirebaseConfigError` and production-only hard-fail guards so `getFirebaseClients()` no longer silently returns mock mode when Firebase configuration is missing/invalid in production.
+- Added production bootstrap guard in `src/main.jsx`:
+  - If required Firebase env vars are missing in production, app now renders a blocking configuration error screen.
+  - Blocking screen clearly lists missing variables so deployment misconfiguration is visible immediately.
+
+#### Expected behavior after this phase
+- Production builds will not silently fall back to local mock mode when Firebase env values are missing.
+- Missing production Firebase configuration now blocks app startup with a clear user-facing error screen.
+- In non-production environments, existing local mock fallback behavior remains available for development workflows.
+
+#### Commands to run / deploy steps
+- Install dependencies (if needed): `npm install`
+- Frontend production check: `npm run build`
+- Serve production build for verification (example): `npm run preview`
+
+#### Configuration notes
+- Ensure all required Firebase Vite env vars are injected in production deployment:
+  - `VITE_FIREBASE_API_KEY`
+  - `VITE_FIREBASE_AUTH_DOMAIN`
+  - `VITE_FIREBASE_PROJECT_ID`
+  - `VITE_FIREBASE_APP_ID`
+- If any required key is absent, the app will intentionally show a blocking configuration error screen in production.
 
 ---
 
