@@ -200,6 +200,8 @@ Given this codebase, the flickering/request reset behavior is most likely from *
 ## - Make sure you mark this file when done with the phase so that the next phase can continue where you left off.
 ## - The suggested files should not be your only focus, so please make sure you always get full context before proceeding with any work. Never base your work on Assumptions, always be sure and if not sure get more context from other files before moring forward.
 ## - ALWAYS ASK WHEN NOT SURE, THIS IS EXTREMELY IMPORTANT, NEVER NEVER AND NEVER EVER ASSUME AND WORK WITH ASSUMPTIONS.
+## - NEVER AND NEVER EVER TOUCH CODE THAT'S UNRELATED TO ANY OF THESE FIXES UNLESS REALLY REALLY NECESSARY AND ALWAYS ASK IF NOT SURE.
+## - THE GOLDEN RULE IS ALWAYS ASK WHEN UNSURE.
 
 
 # Claxi Bug Fix Plan (Phase-by-Phase, One Task at a Time)
