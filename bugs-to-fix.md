@@ -588,7 +588,7 @@ Confirm and enforce least-privilege Firestore/Storage rules.
 ---
 
 ## Phase 10 — Timer/polling performance cleanup (Medium)
-**Status:** `NOT STARTED`
+**Status:** `DONE` ✅
 
 ### Problem
 High timer density (250ms/1s/5s) can create unnecessary CPU/network load.
@@ -610,6 +610,26 @@ Reduce timers; prefer event-driven updates.
 
 ### Validation checks
 - Compare timer count before/after and verify offer/session UX still updates correctly.
+
+### Phase 10 completion notes ✅
+#### What was implemented
+- Reduced `TutorOfferOverlay` timer frequency from `250ms` to `1000ms`.
+- Updated `TutorOfferOverlay` clock behavior so the countdown timer is only active while a live `displayRequest` exists, instead of running continuously.
+- Removed the recurring `setInterval` clock from `AvailableRequestsPage` (read-only mirror view).
+- Replaced per-second countdown text on `AvailableRequestsPage` with an event-driven expiry timestamp label (`Expires at HH:MM:SS`), so no page-level timer is needed.
+
+#### Expected behavior after this phase
+- Total recurring timer load across tutor offer surfaces is reduced.
+- `TutorOfferOverlay` remains responsive for actionable countdown UX, with lower update frequency and only when needed.
+- `AvailableRequestsPage` remains realtime via snapshot updates while avoiding additional client clock intervals.
+
+#### Commands to run / deploy steps
+- Install dependencies (if needed): `npm install`
+- Frontend production check: `npm run build`
+
+#### Configuration notes
+- No Firebase environment variable injection required for this phase.
+- No Cloud Functions deployment required for this phase.
 
 ---
 

@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import PageHeader from '../../../components/ui/PageHeader';
 import SectionCard from '../../../components/ui/SectionCard';
 import LoadingState from '../../../components/ui/LoadingState';
@@ -12,14 +11,8 @@ import { getTutorOnboardingStatus } from '../../../utils/onboarding';
 export default function AvailableRequestsPage() {
   const { user } = useAuth();
   const { requests, isLoading } = useTutorAvailableRequests(user?.uid);
-  const [now, setNow] = useState(Date.now());
   const onboardingStatus = getTutorOnboardingStatus(user);
   const canAccept = onboardingStatus.complete && user?.onlineStatus === 'online';
-
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   return (
     <div>
@@ -44,7 +37,13 @@ export default function AvailableRequestsPage() {
         ) : requests.length ? (
           <div className="space-y-4">
             {requests.map((request) => {
-              const secondsLeft = Math.max(0, Math.ceil(((request.offerExpiresAt || 0) - now) / 1000));
+              const expiryLabel = request.offerExpiresAt
+                ? new Date(request.offerExpiresAt).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                  })
+                : 'N/A';
 
               return (
                 <RequestCard
@@ -52,7 +51,9 @@ export default function AvailableRequestsPage() {
                   request={request}
                   action={
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-xs font-semibold text-amber-200">{secondsLeft}s left</span>
+                      <span className="text-xs font-semibold text-amber-200">
+                        Expires at {expiryLabel}
+                      </span>
                       <span className="rounded-2xl border border-zinc-600 px-3 py-1 text-xs font-semibold text-zinc-300">
                         Respond in overlay
                       </span>
