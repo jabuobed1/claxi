@@ -380,7 +380,7 @@ Allow exactly one active action surface for live offers.
 ---
 
 ## Phase 04 — Timeout UX consistency (Medium)
-**Status:** `NOT STARTED`
+**Status:** `DONE` ✅
 
 ### Problem
 UI copy says 10 seconds in places while logic uses 30 seconds.
@@ -401,6 +401,32 @@ Render timeout duration from one shared source of truth.
 
 ### Validation checks
 - Compare countdown UI text with configured timeout constant.
+
+### Phase 04 completion notes ✅
+#### What was implemented
+- Added shared timeout constants in lifecycle constants:
+  - `OFFER_TIMEOUT_SECONDS`
+  - `OFFER_TIMEOUT_MS` (derived from seconds)
+- Updated class request service to use the shared timeout constants for:
+  - offer expiry timestamp assignment,
+  - tutor offer notification copy (`Accept within X seconds`).
+- Updated tutor-offer UI surfaces to render timeout messaging from the same shared source:
+  - `TutorOfferOverlay` progress calculation now uses `OFFER_TIMEOUT_SECONDS`.
+  - `TutorOfferOverlay` now explicitly displays “Offers expire after X seconds.”
+  - `AvailableRequestsPage` banner now references the same shared timeout seconds value.
+
+#### Expected behavior after this phase
+- All tutor-offer timeout text is sourced from one shared constant.
+- If timeout duration changes in the future, messaging and countdown/progress behavior stay aligned automatically.
+- Tutors see consistent timeout expectations across the overlay, list context, and notifications.
+
+#### Commands to run / deploy steps
+- Install dependencies (if needed): `npm install`
+- Frontend check: `npm run build`
+
+#### Configuration notes
+- No Firebase environment variable injection required for this phase.
+- No Cloud Functions deployment is required unless you want the updated tutor notification copy live in Firebase mode.
 
 ---
 

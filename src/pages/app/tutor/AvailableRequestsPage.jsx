@@ -6,6 +6,7 @@ import EmptyState from '../../../components/ui/EmptyState';
 import RequestCard from '../../../components/app/RequestCard';
 import { useAuth } from '../../../hooks/useAuth';
 import { useTutorAvailableRequests } from '../../../hooks/useClassRequests';
+import { OFFER_TIMEOUT_SECONDS } from '../../../constants/lifecycle';
 import { getTutorOnboardingStatus } from '../../../utils/onboarding';
 
 export default function AvailableRequestsPage() {
@@ -35,7 +36,7 @@ export default function AvailableRequestsPage() {
       <SectionCard>
         {requests.length ? (
           <p className="mb-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">
-            Use the incoming offer overlay to accept or decline. Actions are disabled on this page to prevent duplicate submissions.
+            Use the incoming offer overlay to accept or decline within {OFFER_TIMEOUT_SECONDS} seconds. Actions are disabled on this page to prevent duplicate submissions.
           </p>
         ) : null}
         {isLoading ? (

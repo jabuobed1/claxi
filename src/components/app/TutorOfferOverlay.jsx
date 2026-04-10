@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FileText, ImageIcon } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useTutorAvailableRequests } from '../../hooks/useClassRequests';
+import { OFFER_TIMEOUT_SECONDS } from '../../constants/lifecycle';
 import { acceptClassRequest, declineClassRequest } from '../../services/classRequestService';
 import { findSessionIdByRequestAndTutor } from '../../services/sessionService';
 import { getTutorOnboardingStatus } from '../../utils/onboarding';
@@ -77,7 +78,7 @@ export default function TutorOfferOverlay() {
 
   const secondsLeft = Math.max(0, Math.ceil(((displayRequest?.offerExpiresAt || 0) - now) / 1000));
   const progress = useMemo(() => {
-    const total = 30;
+    const total = OFFER_TIMEOUT_SECONDS;
     return Math.max(0, Math.min(100, (secondsLeft / total) * 100));
   }, [secondsLeft]);
 
@@ -192,6 +193,9 @@ export default function TutorOfferOverlay() {
 
         <p className="mb-3 text-sm text-zinc-700">
           {displayRequest.description || 'Student sent a request with attachment(s).'}
+        </p>
+        <p className="mb-3 text-xs font-semibold text-zinc-500">
+          Offers expire after {OFFER_TIMEOUT_SECONDS} seconds.
         </p>
 
         {displayRequest.attachment?.downloadUrl ? (

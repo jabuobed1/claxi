@@ -1,6 +1,12 @@
 import { getFirebaseClients } from '../firebase/config';
 import { MEETING_PROVIDERS } from '../constants/meetingProviders';
-import { REQUEST_STATUS, SESSION_STATUS, canTransitionRequest } from '../constants/lifecycle';
+import {
+  OFFER_TIMEOUT_MS,
+  OFFER_TIMEOUT_SECONDS,
+  REQUEST_STATUS,
+  SESSION_STATUS,
+  canTransitionRequest,
+} from '../constants/lifecycle';
 import { BILLING_RULES, PLATFORM_FEE_RATE, TUTOR_PAYOUT_RATE } from '../utils/onboarding';
 import { createNotification } from './notificationService';
 import { EMAIL_EVENT_TYPES, queueEmailEvent } from './emailEventService';
@@ -10,7 +16,6 @@ import { debugError, debugLog } from '../utils/devLogger';
 const MOCK_REQUESTS_KEY = 'claxi_mock_requests';
 const MOCK_SESSIONS_KEY = 'claxi_mock_sessions';
 const MATCHING_TIMEOUT_MS = 3 * 60 * 1000;
-const OFFER_TIMEOUT_MS = 30000;
 const MATCHING_STATUS_DELAY_MS = 3000;
 const NO_TUTOR_STATUS_DELAY_MS = 3000;
 
@@ -287,7 +292,7 @@ async function assignNextTutorOffer(requestId) {
   await createNotification({
     userId: nextTutorId,
     title: 'New live request',
-    message: `New math request: ${requestData.topic}. Accept within 30 seconds.`,
+    message: `New math request: ${requestData.topic}. Accept within ${OFFER_TIMEOUT_SECONDS} seconds.`,
     type: 'tutor_offer',
     requestId,
   });
