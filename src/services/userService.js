@@ -208,16 +208,19 @@ export async function updateUserRatingSummary(uid, roleKey, overallScore) {
   if (!existing) return null;
 
   const currentStats = existing?.ratings?.[roleKey] || {};
-  const count = Number(currentStats.count || 0);
-  const average = Number(currentStats.average || 0);
-  const nextCount = count + 1;
-  const nextAverage = Number((((average * count) + Number(overallScore || 0)) / nextCount).toFixed(2));
+  const totalLessons = Number(currentStats.totalLessons ?? currentStats.count ?? 0);
+  const totalRatings = Number(currentStats.totalRatings ?? ((currentStats.average || 0) * totalLessons) ?? 0);
+  const nextTotalLessons = totalLessons + 1;
+  const nextTotalRatings = Number((totalRatings + Number(overallScore || 0)).toFixed(2));
+  const nextAverage = Number((nextTotalRatings / nextTotalLessons).toFixed(2));
 
   return updateUserProfile(uid, {
     ratings: {
       ...(existing.ratings || {}),
       [roleKey]: {
-        count: nextCount,
+        count: nextTotalLessons,
+        totalLessons: nextTotalLessons,
+        totalRatings: nextTotalRatings,
         average: nextAverage,
         updatedAt: Date.now(),
       },
