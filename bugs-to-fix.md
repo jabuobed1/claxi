@@ -276,7 +276,7 @@ Move request lifecycle transitions to backend authority and make frontend listen
 ---
 
 ## Phase 02 — Accept/timeout race hardening (Critical)
-**Status:** `NOT STARTED`
+**Status:** `DONE` ✅
 
 ### Problem
 Tutor accept can race with timeout/decline logic near offer expiry.
@@ -300,6 +300,35 @@ Guarantee deterministic accept behavior with idempotency and offer version check
 ### Validation checks
 - Simulate multiple accept attempts for the same offer.
 - Simulate accept at countdown end and confirm consistent result.
+
+### Phase 02 completion notes ✅
+#### What was implemented
+- Added backend-issued offer identity fields during lifecycle offer assignment:
+  - `offerRevision` (monotonic increment per new offer)
+  - `offerToken` (unique UUID per offer)
+- Extended accept transaction hardening in `classRequestService`:
+  - Accept now fails deterministically when `offerExpiresAt <= now`.
+  - Accept now rejects stale offers that are missing `offerToken`.
+  - Accepted records now persist `acceptedOfferRevision` and `acceptedOfferToken` for traceability.
+- Added in-flight idempotency guard in frontend service for tutor offer responses:
+  - Duplicate concurrent `accept`/`decline` calls for the same `requestId+tutorId+response` return the same Promise and do not trigger duplicate side effects.
+
+#### Expected behavior after this phase
+- Repeated rapid accept clicks should no longer produce duplicate accept side effects.
+- Accept near expiry should resolve deterministically:
+  - success if processed before expiry,
+  - explicit failure (`This offer has expired.`) if processed after expiry.
+- Offer acceptance now ties to backend-issued offer identity metadata for safer state transitions.
+
+#### Commands to run / deploy steps
+- Install dependencies (if needed): `npm install`
+- Frontend check: `npm run build`
+- Deploy updated Cloud Functions so new offer token/revision fields are issued:
+  - `firebase deploy --only functions`
+
+#### Configuration notes
+- Firebase project and CLI authentication must be configured before deploy.
+- No new environment variables were required for this phase.
 
 ---
 
