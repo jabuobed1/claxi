@@ -1,4 +1,4 @@
-const { onDocumentCreated } = require('firebase-functions/v2/firestore');
+const { onDocumentCreated, onDocumentWritten } = require('firebase-functions/v2/firestore');
 const { onRequest } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
 const { logger } = require('firebase-functions');
@@ -19,6 +19,138 @@ const CLOUDFLARE_TURN_TTL_SECONDS = defineSecret('CLOUDFLARE_TURN_TTL_SECONDS');
 
 const DEFAULT_STUN_URLS = ['stun:stun.l.google.com:19302'];
 const DEFAULT_TURN_TTL_SECONDS = 600;
+const MATCHING_TIMEOUT_MS = 3 * 60 * 1000;
+const OFFER_TIMEOUT_MS = 30 * 1000;
+const REQUEST_STATUS = {
+  PENDING: 'pending',
+  MATCHING: 'matching',
+  OFFERED: 'offered',
+  ACCEPTED: 'accepted',
+  IN_SESSION: 'in_session',
+  COMPLETED: 'completed',
+  CANCELED: 'canceled',
+  CANCELED_DURING: 'canceled_during',
+  EXPIRED: 'expired',
+  NO_TUTOR_AVAILABLE: 'no_tutor_available',
+};
+const ACTIVE_REQUEST_STATUSES = new Set([
+  REQUEST_STATUS.PENDING,
+  REQUEST_STATUS.MATCHING,
+  REQUEST_STATUS.OFFERED,
+  REQUEST_STATUS.NO_TUTOR_AVAILABLE,
+]);
+
+function normalizeMillis(value) {
+  if (!value) return 0;
+  if (typeof value === 'number') return value;
+  if (typeof value?.toMillis === 'function') return value.toMillis();
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function isRequestExpired(request) {
+  const createdAtMs = normalizeMillis(request?.createdAt);
+  if (!createdAtMs) return false;
+  return Date.now() - createdAtMs >= MATCHING_TIMEOUT_MS;
+}
+
+function getTutorScore(tutor = {}) {
+  const rating = Number(tutor?.tutorProfile?.overallRating ?? 0) || 0;
+  const recent24h = Number(tutor?.tutorProfile?.completedSessionsLast24Hours ?? 0) || 0;
+  const totalSessions = Number(tutor?.tutorProfile?.completedSessionsTotal ?? 0) || 0;
+  return (rating * 10000) + (recent24h * 100) + totalSessions;
+}
+
+async function getTutorQueueForSubject(subject) {
+  const subjectKey = String(subject || 'Mathematics').trim().toLowerCase();
+  const snapshot = await db
+    .collection('users')
+    .where('activeRole', '==', 'tutor')
+    .where('onlineStatus', '==', 'online')
+    .get();
+
+  return snapshot.docs
+    .map((item) => ({ uid: item.id, ...item.data() }))
+    .filter((tutor) => {
+      const normalizedSubjects = (tutor.subjects || []).map((entry) => String(entry || '').trim().toLowerCase());
+      return tutor?.tutorProfile?.verificationStatus === 'verified'
+        && !tutor.activeSessionId
+        && normalizedSubjects.includes(subjectKey);
+    })
+    .sort((a, b) => getTutorScore(b) - getTutorScore(a))
+    .map((item) => item.uid);
+}
+
+exports.syncClassRequestLifecycle = onDocumentWritten('classRequests/{requestId}', async (event) => {
+  const afterData = event.data.after.exists ? event.data.after.data() : null;
+  if (!afterData) return;
+
+  if (!ACTIVE_REQUEST_STATUSES.has(afterData.status) || afterData.tutorId) {
+    return;
+  }
+
+  const requestId = event.params.requestId;
+  const requestRef = db.collection('classRequests').doc(requestId);
+  const candidateQueue = await getTutorQueueForSubject(afterData.subject);
+
+  await db.runTransaction(async (transaction) => {
+    const snap = await transaction.get(requestRef);
+    if (!snap.exists) return;
+    const request = snap.data();
+
+    if (!ACTIVE_REQUEST_STATUSES.has(request.status) || request.tutorId) {
+      return;
+    }
+
+    if (isRequestExpired(request)) {
+      transaction.update(requestRef, {
+        status: REQUEST_STATUS.EXPIRED,
+        statusDetail: 'Request expired because no tutor accepted in time.',
+        tutorQueue: [],
+        currentOfferTutorId: null,
+        offerExpiresAt: null,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      return;
+    }
+
+    if (
+      request.status === REQUEST_STATUS.OFFERED
+      && request.currentOfferTutorId
+      && normalizeMillis(request.offerExpiresAt) > Date.now()
+    ) {
+      return;
+    }
+
+    let queue = Array.isArray(candidateQueue) ? [...candidateQueue] : [];
+
+    if (request.status === REQUEST_STATUS.OFFERED && request.currentOfferTutorId) {
+      queue = queue.filter((id) => id !== request.currentOfferTutorId);
+    }
+
+    if (!queue.length) {
+      transaction.update(requestRef, {
+        status: REQUEST_STATUS.NO_TUTOR_AVAILABLE,
+        statusDetail: 'No tutor accepted. Looking for another tutor.',
+        tutorQueue: [],
+        currentOfferTutorId: null,
+        offerExpiresAt: null,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      return;
+    }
+
+    transaction.update(requestRef, {
+      status: REQUEST_STATUS.OFFERED,
+      statusDetail: 'Tutor notified. Waiting for acceptance.',
+      tutorQueue: queue,
+      currentOfferTutorId: queue[0],
+      offerExpiresAt: Date.now() + OFFER_TIMEOUT_MS,
+      retryOfferGranted: false,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  });
+});
 
 function sanitizeCloudflareIceServers(iceServers) {
   if (!Array.isArray(iceServers)) return [];

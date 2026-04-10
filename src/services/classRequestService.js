@@ -315,224 +315,13 @@ async function initializeTutorMatching(requestId, payload) {
     return;
   }
 
-  const { db, firestoreModule } = clients;
-  const { doc, getDoc, updateDoc, serverTimestamp } = firestoreModule;
-  const requestRef = doc(db, 'classRequests', requestId);
-  const snap = await getDoc(requestRef);
-  if (!snap.exists()) return;
-
-  if (canTransitionRequest(snap.data().status, REQUEST_STATUS.MATCHING)) {
-    await updateDoc(requestRef, {
-      status: REQUEST_STATUS.MATCHING,
-      tutorQueue: queue,
-      statusDetail: 'Matching tutors currently online.',
-      updatedAt: serverTimestamp(),
-    });
-  }
-
   await createNotification({
     userId: payload.studentId,
     title: 'Finding a tutor',
-    message: 'We are notifying online tutors now.',
+    message: 'Your request is queued. Matching is managed by the backend.',
     type: 'matching_update',
     requestId,
   });
-
-  await assignNextTutorOffer(requestId);
-}
-
-async function refreshActiveMatchingRequests(studentId) {
-  const clients = await getFirebaseClients();
-  if (!clients) {
-    const requests = getMockRequests();
-    const updates = [];
-    const mutable = [...requests];
-    for (const request of requests) {
-      if (studentId && request.studentId !== studentId) continue;
-      if (request.tutorId) continue;
-      if (![REQUEST_STATUS.PENDING, REQUEST_STATUS.MATCHING, REQUEST_STATUS.OFFERED, REQUEST_STATUS.NO_TUTOR_AVAILABLE].includes(request.status)) continue;
-
-      if (isRequestExpired(request)) {
-        updates.push({
-          id: request.id,
-          status: REQUEST_STATUS.EXPIRED,
-          statusDetail: 'Request expired because no tutor accepted in time.',
-          tutorQueue: [],
-          currentOfferTutorId: null,
-          offerExpiresAt: null,
-          updatedAt: new Date().toISOString(),
-        });
-        continue;
-      }
-
-      const candidates = await getTutorCandidatesForRequest({ subject: request.subject || 'Mathematics' });
-      const queue = computeTutorQueue(candidates);
-      const currentOfferTutorId = request.currentOfferTutorId && queue.includes(request.currentOfferTutorId)
-        ? request.currentOfferTutorId
-        : null;
-
-    let nextStatus = request.status;
-    let nextStatusDetail = request.statusDetail;
-    const hasTutors = queue.length > 0;
-    const isNoTutorReady = getStatusDelayElapsed(request, MATCHING_STATUS_DELAY_MS);
-    const isRetryReady = getStatusDelayElapsed(request, NO_TUTOR_STATUS_DELAY_MS);
-
-    if (hasTutors) {
-      if (request.status === REQUEST_STATUS.NO_TUTOR_AVAILABLE) {
-        if (isRetryReady) {
-          nextStatus = REQUEST_STATUS.MATCHING;
-          nextStatusDetail = 'Retrying tutor matching.';
-        }
-      } else if (request.status === REQUEST_STATUS.PENDING) {
-        nextStatus = REQUEST_STATUS.MATCHING;
-        nextStatusDetail = 'Matching tutors currently online.';
-      }
-    } else {
-      if (request.status === REQUEST_STATUS.NO_TUTOR_AVAILABLE) {
-        if (isRetryReady) {
-          nextStatus = REQUEST_STATUS.MATCHING;
-          nextStatusDetail = 'Retrying tutor matching.';
-        } else {
-          nextStatus = REQUEST_STATUS.NO_TUTOR_AVAILABLE;
-          nextStatusDetail = 'No tutor available. Showing this for a short delay.';
-        }
-      } else {
-        if (isNoTutorReady) {
-          nextStatus = REQUEST_STATUS.NO_TUTOR_AVAILABLE;
-          nextStatusDetail = 'No tutor available. Showing this for a short delay.';
-        } else {
-          nextStatus = REQUEST_STATUS.MATCHING;
-          nextStatusDetail = 'Matching tutors currently online.';
-        }
-      }
-    }
-
-    updates.push({
-      id: request.id,
-      status: nextStatus,
-      statusDetail: nextStatusDetail,
-      tutorQueue: queue,
-      currentOfferTutorId,
-      offerExpiresAt: currentOfferTutorId ? request.offerExpiresAt : null,
-      updatedAt: new Date().toISOString(),
-    });
-  }
-
-  if (!updates.length) return;
-  const byId = new Map(updates.map((item) => [item.id, item]));
-  const next = mutable.map((request) => (byId.has(request.id) ? { ...request, ...byId.get(request.id) } : request));
-  setMockRequests(next);
-  await Promise.all(
-    updates
-      .filter((item) => item.status === REQUEST_STATUS.MATCHING && !item.currentOfferTutorId)
-      .map((item) => assignNextTutorOffer(item.id)),
-  );
-  return;
-  }
-  const { db, firestoreModule } = clients;
-  const { collection, getDocs, query, where, doc, updateDoc, serverTimestamp } = firestoreModule;
-  const baseQuery = query(
-    collection(db, 'classRequests'),
-    where('status', 'in', [REQUEST_STATUS.PENDING, REQUEST_STATUS.MATCHING, REQUEST_STATUS.OFFERED, REQUEST_STATUS.NO_TUTOR_AVAILABLE]),
-  );
-  const snapshot = await getDocs(baseQuery);
-  for (const requestDoc of snapshot.docs) {
-    const request = { id: requestDoc.id, ...requestDoc.data() };
-    if (studentId && request.studentId !== studentId) continue;
-    if (request.tutorId) continue;
-    const requestRef = doc(db, 'classRequests', request.id);
-
-    if (isRequestExpired(request)) {
-      if (canTransitionRequest(request.status, REQUEST_STATUS.EXPIRED)) {
-        await updateDoc(requestRef, {
-          status: REQUEST_STATUS.EXPIRED,
-          statusDetail: 'Request expired because no tutor accepted in time.',
-          tutorQueue: [],
-          currentOfferTutorId: null,
-          offerExpiresAt: null,
-          updatedAt: serverTimestamp(),
-        });
-      }
-      continue;
-    }
-
-    const candidates = await getTutorCandidatesForRequest({ subject: request.subject || 'Mathematics' });
-    const queue = computeTutorQueue(candidates);
-    const currentOfferTutorId = request.currentOfferTutorId && queue.includes(request.currentOfferTutorId)
-      ? request.currentOfferTutorId
-      : null;
-
-    let nextStatus = request.status;
-    let nextStatusDetail = request.statusDetail;
-    const hasTutors = queue.length > 0;
-    const isNoTutorReady = getStatusDelayElapsed(request, MATCHING_STATUS_DELAY_MS);
-    const isRetryReady = getStatusDelayElapsed(request, NO_TUTOR_STATUS_DELAY_MS);
-
-    if (hasTutors) {
-      if (request.status === REQUEST_STATUS.NO_TUTOR_AVAILABLE) {
-        if (isRetryReady) {
-          nextStatus = REQUEST_STATUS.MATCHING;
-          nextStatusDetail = 'Retrying tutor matching.';
-        } else {
-          nextStatus = REQUEST_STATUS.NO_TUTOR_AVAILABLE;
-          nextStatusDetail = 'No tutor available. Showing this for a short delay.';
-        }
-      } else if (request.status === REQUEST_STATUS.PENDING) {
-        nextStatus = REQUEST_STATUS.MATCHING;
-        nextStatusDetail = 'Matching tutors currently online.';
-      }
-    } else {
-      if (request.status === REQUEST_STATUS.NO_TUTOR_AVAILABLE) {
-        if (isRetryReady) {
-          nextStatus = REQUEST_STATUS.MATCHING;
-          nextStatusDetail = 'Retrying tutor matching.';
-        } else {
-          nextStatus = REQUEST_STATUS.NO_TUTOR_AVAILABLE;
-          nextStatusDetail = 'No tutor available. Showing this for a short delay.';
-        }
-      } else {
-        if (isNoTutorReady) {
-          nextStatus = REQUEST_STATUS.NO_TUTOR_AVAILABLE;
-          nextStatusDetail = 'No tutor available. Showing this for a short delay.';
-        } else {
-          nextStatus = REQUEST_STATUS.MATCHING;
-          nextStatusDetail = 'Matching tutors currently online.';
-        }
-      }
-    }
-
-    const latestSnap = await firestoreModule.getDoc(requestRef);
-    if (!latestSnap.exists()) continue;
-
-    const latestRequest = latestSnap.data();
-    const activeStatuses = [
-      REQUEST_STATUS.PENDING,
-      REQUEST_STATUS.MATCHING,
-      REQUEST_STATUS.OFFERED,
-      REQUEST_STATUS.NO_TUTOR_AVAILABLE,
-    ];
-
-    if (!activeStatuses.includes(latestRequest.status)) {
-      continue;
-    }
-
-    if (latestRequest.tutorId) {
-      continue;
-    }
-
-    await updateDoc(requestRef, {
-      tutorQueue: queue,
-      currentOfferTutorId,
-      offerExpiresAt: currentOfferTutorId ? latestRequest.offerExpiresAt || null : null,
-      status: nextStatus,
-      statusDetail: nextStatusDetail,
-      updatedAt: serverTimestamp(),
-    });
-
-    if (!currentOfferTutorId && nextStatus === REQUEST_STATUS.MATCHING) {
-      await assignNextTutorOffer(request.id);
-    }
-  }
 }
 
 export async function createClassRequest(payload) {
@@ -636,21 +425,15 @@ export async function createClassRequest(payload) {
     topic: payload.topic,
   });
 
-  await initializeTutorMatching(docRef.id, payload);
-  debugLog('classRequestService', 'Class request created and matching initialized.', { requestId: docRef.id });
+  debugLog('classRequestService', 'Class request created. Backend lifecycle trigger will process matching.', { requestId: docRef.id });
   return docRef.id;
 }
 
 export function subscribeToStudentRequests(studentId, callback) {
   let unsub = () => {};
-  let refreshInterval = null;
-
   getFirebaseClients().then((clients) => {
     if (!clients) {
       unsub = withMockSnapshot((item) => item.studentId === studentId, callback);
-      refreshInterval = setInterval(() => {
-        refreshActiveMatchingRequests(studentId);
-      }, 5000);
       return;
     }
 
@@ -666,14 +449,10 @@ export function subscribeToStudentRequests(studentId, callback) {
     unsub = onSnapshot(queryRef, async (snapshot) => {
       callback(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
     });
-    refreshInterval = setInterval(() => {
-      refreshActiveMatchingRequests(studentId);
-    }, 5000);
   });
 
   return () => {
     unsub();
-    if (refreshInterval) clearInterval(refreshInterval);
   };
 }
 
@@ -704,55 +483,20 @@ export function subscribeToRequestById(requestId, callback) {
 
 export function subscribeToTutorAvailableRequests(tutorId, callback) {
   let unsub = () => {};
-  let refreshInterval = null;
-
   getFirebaseClients().then((clients) => {
     if (!clients) {
-      const emit = async () => {
-        const now = Date.now();
+      const emit = () => {
         const current = getMockRequests();
-
-        const updated = current.map((request) => {
-          if (request.status === REQUEST_STATUS.OFFERED && request.offerExpiresAt && request.offerExpiresAt <= now) {
-            const queue = (request.tutorQueue || []).filter((id) => id !== request.currentOfferTutorId);
-            const wasSingleTutor = (request.tutorQueue || []).length <= 1;
-            if (wasSingleTutor && !request.retryOfferGranted) {
-              return {
-                ...request,
-                retryOfferGranted: true,
-                offerExpiresAt: Date.now() + OFFER_TIMEOUT_MS,
-                updatedAt: new Date().toISOString(),
-              };
-            }
-            return {
-              ...updateRequestStatusSafe(request, queue.length ? REQUEST_STATUS.MATCHING : REQUEST_STATUS.NO_TUTOR_AVAILABLE),
-              tutorQueue: queue,
-              currentOfferTutorId: null,
-              offerExpiresAt: null,
-              statusDetail: queue.length ? 'Tutor timed out. Trying another tutor.' : 'No tutor accepted. Looking for another tutor.',
-              updatedAt: new Date().toISOString(),
-            };
-          }
-          return request;
-        });
-
-        setMockRequests(updated);
-
         callback(
-          updated.filter(
+          current.filter(
             (request) => request.status === REQUEST_STATUS.OFFERED && request.currentOfferTutorId === tutorId,
           ),
         );
       };
 
       emit();
-      const interval = setInterval(emit, 1000);
-      refreshInterval = setInterval(() => {
-        refreshActiveMatchingRequests();
-      }, 5000);
       window.addEventListener('storage', emit);
       unsub = () => {
-        clearInterval(interval);
         window.removeEventListener('storage', emit);
       };
       return;
@@ -768,35 +512,12 @@ export function subscribeToTutorAvailableRequests(tutorId, callback) {
     );
 
     unsub = onSnapshot(queryRef, async (snapshot) => {
-      const now = Date.now();
-      const items = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
-
-      for (const item of items) {
-        if (item.offerExpiresAt && item.offerExpiresAt <= now) {
-          const isSingleTutor = (item.tutorQueue || []).length <= 1;
-          if (isSingleTutor && !item.retryOfferGranted) {
-            const { doc, updateDoc, serverTimestamp } = firestoreModule;
-            await updateDoc(doc(db, 'classRequests', item.id), {
-              retryOfferGranted: true,
-              offerExpiresAt: Date.now() + OFFER_TIMEOUT_MS,
-              updatedAt: serverTimestamp(),
-            });
-          } else {
-            await handleTutorOfferResponse({ requestId: item.id, tutorId, response: 'timeout' });
-          }
-        }
-      }
-
-      callback(items.filter((item) => !item.offerExpiresAt || item.offerExpiresAt > now));
+      callback(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
     });
-    refreshInterval = setInterval(() => {
-      refreshActiveMatchingRequests();
-    }, 5000);
   });
 
   return () => {
     unsub();
-    if (refreshInterval) clearInterval(refreshInterval);
   };
 }
 

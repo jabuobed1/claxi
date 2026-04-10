@@ -224,7 +224,7 @@ Use this file as the **single execution plan** for future AI chats.
 ---
 
 ## Phase 01 — Backend-authoritative request lifecycle (Critical)
-**Status:** `NOT STARTED`
+**Status:** `DONE` ✅
 
 ### Problem
 Request matching/offer transitions are currently driven from frontend timers/listeners, causing flicker and race conditions.
@@ -250,6 +250,28 @@ Move request lifecycle transitions to backend authority and make frontend listen
 ### Validation checks
 - Create request -> offer -> accept flow runs once without status flicker.
 - Timeout flow transitions once and does not re-open stale offers.
+
+### Phase 01 completion notes ✅
+#### What was implemented
+- Added a backend lifecycle authority trigger (`syncClassRequestLifecycle`) in Cloud Functions to process active request transitions (`pending`, `matching`, `offered`, `no_tutor_available`) and assign/expire offers server-side.
+- Removed frontend interval-based lifecycle mutation loops from request subscriptions.
+- Updated tutor-offer subscriptions to be read-only listeners (no client-side timeout/status mutation).
+- Updated request creation flow (Firebase mode) so frontend no longer initializes matching/offers; backend trigger now owns those transitions.
+
+#### Expected behavior after this phase
+- Frontend should only render realtime state and send explicit user actions (create/accept/decline/cancel).
+- Request status should no longer oscillate due to multiple client polling loops.
+- Offer timeout progression should be handled by backend-triggered lifecycle updates.
+
+#### Commands to run / deploy steps
+- Install dependencies (if needed): `npm install`
+- Frontend check: `npm run build`
+- Deploy updated Cloud Functions so backend lifecycle authority is active:
+  - `firebase deploy --only functions`
+
+#### Configuration notes
+- Firebase project and CLI auth must be configured before deploy.
+- No additional Firebase environment variable injection was required for this phase.
 
 ---
 
