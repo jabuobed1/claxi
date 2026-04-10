@@ -156,7 +156,9 @@ export default function SessionRoomPage() {
 
   const callSeconds = useLiveSeconds(session?.callStartedAt);
   const billedSeconds = useLiveSeconds(session?.billingStartedAt);
-  const needsRating = session?.status === SESSION_STATUS.COMPLETED && !session?.ratings?.[role];
+  const shouldPromptRating = [SESSION_STATUS.COMPLETED, SESSION_STATUS.CANCELED, SESSION_STATUS.CANCELED_DURING]
+    .includes(session?.status);
+  const needsRating = shouldPromptRating && !session?.ratings?.[role];
   const forceRelayOnly = String(import.meta.env.VITE_WEBRTC_FORCE_RELAY_ONLY || '').toLowerCase() === 'true';
   const whiteboardRoom = session?.whiteboardRoomId || session?.requestId || session?.id;
   const graceRemaining = Math.max(0, Math.ceil(((session?.joinGraceEndsAt || 0) - Date.now()) / 1000));
@@ -445,6 +447,7 @@ export default function SessionRoomPage() {
   useEffect(() => {
     if (!session?.status) return;
     if (![SESSION_STATUS.CANCELED, SESSION_STATUS.CANCELED_DURING].includes(session.status)) return;
+    if (needsRating) return;
 
     rtcRef.current?.close?.();
     rtcRef.current = null;
@@ -461,18 +464,29 @@ export default function SessionRoomPage() {
     }
 
     navigate('/app/tutor/sessions', { replace: true });
-  }, [navigate, role, session?.requestId, session?.status]);
+  }, [navigate, needsRating, role, session?.requestId, session?.status]);
 
   useEffect(() => {
     if (!session?.status) return;
     if (session.status !== SESSION_STATUS.COMPLETED) return;
-    if (role !== 'student') return;
+    if (needsRating) return;
 
-    navigate(`/app/student/request/${session.requestId}`, {
-      replace: true,
-      state: { requestId: session.requestId },
-    });
-  }, [navigate, role, session?.requestId, session?.status]);
+    rtcRef.current?.close?.();
+    rtcRef.current = null;
+    rtcInitStartedRef.current = false;
+    setRemoteScreenStreamObj(null);
+    setShowStudentControls(false);
+
+    if (role === 'student') {
+      navigate(`/app/student/request/${session.requestId}`, {
+        replace: true,
+        state: { requestId: session.requestId },
+      });
+      return;
+    }
+
+    navigate('/app/tutor', { replace: true });
+  }, [navigate, needsRating, role, session?.requestId, session?.status]);
 
   useEffect(() => {
     if (session) return;
@@ -544,15 +558,7 @@ export default function SessionRoomPage() {
       ...(shouldChargeForCancellation ? {} : { billingStartedAt: null }),
     });
 
-    if (role === 'student') {
-      navigate(`/app/student/request/${session.requestId}`, {
-        replace: true,
-        state: { requestId: session.requestId },
-      });
-      return;
-    }
-
-    navigate('/app/tutor/sessions', { replace: true });
+    setConnectionMessage('Class canceled. Please leave a quick rating.');
   };
 
   const endCurrentSession = async () => {
@@ -561,16 +567,7 @@ export default function SessionRoomPage() {
     rtcInitStartedRef.current = false;
     setRemoteScreenStreamObj(null);
     await endSession(session);
-
-    if (role === 'student') {
-      navigate(`/app/student/request/${session.requestId}`, {
-        replace: true,
-        state: { requestId: session.requestId },
-      });
-      return;
-    }
-
-    navigate('/app/tutor', { replace: true });
+    setConnectionMessage('Session ended. Please leave a quick rating.');
   };
 
   const submitRating = async (event) => {
