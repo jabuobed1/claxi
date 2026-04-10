@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import PageHeader from '../../../components/ui/PageHeader';
 import SectionCard from '../../../components/ui/SectionCard';
 import LoadingState from '../../../components/ui/LoadingState';
@@ -7,17 +6,12 @@ import EmptyState from '../../../components/ui/EmptyState';
 import RequestCard from '../../../components/app/RequestCard';
 import { useAuth } from '../../../hooks/useAuth';
 import { useTutorAvailableRequests } from '../../../hooks/useClassRequests';
-import { acceptClassRequest, declineClassRequest } from '../../../services/classRequestService';
-import { findSessionIdByRequestAndTutor } from '../../../services/sessionService';
 import { getTutorOnboardingStatus } from '../../../utils/onboarding';
 
 export default function AvailableRequestsPage() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const { requests, isLoading } = useTutorAvailableRequests(user?.uid);
-  const [activeRequest, setActiveRequest] = useState(null);
   const [now, setNow] = useState(Date.now());
-  const [requestError, setRequestError] = useState('');
   const onboardingStatus = getTutorOnboardingStatus(user);
   const canAccept = onboardingStatus.complete && user?.onlineStatus === 'online';
 
@@ -26,41 +20,12 @@ export default function AvailableRequestsPage() {
     return () => clearInterval(timer);
   }, []);
 
-  const handleResponse = async (requestId, response) => {
-    try {
-      if (!canAccept) {
-        return;
-      }
-
-      setActiveRequest(requestId);
-      setRequestError('');
-      if (response === 'accept') {
-        await acceptClassRequest({
-          requestId,
-          tutorId: user.uid,
-          tutorName: user.fullName || user.displayName || user.email,
-          tutorEmail: user.email,
-        });
-        const sessionId = await findSessionIdByRequestAndTutor({ requestId, tutorId: user.uid });
-        if (sessionId) {
-          navigate(`/app/session/${sessionId}`);
-        }
-      } else {
-        await declineClassRequest({
-          requestId,
-          tutorId: user.uid,
-        });
-      }
-    } catch (error) {
-      setRequestError(error.message || 'Unable to process this request. Please try again.');
-    } finally {
-      setActiveRequest(null);
-    }
-  };
-
   return (
     <div>
-      <PageHeader title="Available Requests" description="Accept or decline in 10 seconds. Delayed requests move to the next tutor automatically." />
+      <PageHeader
+        title="Available Requests"
+        description="Incoming offers are actionable from the live overlay only. This list is a realtime mirror for context."
+      />
       {!canAccept ? (
         <p className="mb-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
           You must be online with a completed tutor profile before accepting requests.
@@ -68,9 +33,9 @@ export default function AvailableRequestsPage() {
       ) : null}
 
       <SectionCard>
-        {requestError ? (
-          <p className="mb-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">
-            {requestError}
+        {requests.length ? (
+          <p className="mb-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">
+            Use the incoming offer overlay to accept or decline. Actions are disabled on this page to prevent duplicate submissions.
           </p>
         ) : null}
         {isLoading ? (
@@ -87,22 +52,9 @@ export default function AvailableRequestsPage() {
                   action={
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-xs font-semibold text-amber-200">{secondsLeft}s left</span>
-                      <button
-                        type="button"
-                        disabled={!canAccept || activeRequest === request.id}
-                        onClick={() => handleResponse(request.id, 'accept')}
-                        className="rounded-2xl bg-brand px-4 py-2 text-sm font-bold text-white transition hover:bg-brand-dark disabled:opacity-50"
-                      >
-                        {activeRequest === request.id ? 'Submitting...' : 'Accept'}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={!canAccept || activeRequest === request.id}
-                        onClick={() => handleResponse(request.id, 'decline')}
-                        className="rounded-2xl border border-zinc-600 px-4 py-2 text-sm font-semibold text-zinc-200 disabled:opacity-50"
-                      >
-                        Decline
-                      </button>
+                      <span className="rounded-2xl border border-zinc-600 px-3 py-1 text-xs font-semibold text-zinc-300">
+                        Respond in overlay
+                      </span>
                     </div>
                   }
                 />
@@ -110,7 +62,7 @@ export default function AvailableRequestsPage() {
             })}
           </div>
         ) : (
-          <EmptyState title="No pending requests" description="Stay online. Requests will appear here for 10 seconds each." />
+          <EmptyState title="No pending requests" description="Stay online. Requests will appear here and in the live offer overlay." />
         )}
       </SectionCard>
     </div>

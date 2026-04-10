@@ -333,7 +333,7 @@ Guarantee deterministic accept behavior with idempotency and offer version check
 ---
 
 ## Phase 03 — Single tutor-offer action surface (High)
-**Status:** `NOT STARTED`
+**Status:** `DONE` ✅
 
 ### Problem
 Tutor can respond from multiple UI surfaces (overlay + page), increasing duplicate actions/races.
@@ -355,6 +355,27 @@ Allow exactly one active action surface for live offers.
 
 ### Validation checks
 - Offer appears once effectively; second surface cannot submit duplicate action.
+
+### Phase 03 completion notes ✅
+#### What was implemented
+- Kept `TutorOfferOverlay` as the single actionable live-offer surface for tutor accept/decline actions.
+- Updated `AvailableRequestsPage` to become a read-only realtime mirror of the same offer stream:
+  - Removed page-level accept/decline handlers and related action service calls.
+  - Removed page-level navigation/session lookup side effects from offer response actions.
+  - Replaced page action buttons with a non-interactive “Respond in overlay” indicator.
+- Added explicit tutor-facing UX messaging on `AvailableRequestsPage` that actions are intentionally disabled there to prevent duplicate submissions.
+
+#### Expected behavior after this phase
+- Tutors can only submit offer responses from `TutorOfferOverlay`.
+- `AvailableRequestsPage` still shows live offer context (including countdown), but cannot issue accept/decline writes.
+- Parallel UI elements no longer trigger duplicate accept/decline calls for the same offer.
+
+#### Commands to run / deploy steps
+- Install dependencies (if needed): `npm install`
+- Frontend check: `npm run build`
+
+#### Configuration notes
+- No Firebase env injection or Cloud Functions deployment is required for this phase.
 
 ---
 
