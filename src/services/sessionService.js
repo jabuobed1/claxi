@@ -306,20 +306,45 @@ export async function endSession(session) {
 
 export async function submitSessionRating(session, role, payload) {
   debugLog('sessionService', 'Submitting session rating.', { sessionId: session?.id, role, overall: payload?.overall });
+  const submittedAt = Date.now();
+  const ratingEntry = {
+    overall: payload.overall,
+    comment: payload.comment || '',
+    submittedAt,
+  };
   const ratings = {
     ...(session.ratings || {}),
-    [role]: {
-      overall: payload.overall,
-      topic: payload.topic,
-      comment: payload.comment || '',
-      submittedAt: Date.now(),
-    },
+    [role]: ratingEntry,
   };
 
   const updatedSession = await updateSession(session.id, {
     ...session,
     ratings,
   });
+
+  const clients = await getFirebaseClients();
+  if (!clients) {
+    const nextRequests = getMockRequests().map((request) =>
+      request.id === session.requestId
+        ? {
+            ...request,
+            ratings: {
+              ...(request.ratings || {}),
+              [role]: ratingEntry,
+            },
+            updatedAt: new Date().toISOString(),
+          }
+        : request,
+    );
+    setMockRequests(nextRequests);
+  } else if (session.requestId) {
+    const { db, firestoreModule } = clients;
+    const { doc, serverTimestamp, updateDoc } = firestoreModule;
+    await updateDoc(doc(db, 'classRequests', session.requestId), {
+      [`ratings.${role}`]: ratingEntry,
+      updatedAt: serverTimestamp(),
+    });
+  }
 
   try {
     if (role === 'student') {
