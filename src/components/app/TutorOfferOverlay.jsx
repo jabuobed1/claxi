@@ -28,9 +28,12 @@ export default function TutorOfferOverlay() {
   const topRequest = requests[0] || null;
 
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 250);
+    if (!displayRequest?.id) return undefined;
+
+    setNow(Date.now());
+    const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [displayRequest?.id]);
 
   useEffect(() => {
     if (processingRef.current) return;
