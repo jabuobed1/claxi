@@ -16,6 +16,7 @@ const NO_TUTOR_STATUS_DELAY_MS = 3000;
 
 let isUpdatingRequests = false;
 let isUpdatingSessions = false;
+const inFlightOfferResponses = new Map();
 
 function getMockRequests() {
   return JSON.parse(localStorage.getItem(MOCK_REQUESTS_KEY) || '[]');
@@ -548,7 +549,13 @@ export function subscribeToTutorAcceptedRequests(tutorId, callback) {
 }
 
 export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, tutorEmail, response }) {
-  const clients = await getFirebaseClients();
+  const inFlightKey = `${response}:${requestId}:${tutorId}`;
+  if (inFlightOfferResponses.has(inFlightKey)) {
+    return inFlightOfferResponses.get(inFlightKey);
+  }
+
+  const responsePromise = (async () => {
+    const clients = await getFirebaseClients();
 
   if (!clients) {
     const existing = getMockRequests().find((item) => item.id === requestId);
@@ -577,6 +584,10 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
 
       if (existing.currentOfferTutorId !== tutorId) {
         throw new Error('This request is no longer assigned to you.');
+      }
+
+      if (normalizeTimestamp(existing.offerExpiresAt) <= Date.now()) {
+        throw new Error('This offer has expired.');
       }
 
       if (!canTransitionRequest(existing.status, REQUEST_STATUS.ACCEPTED)) {
@@ -740,6 +751,14 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
           throw new Error('This request is no longer assigned to you.');
         }
 
+        if (!alreadyAcceptedBySameTutor && normalizeTimestamp(requestData.offerExpiresAt) <= Date.now()) {
+          throw new Error('This offer has expired.');
+        }
+
+        if (!alreadyAcceptedBySameTutor && !requestData.offerToken) {
+          throw new Error('This offer is stale. Please wait for a fresh offer.');
+        }
+
         if (!alreadyAcceptedBySameTutor && !canTransitionRequest(requestData.status, REQUEST_STATUS.ACCEPTED)) {
           throw new Error('This request cannot be accepted in its current state.');
         }
@@ -752,6 +771,9 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
           status: REQUEST_STATUS.ACCEPTED,
           currentOfferTutorId: null,
           offerExpiresAt: null,
+          acceptedOfferRevision: Number(requestData.offerRevision || 0) || 0,
+          acceptedOfferToken: requestData.offerToken || null,
+          offerToken: null,
           statusDetail: 'Tutor accepted. Session is ready to join.',
           updatedAt: serverTimestamp(),
         });
@@ -909,6 +931,14 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
       message: error.message,
     });
     throw new Error(error.message || 'Unable to process this request right now. Please retry.');
+  }
+  })();
+
+  inFlightOfferResponses.set(inFlightKey, responsePromise);
+  try {
+    return await responsePromise;
+  } finally {
+    inFlightOfferResponses.delete(inFlightKey);
   }
 }
 

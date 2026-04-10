@@ -48,6 +48,12 @@ function normalizeMillis(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function nextOfferRevision(request = {}) {
+  const current = Number(request.offerRevision || 0);
+  if (!Number.isFinite(current) || current < 0) return 1;
+  return Math.floor(current) + 1;
+}
+
 function isRequestExpired(request) {
   const createdAtMs = normalizeMillis(request?.createdAt);
   if (!createdAtMs) return false;
@@ -109,6 +115,7 @@ exports.syncClassRequestLifecycle = onDocumentWritten('classRequests/{requestId}
         tutorQueue: [],
         currentOfferTutorId: null,
         offerExpiresAt: null,
+        offerToken: null,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
       return;
@@ -135,17 +142,21 @@ exports.syncClassRequestLifecycle = onDocumentWritten('classRequests/{requestId}
         tutorQueue: [],
         currentOfferTutorId: null,
         offerExpiresAt: null,
+        offerToken: null,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
       return;
     }
 
+    const offerRevision = nextOfferRevision(request);
     transaction.update(requestRef, {
       status: REQUEST_STATUS.OFFERED,
       statusDetail: 'Tutor notified. Waiting for acceptance.',
       tutorQueue: queue,
       currentOfferTutorId: queue[0],
       offerExpiresAt: Date.now() + OFFER_TIMEOUT_MS,
+      offerRevision,
+      offerToken: randomUUID(),
       retryOfferGranted: false,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
