@@ -171,6 +171,7 @@ export async function createWebRtcSessionController({
     getDoc,
     onSnapshot,
     setDoc,
+    updateDoc,
   } = firestoreModule;
 
   const sessionRef = doc(db, 'sessions', sessionId);
@@ -226,6 +227,10 @@ export async function createWebRtcSessionController({
   let isRemoteScreenSharing = false;
   let remoteScreenShareSignaled = false;
   let currentRemoteScreenTrackId = null;
+  let isApplyingStudentOffer = false;
+  let processingOfferRevision = 0;
+  let lastHandledOfferRevision = 0;
+  let queuedStudentOffer = null;
   const unsubscribers = [];
 
   async function flushPendingRemoteCandidates() {
@@ -294,37 +299,36 @@ export async function createWebRtcSessionController({
     });
   };
 
-  const computeRemoteScreenLiveState = () => {
+  const computeRemoteScreenLiveState = (reason = 'unknown') => {
     const remoteVideoTrack = remoteScreenStream.getVideoTracks()[0] || null;
     const hasUsableTrack =
       Boolean(remoteVideoTrack)
       && remoteVideoTrack.readyState === 'live'
       && !remoteVideoTrack.muted;
 
-    isRemoteScreenSharing = remoteScreenShareSignaled && hasUsableTrack;
+    // "Screen live" must only be true when the student has actually received a usable remote track.
+    isRemoteScreenSharing = hasUsableTrack;
+
+    debugLog('webrtcService', 'Computed remote screen live state.', {
+      reason,
+      signaledActive: remoteScreenShareSignaled,
+      hasTrack: Boolean(remoteVideoTrack),
+      trackId: remoteVideoTrack?.id || null,
+      trackReadyState: remoteVideoTrack?.readyState || null,
+      trackMuted: remoteVideoTrack?.muted ?? null,
+      isRemoteScreenSharing,
+    });
     onRemoteScreenStream?.(isRemoteScreenSharing ? remoteScreenStream : null);
     emitScreenShareState();
   };
 
   const updateScreenShareDocState = async (active) => {
-    const sessionSnap = await getDoc(sessionRef);
-    const existing = sessionSnap.data()?.webrtc || {};
-
-    await setDoc(
-      sessionRef,
-      {
-        webrtc: {
-          ...existing,
-          screenShare: {
-            active,
-            by: active ? role : null,
-            updatedAt: Date.now(),
-          },
-        },
-        updatedAt: Date.now(),
-      },
-      { merge: true },
-    );
+    await updateDoc(sessionRef, {
+      'webrtc.screenShare.active': active,
+      'webrtc.screenShare.by': active ? role : null,
+      'webrtc.screenShare.updatedAt': Date.now(),
+      updatedAt: Date.now(),
+    });
   };
 
   const publishUpdatedOffer = async (status = 'connecting') => {
@@ -335,19 +339,13 @@ export async function createWebRtcSessionController({
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
-    await setDoc(
-      sessionRef,
-      {
-        webrtc: {
-          offer: serializeSessionDescription(offer),
-          answer: null,
-          offerRevision: nextRevision,
-          status,
-        },
-        updatedAt: Date.now(),
-      },
-      { merge: true },
-    );
+    await updateDoc(sessionRef, {
+      'webrtc.offer': serializeSessionDescription(offer),
+      'webrtc.answer': null,
+      'webrtc.offerRevision': nextRevision,
+      'webrtc.status': status,
+      updatedAt: Date.now(),
+    });
 
     latestOfferRevision = nextRevision;
 
@@ -398,7 +396,7 @@ export async function createWebRtcSessionController({
     });
 
     const publishRemoteScreenStream = () => {
-      computeRemoteScreenLiveState();
+      computeRemoteScreenLiveState('receiver_track_publish');
     };
 
     const handleUnmute = () => {
@@ -415,7 +413,7 @@ export async function createWebRtcSessionController({
         readyState: receiverTrack.readyState,
       });
       isRemoteScreenSharing = false;
-      computeRemoteScreenLiveState();
+      computeRemoteScreenLiveState('receiver_track_mute');
     };
 
     const handleEnded = () => {
@@ -431,7 +429,7 @@ export async function createWebRtcSessionController({
       });
 
       isRemoteScreenSharing = false;
-      computeRemoteScreenLiveState();
+      computeRemoteScreenLiveState('receiver_track_ended');
     };
 
     receiverTrack.onunmute = handleUnmute;
@@ -469,7 +467,7 @@ export async function createWebRtcSessionController({
       currentRemoteScreenTrackId = incomingTrack.id;
 
       const publishScreenState = () => {
-        computeRemoteScreenLiveState();
+        computeRemoteScreenLiveState('ontrack_publish');
       };
 
       incomingTrack.onunmute = () => {
@@ -486,7 +484,7 @@ export async function createWebRtcSessionController({
           readyState: incomingTrack.readyState,
         });
         isRemoteScreenSharing = false;
-        computeRemoteScreenLiveState();
+        computeRemoteScreenLiveState('ontrack_mute');
       };
 
       incomingTrack.onended = () => {
@@ -502,7 +500,7 @@ export async function createWebRtcSessionController({
         });
 
         isRemoteScreenSharing = false;
-        computeRemoteScreenLiveState();
+        computeRemoteScreenLiveState('ontrack_ended');
       };
 
       publishScreenState();
@@ -610,20 +608,14 @@ export async function createWebRtcSessionController({
       await clearCandidateCollection(getDocs, deleteDoc, tutorCandidatesRef);
       await clearCandidateCollection(getDocs, deleteDoc, studentCandidatesRef);
 
-      await setDoc(
-        sessionRef,
-        {
-          webrtc: {
-            offer: serializeSessionDescription(offer),
-            answer: null,
-            offerRevision: revision,
-            lastRestartAt: Date.now(),
-            status: 'restarting',
-          },
-          updatedAt: Date.now(),
-        },
-        { merge: true },
-      );
+      await updateDoc(sessionRef, {
+        'webrtc.offer': serializeSessionDescription(offer),
+        'webrtc.answer': null,
+        'webrtc.offerRevision': revision,
+        'webrtc.lastRestartAt': Date.now(),
+        'webrtc.status': 'restarting',
+        updatedAt: Date.now(),
+      });
 
       await addDoc(restartCollectionRef, {
         requestedBy: currentUserId,
@@ -672,17 +664,102 @@ export async function createWebRtcSessionController({
     }),
   );
 
+  const processQueuedStudentOffer = async () => {
+    if (role !== 'student') return;
+    if (isApplyingStudentOffer) return;
+    if (!queuedStudentOffer) return;
+
+    const next = queuedStudentOffer;
+    queuedStudentOffer = null;
+
+    if (!next?.offer || next.offerRevision <= lastHandledOfferRevision) {
+      debugLog('webrtcService', 'Skipping stale queued offer before processing.', {
+        queuedOfferRevision: next?.offerRevision || 0,
+        lastHandledOfferRevision,
+      });
+      return;
+    }
+
+    if (pc.signalingState !== 'stable') {
+      debugLog('webrtcService', 'Deferring queued student offer because signaling state is not stable.', {
+        signalingState: pc.signalingState,
+        offerRevision: next.offerRevision,
+      });
+      queuedStudentOffer = next;
+      return;
+    }
+
+    isApplyingStudentOffer = true;
+    processingOfferRevision = next.offerRevision;
+
+    try {
+      await pc.setRemoteDescription(new RTCSessionDescription(next.offer));
+      debugLog('webrtcService', 'Student applied remote offer.', {
+        offerRevision: next.offerRevision,
+        signalingState: pc.signalingState,
+      });
+
+      attachRemoteScreenReceiverTrack();
+      await flushPendingRemoteCandidates();
+
+      if (pc.signalingState !== 'have-remote-offer') {
+        debugLog('webrtcService', 'Aborting answer creation due to invalid signaling state.', {
+          signalingState: pc.signalingState,
+          offerRevision: next.offerRevision,
+        });
+        return;
+      }
+
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+
+      await updateDoc(sessionRef, {
+        'webrtc.answer': serializeSessionDescription(answer),
+        'webrtc.studentReadyAt': Date.now(),
+        'webrtc.status': 'connecting',
+        updatedAt: Date.now(),
+      });
+
+      lastHandledOfferRevision = next.offerRevision;
+      latestOfferRevision = Math.max(latestOfferRevision, next.offerRevision);
+
+      debugLog('webrtcService', 'Student created and saved answer.', {
+        offerRevision: next.offerRevision,
+      });
+
+      setConnectionTimeout();
+    } catch (error) {
+      debugLog('webrtcService', 'Failed to process queued student offer.', {
+        offerRevision: next.offerRevision,
+        signalingState: pc.signalingState,
+        message: error?.message || null,
+      });
+    } finally {
+      isApplyingStudentOffer = false;
+      processingOfferRevision = 0;
+      if (queuedStudentOffer) {
+        await processQueuedStudentOffer();
+      }
+    }
+  };
+
   unsubscribers.push(
     onSnapshot(sessionRef, async (snapshot) => {
       const data = snapshot.data() || {};
       const webrtc = data.webrtc || {};
 
       if (typeof webrtc?.screenShare?.active === 'boolean' && role === 'student') {
+        debugLog('webrtcService', 'Student observed screen share signal.', {
+          active: webrtc.screenShare.active,
+          by: webrtc.screenShare.by || null,
+          updatedAt: webrtc.screenShare.updatedAt || null,
+        });
+
         remoteScreenShareSignaled = webrtc.screenShare.active;
         if (!webrtc.screenShare.active) {
           clearRemoteScreenStream();
         } else {
-          computeRemoteScreenLiveState();
+          computeRemoteScreenLiveState('session_signal_snapshot');
         }
       }
 
@@ -707,16 +784,10 @@ export async function createWebRtcSessionController({
           debugLog('webrtcService', 'Tutor applied remote answer.');
 
           await flushPendingRemoteCandidates();
-          await setDoc(
-            sessionRef,
-            {
-              webrtc: {
-                status: 'connected',
-              },
-              updatedAt: Date.now(),
-            },
-            { merge: true },
-          );
+          await updateDoc(sessionRef, {
+            'webrtc.status': 'connected',
+            updatedAt: Date.now(),
+          });
         }
 
         return;
@@ -732,39 +803,34 @@ export async function createWebRtcSessionController({
         hasCurrentRemoteDescription: Boolean(pc.currentRemoteDescription),
       });
 
-      const shouldHandleOffer = !pc.currentRemoteDescription || offerRevision > latestOfferRevision;
-      if (!shouldHandleOffer) return;
+      const isStaleOffer = offerRevision <= lastHandledOfferRevision;
+      const isSameAsInFlight = isApplyingStudentOffer && offerRevision <= processingOfferRevision;
+      const isSameAsQueued = queuedStudentOffer && offerRevision <= queuedStudentOffer.offerRevision;
 
-      latestOfferRevision = offerRevision;
+      if (isStaleOffer || isSameAsInFlight || isSameAsQueued) {
+        debugLog('webrtcService', 'Skipping student offer snapshot because it is stale or already queued.', {
+          offerRevision,
+          lastHandledOfferRevision,
+          processingOfferRevision,
+          queuedOfferRevision: queuedStudentOffer?.offerRevision || 0,
+        });
+        return;
+      }
 
-      await pc.setRemoteDescription(new RTCSessionDescription(webrtc.offer));
-      debugLog('webrtcService', 'Student applied remote offer.', {
+      queuedStudentOffer = {
         offerRevision,
+        offer: webrtc.offer,
+      };
+
+      latestOfferRevision = Math.max(latestOfferRevision, offerRevision);
+
+      debugLog('webrtcService', 'Queued student offer for serialized processing.', {
+        offerRevision,
+        signalingState: pc.signalingState,
+        isApplyingStudentOffer,
       });
 
-      await flushPendingRemoteCandidates();
-
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-
-      await setDoc(
-        sessionRef,
-        {
-          webrtc: {
-            answer: serializeSessionDescription(answer),
-            studentReadyAt: Date.now(),
-            status: 'connecting',
-          },
-          updatedAt: Date.now(),
-        },
-        { merge: true },
-      );
-
-      debugLog('webrtcService', 'Student created and saved answer.', {
-        offerRevision,
-      });
-
-      setConnectionTimeout();
+      await processQueuedStudentOffer();
     }),
   );
 
@@ -800,17 +866,11 @@ export async function createWebRtcSessionController({
 
     latestOfferRevision = 1;
   } else {
-    await setDoc(
-      sessionRef,
-      {
-        webrtc: {
-          status: 'student_joining',
-          studentReadyAt: Date.now(),
-        },
-        updatedAt: Date.now(),
-      },
-      { merge: true },
-    );
+    await updateDoc(sessionRef, {
+      'webrtc.status': 'student_joining',
+      'webrtc.studentReadyAt': Date.now(),
+      updatedAt: Date.now(),
+    });
 
     setConnectionTimeout();
   }
