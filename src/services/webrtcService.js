@@ -444,10 +444,24 @@ export async function createWebRtcSessionController({
         const hasUsableTrack =
           incomingTrack.readyState === 'live' && !incomingTrack.muted;
 
+        if (hasUsableTrack) {
+          const existingTrackIds = remoteScreenStream.getTracks().map((track) => track.id);
+          const alreadyHasIncomingTrack = existingTrackIds.includes(incomingTrack.id);
+
+          if (!alreadyHasIncomingTrack || remoteScreenStream.getVideoTracks().length === 0) {
+            remoteScreenStream.getTracks().forEach((track) => {
+              remoteScreenStream.removeTrack(track);
+            });
+            remoteScreenStream.addTrack(incomingTrack);
+          }
+        }
+
         isRemoteScreenSharing = hasUsableTrack;
         debugLog('webrtcService', '[claxi:screen:student] onRemoteScreenStream call.', {
           value: hasUsableTrack ? 'stream' : 'null',
           trackId: incomingTrack.id,
+          streamTrackIds: remoteScreenStream.getTracks().map((track) => track.id),
+          streamVideoTrackIds: remoteScreenStream.getVideoTracks().map((track) => track.id),
         });
         onRemoteScreenStream?.(hasUsableTrack ? remoteScreenStream : null);
         emitScreenShareState();
