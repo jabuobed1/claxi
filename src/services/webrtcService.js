@@ -381,19 +381,92 @@ export async function createWebRtcSessionController({
       return;
     }
 
-    debugLog('webrtcService', 'Attached screen receiver track for observation only.', {
+    debugLog('webrtcService', 'Attached screen receiver track.', {
       id: receiverTrack.id,
       kind: receiverTrack.kind,
       muted: receiverTrack.muted,
       readyState: receiverTrack.readyState,
     });
 
-    receiverTrack.onended = () => {
-      debugLog('webrtcService', 'Remote screen receiver track ended.', {
+    const rebuildRemoteScreenStream = () => {
+      const existingTrackIds = remoteScreenStream.getTracks().map((track) => track.id);
+      const alreadyHasReceiverTrack = existingTrackIds.includes(receiverTrack.id);
+
+      if (!alreadyHasReceiverTrack || remoteScreenStream.getVideoTracks().length === 0) {
+        remoteScreenStream.getTracks().forEach((track) => {
+          remoteScreenStream.removeTrack(track);
+        });
+        remoteScreenStream.addTrack(receiverTrack);
+      }
+
+      currentRemoteScreenTrackId = receiverTrack.id;
+    };
+
+    const publishAttachedScreen = () => {
+      rebuildRemoteScreenStream();
+
+      const videoTrack = remoteScreenStream.getVideoTracks()[0] || null;
+      const hasUsableTrack =
+        Boolean(videoTrack)
+        && videoTrack.readyState === 'live'
+        && !receiverTrack.muted;
+
+      isRemoteScreenSharing = hasUsableTrack;
+
+      debugLog('webrtcService', '[claxi:screen:student] helper publishAttachedScreen.', {
+        receiverTrackId: receiverTrack.id,
+        receiverMuted: receiverTrack.muted,
+        receiverReadyState: receiverTrack.readyState,
+        streamTrackIds: remoteScreenStream.getTracks().map((track) => track.id),
+        streamVideoTrackIds: remoteScreenStream.getVideoTracks().map((track) => track.id),
+        value: hasUsableTrack ? 'stream' : 'null',
+      });
+
+      onRemoteScreenStream?.(hasUsableTrack ? remoteScreenStream : null);
+      emitScreenShareState();
+    };
+
+    const handleUnmute = () => {
+      debugLog('webrtcService', '[claxi:screen:student] helper receiver track unmute.', {
         id: receiverTrack.id,
         readyState: receiverTrack.readyState,
       });
+      publishAttachedScreen();
     };
+
+    const handleMute = () => {
+      debugLog('webrtcService', '[claxi:screen:student] helper receiver track mute.', {
+        id: receiverTrack.id,
+        readyState: receiverTrack.readyState,
+      });
+      isRemoteScreenSharing = false;
+      onRemoteScreenStream?.(null);
+      emitScreenShareState();
+    };
+
+    const handleEnded = () => {
+      remoteScreenStream.getTracks().forEach((track) => {
+        if (track.id === receiverTrack.id || track.readyState === 'ended') {
+          remoteScreenStream.removeTrack(track);
+        }
+      });
+
+      debugLog('webrtcService', '[claxi:screen:student] helper receiver track ended.', {
+        id: receiverTrack.id,
+        readyState: receiverTrack.readyState,
+      });
+
+      currentRemoteScreenTrackId = null;
+      isRemoteScreenSharing = false;
+      onRemoteScreenStream?.(null);
+      emitScreenShareState();
+    };
+
+    receiverTrack.onunmute = handleUnmute;
+    receiverTrack.onmute = handleMute;
+    receiverTrack.onended = handleEnded;
+
+    publishAttachedScreen();
   };
 
   pc.ontrack = (event) => {
