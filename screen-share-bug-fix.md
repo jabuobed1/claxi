@@ -979,7 +979,7 @@ This phase is complete when:
 
 ## Status
 
-`NOT STARTED`
+`DONE ✅`
 
 ---
 
@@ -987,31 +987,32 @@ This phase is complete when:
 
 ```md
 1. New ontrack assumption:
-- 
+- Yes. Student reattachment is driven by `pc.ontrack` + that track’s mute/unmute handlers; no guaranteed reattach path runs after renegotiation if no new ontrack fires.
 
 2. Stream clearing behavior:
-- 
+- Yes. `clearRemoteScreenStream()` removes all screen tracks, sets `isRemoteScreenSharing=false`, emits `onRemoteScreenStream(null)`, and is called when `webrtc.screenShare.active` becomes false.
 
 3. Stream rebuild path:
-- 
+- Only this path: new video `pc.ontrack` -> add incoming track to `remoteScreenStream` -> `publishScreenState()` / `onunmute` -> `onRemoteScreenStream(remoteScreenStream)`.
+- There is no active rebuild call after offer apply besides waiting for `ontrack`.
 
 4. Fragile detection logic:
-- 
+- Yes. All student video tracks are treated as screen, usable-state depends on `track.readyState==='live' && !track.muted`, and success depends on mute/unmute timing/events.
 
 5. Tutor track/transceiver method:
-- 
+- Tutor uses a pre-created video transceiver and `screenTransceiver.sender.replaceTrack(...)` (including `replaceTrack(null)` on stop), i.e., transceiver/sender reuse rather than add/remove track.
 
 6. Can signaling succeed while UI fails:
-- 
+- Yes. Logs show offer revision increments + setRemoteDescription/createAnswer success, while second share has no new video ontrack/unmute and UI remains empty.
 
-7. Possible race condition:
-- 
+7. Is `attachRemoteScreenReceiverTrack()` the missing reattachment path:
+- Yes, effectively. It exists to bind `screenTransceiver.receiver.track` and handlers, but it is not invoked in the student renegotiation flow, so re-share can miss reattachment when no new ontrack arrives.
 
 Root-cause theory:
-- 
+- On stop, student clears remote screen state; on re-share, tutor reuses the same sender/transceiver via replaceTrack, which may not emit a fresh ontrack. Because reattach logic depends on ontrack and `attachRemoteScreenReceiverTrack()` is unused, student never republishes the receiver track to UI.
 
 Smallest-safe-fix candidate:
--
+- In student offer-handling path, call `attachRemoteScreenReceiverTrack()` immediately after successful `setRemoteDescription(...)` (and/or after answer setLocalDescription) so existing receiver track is reattached and its mute/unmute handlers are rebound even when no new ontrack event fires.
 ```
 
 
