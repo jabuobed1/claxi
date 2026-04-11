@@ -381,19 +381,6 @@ export async function createWebRtcSessionController({
       return;
     }
 
-    if (currentRemoteScreenTrackId && currentRemoteScreenTrackId !== receiverTrack.id) {
-      remoteScreenStream.getTracks().forEach((track) => {
-        remoteScreenStream.removeTrack(track);
-      });
-    }
-
-    const alreadyAdded = remoteScreenStream.getTracks().some((track) => track.id === receiverTrack.id);
-    if (!alreadyAdded) {
-      remoteScreenStream.addTrack(receiverTrack);
-    }
-
-    currentRemoteScreenTrackId = receiverTrack.id;
-
     debugLog('webrtcService', 'Attached screen receiver track.', {
       id: receiverTrack.id,
       kind: receiverTrack.kind,
@@ -401,7 +388,24 @@ export async function createWebRtcSessionController({
       readyState: receiverTrack.readyState,
     });
 
+    const rebuildRemoteScreenStream = () => {
+      const existingTracks = remoteScreenStream.getTracks();
+      const shouldReplace =
+        existingTracks.length !== 1
+        || existingTracks[0]?.id !== receiverTrack.id;
+
+      if (shouldReplace) {
+        existingTracks.forEach((track) => {
+          remoteScreenStream.removeTrack(track);
+        });
+        remoteScreenStream.addTrack(receiverTrack);
+      }
+
+      currentRemoteScreenTrackId = receiverTrack.id;
+    };
+
     const publishRemoteScreenStream = () => {
+      rebuildRemoteScreenStream();
       const videoTrack = remoteScreenStream.getVideoTracks()[0] || null;
       const hasUsableTrack =
         Boolean(videoTrack)
@@ -452,9 +456,7 @@ export async function createWebRtcSessionController({
     receiverTrack.onmute = handleMute;
     receiverTrack.onended = handleEnded;
 
-    if (!receiverTrack.muted && receiverTrack.readyState === 'live') {
-      publishRemoteScreenStream();
-    }
+    publishRemoteScreenStream();
   };
 
   pc.ontrack = (event) => {
