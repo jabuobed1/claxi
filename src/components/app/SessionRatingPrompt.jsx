@@ -38,7 +38,7 @@ export default function SessionRatingPrompt() {
   const { sessions: tutorSessions } = useTutorSessions(role === 'tutor' ? user?.uid : null);
   const sessions = role === 'tutor' ? tutorSessions : studentSessions;
 
-  const [form, setForm] = useState({ overall: 5, comment: '' });
+  const [form, setForm] = useState({ overall: 5 });
   const [isSaving, setIsSaving] = useState(false);
   const [handledIds, setHandledIds] = useState([]);
 
@@ -68,18 +68,17 @@ export default function SessionRatingPrompt() {
 
   useEffect(() => {
     if (!target) return;
-    setForm({ overall: 5, comment: '' });
+    setForm({ overall: 5 });
   }, [target?.id]);
 
   if (!target) return null;
 
-  const submit = async (event) => {
-    event.preventDefault();
+  const submit = async (overall) => {
+    if (!target || isSaving) return;
     setIsSaving(true);
     try {
       await submitSessionRating(target, role, {
-        overall: Number(form.overall),
-        comment: form.comment,
+        overall: Number(overall),
       });
       markHandled(target.id);
     } finally {
@@ -100,29 +99,21 @@ export default function SessionRatingPrompt() {
           <button type="button" onClick={() => markHandled(target.id)} className="rounded-xl border border-zinc-300 px-3 py-1 text-xs font-semibold">Close</button>
         </div>
 
-        <form className="mt-4 grid gap-4" onSubmit={submit}>
+        <div className="mt-4 grid gap-4">
           <div>
             <p className="mb-2 text-sm font-semibold text-zinc-700">Overall rating</p>
             <StarRating
               value={Number(form.overall)}
-              onChange={(value) => setForm((prev) => ({ ...prev, overall: value }))}
+              onChange={(value) => {
+                setForm({ overall: value });
+                submit(value);
+              }}
             />
           </div>
-          <div>
-            <textarea
-              value={form.comment}
-              onChange={(event) => setForm((prev) => ({ ...prev, comment: event.target.value }))}
-              rows={4}
-              className="w-full rounded-2xl border border-zinc-300 px-3 py-2 text-sm"
-              placeholder="Optional feedback"
-            />
-          </div>
-          <div className="flex justify-end">
-            <button type="submit" disabled={isSaving} className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-bold text-white disabled:opacity-60">
-              {isSaving ? 'Saving...' : 'Submit rating'}
-            </button>
-          </div>
-        </form>
+          <p className="text-xs font-semibold text-zinc-500">
+            {isSaving ? 'Saving rating...' : 'Tap a star to submit your rating.'}
+          </p>
+        </div>
       </div>
     </div>
   );
