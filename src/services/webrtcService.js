@@ -390,16 +390,10 @@ export async function createWebRtcSessionController({
 
     const rebuildRemoteScreenStream = () => {
       const existingTracks = remoteScreenStream.getTracks();
-      const shouldReplace =
-        existingTracks.length !== 1
-        || existingTracks[0]?.id !== receiverTrack.id;
-
-      if (shouldReplace) {
-        existingTracks.forEach((track) => {
-          remoteScreenStream.removeTrack(track);
-        });
-        remoteScreenStream.addTrack(receiverTrack);
-      }
+      existingTracks.forEach((track) => {
+        remoteScreenStream.removeTrack(track);
+      });
+      remoteScreenStream.addTrack(receiverTrack);
 
       currentRemoteScreenTrackId = receiverTrack.id;
     };

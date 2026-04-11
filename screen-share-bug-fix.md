@@ -1099,49 +1099,15 @@ This phase is complete when:
 
 ## Results
 
-```md
-Open the "share-screen-bug-fix.md" file and continue PHASE 5 with one additional small fix only.
-
-Context from previous result:
-- attachRemoteScreenReceiverTrack() is now called after student setRemoteDescription(...)
-- renegotiation succeeds
-- helper logs show a receiver track is found and attached
-- but second share still does not reach onRemoteScreenStream(stream) / srcObject assignment / visible UI
-- so the helper is running but not actively republishing a usable stream
-
-Target:
-- src/services/webrtcService.js
-- function: attachRemoteScreenReceiverTrack()
-
-Required fix:
-- Update attachRemoteScreenReceiverTrack() so that when it finds a valid receiver video track, it actively rebuilds/replaces the remote screen MediaStream and republishes it to the UI
-- Bind mute/unmute/ended handlers as before
-- But do not rely only on a future onunmute event
-- If the receiver track is valid/live, immediately ensure the screen stream is rebuilt and onRemoteScreenStream(remoteScreenStream) is called through the existing logic path
-- Keep the fix minimal and local to this helper
-
-Boundaries:
-- Do NOT refactor unrelated code
-- Do NOT add another broader fix
-- Do NOT remove logs
-- Do NOT change UI code
-
-After the change, test:
-1. first share
-2. stop
-3. second share
-4. stop
-5. third share
-
-Return only:
-1. file changed
-2. exact helper change made
-3. why this is the smallest safe follow-up fix
-4. test result
-5. whether second share now works
-6. whether third share now works
-7. any regression seen
-```
+- File changed: `src/services/webrtcService.js`
+- Exact helper change: `attachRemoteScreenReceiverTrack()` now force-rebuilds `remoteScreenStream` by removing all existing tracks and adding the current receiver video track before publishing; it still binds `onunmute`, `onmute`, and `onended`, and now performs immediate publish via existing publish path.
+- Why this is smallest safe fix: only local helper logic changed; no signaling flow/UI changes; existing logs and handler behavior preserved.
+- Test result:
+  - `npm run build` ✅
+  - Runtime call-cycle validation (first/second/third share) not executed in this headless container.
+- Whether second share now works: not confirmed in-container (manual browser verification still required).
+- Whether third share now works: not confirmed in-container (manual browser verification still required).
+- Regression seen: none in static/build checks.
 
 
 # =========================
@@ -1219,36 +1185,35 @@ This phase is complete when:
 
 ## Results
 
-```md
 Audio Works:
-- 
+- Not runtime-tested in this container.
 
 First Share Works:
-- 
+- Not runtime-tested in this container.
 
 Second Share Works:
-- 
+- Not runtime-tested in this container.
 
 Repeated Stop/Start Works:
-- 
+- Not runtime-tested in this container.
 
 UI Matches State:
-- 
+- Not runtime-tested in this container.
 
 Stream Clears Properly:
-- 
+- Not runtime-tested in this container.
 
 Stream Reattaches Properly:
-- 
+- Logic updated to force stream rebuild before publish in `attachRemoteScreenReceiverTrack()`; manual browser validation still pending.
 
 No Duplicate Streams:
-- 
+- Expected by design (helper now clears all existing tracks before adding the current receiver track), but not runtime-tested here.
 
 No Stale Streams:
-- 
+- Expected by design (track list is replaced on each publish), but not runtime-tested here.
 
 UI Flicker or Issues:
-- 
+- Not runtime-tested in this container.
 
 Remaining Risk:
-- 
+- End-to-end WebRTC behavior across repeated share cycles still requires manual two-party browser verification.
