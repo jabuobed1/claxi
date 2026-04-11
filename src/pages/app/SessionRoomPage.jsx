@@ -29,6 +29,13 @@ import { debugLog } from '../../utils/devLogger';
 import { updateClassRequest } from '../../services/classRequestService';
 import { REQUEST_STATUSES } from '../../utils/requestStatus';
 
+const HANDLED_KEY = 'claxi_handled_session_room_ratings';
+const RATABLE_STATUSES = new Set([
+  SESSION_STATUS.COMPLETED,
+  SESSION_STATUS.CANCELED,
+  SESSION_STATUS.CANCELED_DURING,
+]);
+
 function useLiveSeconds(startTs) {
   const [tick, setTick] = useState(Date.now());
 
@@ -122,8 +129,9 @@ export default function SessionRoomPage() {
   const sessions = role === 'tutor' ? tutorSessions : studentSessions;
   const session = sessions.find((item) => item.id === id);
 
-  const [ratingForm, setRatingForm] = useState({ overall: '5', topic: '5', comment: '' });
+  const [ratingForm, setRatingForm] = useState({ overall: '5' });
   const [isSaving, setIsSaving] = useState(false);
+  const [handledRatingIds, setHandledRatingIds] = useState([]);
   const [selectedCardId] = useState(
     user?.paymentMethods?.find((card) => card.isDefault)?.id
       || user?.paymentMethods?.[0]?.id
@@ -154,7 +162,9 @@ export default function SessionRoomPage() {
 
   const callSeconds = useLiveSeconds(session?.callStartedAt);
   const billedSeconds = useLiveSeconds(session?.billingStartedAt);
-  const needsRating = session?.status === SESSION_STATUS.COMPLETED && !session?.ratings?.[role];
+  const needsRating = Boolean(session?.id)
+    && RATABLE_STATUSES.has(session?.status)
+    && !handledRatingIds.includes(session.id);
   const tldrawLicenseKey = import.meta.env.VITE_TLDRAW_LICENSE_KEY;
   const forceRelayOnly = String(import.meta.env.VITE_WEBRTC_FORCE_RELAY_ONLY || '').toLowerCase() === 'true';
   const whiteboardRoom = session?.whiteboardRoomId || session?.requestId || session?.id;
@@ -186,6 +196,25 @@ export default function SessionRoomPage() {
     setRemoteScreenStreamObj(null);
     setShowStudentControls(true);
   }, [session?.id, role]);
+
+  useEffect(() => {
+    try {
+      const parsed = JSON.parse(sessionStorage.getItem(HANDLED_KEY) || '[]');
+      setHandledRatingIds(Array.isArray(parsed) ? parsed : []);
+    } catch {
+      setHandledRatingIds([]);
+    }
+  }, []);
+
+  const markRatingHandled = useCallback((sessionId) => {
+    if (!sessionId) return;
+    setHandledRatingIds((prev) => {
+      if (prev.includes(sessionId)) return prev;
+      const next = [...prev, sessionId];
+      sessionStorage.setItem(HANDLED_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -589,17 +618,17 @@ export default function SessionRoomPage() {
     navigate('/app/tutor', { replace: true });
   };
 
-  const submitRating = async (event) => {
-    event.preventDefault();
+  const submitRating = async (overall) => {
+    if (!session || isSaving) return;
     setIsSaving(true);
-
-    await submitSessionRating(session, role, {
-      overall: Number(ratingForm.overall),
-      topic: Number(ratingForm.topic),
-      comment: ratingForm.comment,
-    });
-
-    setIsSaving(false);
+    try {
+      await submitSessionRating(session, role, {
+        overall: Number(overall),
+      });
+      markRatingHandled(session.id);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const toggleMute = () => {
@@ -847,66 +876,41 @@ export default function SessionRoomPage() {
               <p className="text-lg font-semibold text-zinc-100">Rate this session</p>
             </div>
 
-            <form className="mt-5 grid gap-4" onSubmit={submitRating}>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <label className="text-sm text-zinc-300">
-                  Overall
-                  <select
-                    value={ratingForm.overall}
-                    onChange={(event) =>
-                      setRatingForm((prev) => ({ ...prev, overall: event.target.value }))
-                    }
-                    className="mt-2 w-full rounded-2xl border border-zinc-700 bg-zinc-900 px-3 py-3 text-sm text-zinc-100 outline-none transition focus:border-brand"
+            <div className="mt-5 grid gap-4">
+              <p className="text-sm text-zinc-300">Overall rating</p>
+              <div className="flex items-center gap-2" role="radiogroup" aria-label="Overall rating">
+                {[1, 2, 3, 4, 5].map((starValue) => (
+                  <button
+                    key={starValue}
+                    type="button"
+                    role="radio"
+                    aria-checked={Number(ratingForm.overall) === starValue}
+                    aria-label={`${starValue} star${starValue > 1 ? 's' : ''}`}
+                    disabled={isSaving}
+                    onClick={() => {
+                      setRatingForm({ overall: String(starValue) });
+                      submitRating(starValue);
+                    }}
+                    className="text-4xl leading-none transition-transform hover:scale-110 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {[1, 2, 3, 4, 5].map((value) => (
-                      <option key={`overall-${value}`} value={String(value)}>
-                        {value}/5
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="text-sm text-zinc-300">
-                  Topic specific
-                  <select
-                    value={ratingForm.topic}
-                    onChange={(event) =>
-                      setRatingForm((prev) => ({ ...prev, topic: event.target.value }))
-                    }
-                    className="mt-2 w-full rounded-2xl border border-zinc-700 bg-zinc-900 px-3 py-3 text-sm text-zinc-100 outline-none transition focus:border-brand"
-                  >
-                    {[1, 2, 3, 4, 5].map((value) => (
-                      <option key={`topic-${value}`} value={String(value)}>
-                        {value}/5
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                    <span className={starValue <= Number(ratingForm.overall) ? 'text-amber-300' : 'text-zinc-600'}>★</span>
+                  </button>
+                ))}
               </div>
-
-              <label className="text-sm text-zinc-300">
-                Feedback
-                <textarea
-                  value={ratingForm.comment}
-                  onChange={(event) =>
-                    setRatingForm((prev) => ({ ...prev, comment: event.target.value }))
-                  }
-                  className="mt-2 w-full rounded-2xl border border-zinc-700 bg-zinc-900 px-3 py-3 text-sm text-zinc-100 outline-none transition focus:border-brand"
-                  rows={4}
-                  placeholder="Optional feedback"
-                />
-              </label>
-
-              <div className="flex justify-end">
+              <div className="flex items-center justify-between">
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={() => markRatingHandled(session.id)}
                   disabled={isSaving}
-                  className="rounded-2xl bg-brand px-5 py-3 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-50"
+                  className="rounded-2xl border border-zinc-700 px-4 py-2 text-xs font-semibold text-zinc-300 transition hover:bg-zinc-900 disabled:opacity-50"
                 >
-                  {isSaving ? 'Saving rating...' : 'Submit rating'}
+                  Close
                 </button>
+                <p className="text-xs font-semibold text-zinc-400">
+                  {isSaving ? 'Saving rating...' : 'Tap a star to submit automatically.'}
+                </p>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       ) : null}
