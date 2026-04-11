@@ -1121,28 +1121,25 @@ Third Share Works:
 Any Regression:
 - None observed from static inspection/build-only context; runtime regression check pending live browser test.
 
-The changes broke the code and the connection is not even establishing a connection now.
-
-Console for the student:
-index-BYfj5_R4.js:3935 [claxi:classRequestService] Creating class request. {studentId: 'bSzYwO6ByzOcjzioNOzK4i43Dji2', topic: 'Testing', durationMinutes: 'Per-minute billing'}
-index-BYfj5_R4.js:3935 [claxi:classRequestService] Class request created. Backend lifecycle trigger will process matching. {requestId: 'nszXpOJSSd4oqP06w9Mm'}
+Console from the student side:
+index-BYfj5_R4.js:3935 [claxi:classRequestService] Creating class request. {studentId: 'bSzYwO6ByzOcjzioNOzK4i43Dji2', topic: 'Testing Phase 5 again.', durationMinutes: 'Per-minute billing'}
+index-BYfj5_R4.js:3935 [claxi:classRequestService] Class request created. Backend lifecycle trigger will process matching. {requestId: 'r52TMN67ADutSCxlvgJs'}
 index-BYfj5_R4.js:3935 request status: undefined
-index-BYfj5_R4.js:3935 requestId: nszXpOJSSd4oqP06w9Mm
+index-BYfj5_R4.js:3935 requestId: r52TMN67ADutSCxlvgJs
 index-BYfj5_R4.js:3935 sessions: []
 index-BYfj5_R4.js:3935 matchingSession: undefined
 index-BYfj5_R4.js:3935 request status: offered
-index-BYfj5_R4.js:3935 requestId: nszXpOJSSd4oqP06w9Mm
-index-BYfj5_R4.js:3935 sessions: (2) [{…}, {…}]
+index-BYfj5_R4.js:3935 requestId: r52TMN67ADutSCxlvgJs
+index-BYfj5_R4.js:3935 sessions: (3) [{…}, {…}, {…}]
 index-BYfj5_R4.js:3935 matchingSession: undefined
 index-BYfj5_R4.js:3935 request status: accepted
-index-BYfj5_R4.js:3935 requestId: nszXpOJSSd4oqP06w9Mm
-index-BYfj5_R4.js:3935 sessions: (3) [{…}, {…}, {…}]
-index-BYfj5_R4.js:3935 matchingSession: {id: 'nszXpOJSSd4oqP06w9Mm', webrtc: {…}, studentId: 'bSzYwO6ByzOcjzioNOzK4i43Dji2', requestDescription: 'Testing', meetingId: '', …}
+index-BYfj5_R4.js:3935 requestId: r52TMN67ADutSCxlvgJs
+index-BYfj5_R4.js:3935 sessions: (4) [{…}, {…}, {…}, {…}]
+index-BYfj5_R4.js:3935 matchingSession: {id: 'r52TMN67ADutSCxlvgJs', tutorEmail: 'jabuobed1@gmail.com', joinGraceEndsAt: 1775890907417, meetingId: '', billingStartedAt: null, …}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] remote screen srcObject effect. {hasVideoElement: false, hasStream: false, hadPreviousSrcObject: false}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] Initializing call. {sessionId: 'nszXpOJSSd4oqP06w9Mm', role: 'student', shouldJoinStudent: true, forceRelayOnly: false}
-index-BYfj5_R4.js:3935 [claxi:sessionService] Student joining session. {sessionId: 'nszXpOJSSd4oqP06w9Mm', requestId: 'nszXpOJSSd4oqP06w9Mm'}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] Initializing call. {sessionId: 'r52TMN67ADutSCxlvgJs', role: 'student', shouldJoinStudent: true, forceRelayOnly: false}
+index-BYfj5_R4.js:3935 [claxi:sessionService] Student joining session. {sessionId: 'r52TMN67ADutSCxlvgJs', requestId: 'r52TMN67ADutSCxlvgJs'}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
@@ -1153,12 +1150,11 @@ index-BYfj5_R4.js:3935 [claxi:iceServerService] Fetched ICE configuration. {serv
 index-BYfj5_R4.js:3935 [claxi:webrtcService] Resolved ICE server config. {forceRelayOnly: false, iceTransportPolicy: 'all', servers: Array(2)}
 index-BYfj5_R4.js:3935 [claxi:webrtcService] Creating RTCPeerConnection with ICE servers. {forceRelayOnly: false, urls: Array(5)}
 index-BYfj5_R4.js:3935 [claxi:webrtcService] Requesting local media (audio only). {constraints: {…}}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
 index-BYfj5_R4.js:3935 [claxi:webrtcService] Local media acquired (audio only). {audioTracks: 1, videoTracks: 0}
 index-BYfj5_R4.js:3935 [claxi:webrtcService] Using local media mode. {mode: 'audio_only'}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] WebRTC controller created successfully. {sessionId: 'nszXpOJSSd4oqP06w9Mm', role: 'student'}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] WebRTC controller created successfully. {sessionId: 'r52TMN67ADutSCxlvgJs', role: 'student'}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
 index-BYfj5_R4.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'host', discoveredTypes: Array(1)}
 index-BYfj5_R4.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 1}
@@ -1172,7 +1168,6 @@ index-BYfj5_R4.js:3935 [claxi:webrtcService] Remote ICE candidate received. {typ
 index-BYfj5_R4.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 5}
 index-BYfj5_R4.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'host', discoveredTypes: Array(3)}
 index-BYfj5_R4.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 6}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
 index-BYfj5_R4.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'host', discoveredTypes: Array(3)}
 index-BYfj5_R4.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 7}
 index-BYfj5_R4.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'srflx', discoveredTypes: Array(3)}
@@ -1181,495 +1176,81 @@ index-BYfj5_R4.js:3935 [claxi:webrtcService] Remote ICE candidate received. {typ
 index-BYfj5_R4.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 9}
 index-BYfj5_R4.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'relay', discoveredTypes: Array(3)}
 index-BYfj5_R4.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 10}
-session/nszXpOJSSd4oqP06w9Mm:1 Access to fetch at 'https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=otYs3a2Qq1_OjXUvxPFLFu8VkBW_J6QEZWvtZkuCANHIl5nRL1hxDA&VER=8&database=projects%2Fclaxi-bakayise%2Fdatabases%2F(default)&RID=rpc&SID=BL3-sCffoepTUC0tDyqY3A&AID=91&CI=1&TYPE=xmlhttp&zx=vezrwsa8asx&t=1' from origin 'https://claxi.bakayise.com' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
-index-BYfj5_R4.js:1870  GET https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=otYs3a2Qq1_OjXUvxPFLFu8VkBW_J6QEZWvtZkuCANHIl5nRL1hxDA&VER=8&database=projects%2Fclaxi-bakayise%2Fdatabases%2F(default)&RID=rpc&SID=BL3-sCffoepTUC0tDyqY3A&AID=91&CI=1&TYPE=xmlhttp&zx=vezrwsa8asx&t=1 net::ERR_FAILED 502 (Bad Gateway)
-t.send @ index-BYfj5_R4.js:1870
-t.ea @ index-BYfj5_R4.js:1872
-C0 @ index-BYfj5_R4.js:1869
-nx @ index-BYfj5_R4.js:1873
-t.Fa @ index-BYfj5_R4.js:1873
-pe @ index-BYfj5_R4.js:1865
-Promise.then
-se @ index-BYfj5_R4.js:1865
-tx @ index-BYfj5_R4.js:1873
-rx @ index-BYfj5_R4.js:1873
-es.Y @ index-BYfj5_R4.js:1869
-es.ca @ index-BYfj5_R4.js:1869
-H @ index-BYfj5_R4.js:1865
-F @ index-BYfj5_R4.js:1865
-K0 @ index-BYfj5_R4.js:1872
-t.bb @ index-BYfj5_R4.js:1872
-t.Ea @ index-BYfj5_R4.js:1872
-Pa @ index-BYfj5_R4.js:1871
-Na @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Sa @ index-BYfj5_R4.js:1870
-Promise.then
-t.send @ index-BYfj5_R4.js:1870
-t.ea @ index-BYfj5_R4.js:1872
-C0 @ index-BYfj5_R4.js:1869
-nx @ index-BYfj5_R4.js:1873
-t.Fa @ index-BYfj5_R4.js:1873
-pe @ index-BYfj5_R4.js:1865
-Promise.then
-se @ index-BYfj5_R4.js:1865
-tx @ index-BYfj5_R4.js:1873
-rx @ index-BYfj5_R4.js:1873
-es.Y @ index-BYfj5_R4.js:1869
-es.ca @ index-BYfj5_R4.js:1869
-H @ index-BYfj5_R4.js:1865
-F @ index-BYfj5_R4.js:1865
-K0 @ index-BYfj5_R4.js:1872
-t.bb @ index-BYfj5_R4.js:1872
-t.Ea @ index-BYfj5_R4.js:1872
-Pa @ index-BYfj5_R4.js:1871
-Na @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Sa @ index-BYfj5_R4.js:1870
-Promise.then
-t.send @ index-BYfj5_R4.js:1870
-t.ea @ index-BYfj5_R4.js:1872
-C0 @ index-BYfj5_R4.js:1869
-nx @ index-BYfj5_R4.js:1873
-t.Fa @ index-BYfj5_R4.js:1873
-pe @ index-BYfj5_R4.js:1865
-Promise.then
-se @ index-BYfj5_R4.js:1865
-tx @ index-BYfj5_R4.js:1873
-rx @ index-BYfj5_R4.js:1873
-es.Y @ index-BYfj5_R4.js:1869
-es.ca @ index-BYfj5_R4.js:1869
-H @ index-BYfj5_R4.js:1865
-F @ index-BYfj5_R4.js:1865
-K0 @ index-BYfj5_R4.js:1872
-t.bb @ index-BYfj5_R4.js:1872
-t.Ea @ index-BYfj5_R4.js:1872
-Pa @ index-BYfj5_R4.js:1871
-Na @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Sa @ index-BYfj5_R4.js:1870
-Promise.then
-t.send @ index-BYfj5_R4.js:1870
-t.ea @ index-BYfj5_R4.js:1872
-C0 @ index-BYfj5_R4.js:1869
-nx @ index-BYfj5_R4.js:1873
-t.Fa @ index-BYfj5_R4.js:1873
-pe @ index-BYfj5_R4.js:1865
-Promise.then
-se @ index-BYfj5_R4.js:1865
-tx @ index-BYfj5_R4.js:1873
-rx @ index-BYfj5_R4.js:1873
-es.Y @ index-BYfj5_R4.js:1869
-es.ca @ index-BYfj5_R4.js:1869
-H @ index-BYfj5_R4.js:1865
-F @ index-BYfj5_R4.js:1865
-K0 @ index-BYfj5_R4.js:1872
-t.bb @ index-BYfj5_R4.js:1872
-t.Ea @ index-BYfj5_R4.js:1872
-Pa @ index-BYfj5_R4.js:1871
-Na @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Sa @ index-BYfj5_R4.js:1870
-Promise.then
-t.send @ index-BYfj5_R4.js:1870
-t.ea @ index-BYfj5_R4.js:1872
-C0 @ index-BYfj5_R4.js:1869
-nx @ index-BYfj5_R4.js:1873
-t.Fa @ index-BYfj5_R4.js:1873
-pe @ index-BYfj5_R4.js:1865
-Promise.then
-se @ index-BYfj5_R4.js:1865
-tx @ index-BYfj5_R4.js:1873
-rx @ index-BYfj5_R4.js:1873
-es.Y @ index-BYfj5_R4.js:1869
-es.ca @ index-BYfj5_R4.js:1869
-H @ index-BYfj5_R4.js:1865
-F @ index-BYfj5_R4.js:1865
-K0 @ index-BYfj5_R4.js:1872
-t.bb @ index-BYfj5_R4.js:1872
-t.Ea @ index-BYfj5_R4.js:1872
-Pa @ index-BYfj5_R4.js:1871
-Na @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Sa @ index-BYfj5_R4.js:1870
-Promise.then
-t.send @ index-BYfj5_R4.js:1870
-t.ea @ index-BYfj5_R4.js:1872
-C0 @ index-BYfj5_R4.js:1869
-nx @ index-BYfj5_R4.js:1873
-t.Fa @ index-BYfj5_R4.js:1873
-pe @ index-BYfj5_R4.js:1865
-Promise.then
-se @ index-BYfj5_R4.js:1865
-tx @ index-BYfj5_R4.js:1873
-rx @ index-BYfj5_R4.js:1873
-es.Y @ index-BYfj5_R4.js:1869
-es.ca @ index-BYfj5_R4.js:1869
-H @ index-BYfj5_R4.js:1865
-F @ index-BYfj5_R4.js:1865
-K0 @ index-BYfj5_R4.js:1872
-t.bb @ index-BYfj5_R4.js:1872
-t.Ea @ index-BYfj5_R4.js:1872
-Pa @ index-BYfj5_R4.js:1871
-Na @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Sa @ index-BYfj5_R4.js:1870
-Promise.then
-t.send @ index-BYfj5_R4.js:1870
-t.ea @ index-BYfj5_R4.js:1872
-C0 @ index-BYfj5_R4.js:1869
-nx @ index-BYfj5_R4.js:1873
-t.Fa @ index-BYfj5_R4.js:1873
-pe @ index-BYfj5_R4.js:1865
-Promise.then
-se @ index-BYfj5_R4.js:1865
-tx @ index-BYfj5_R4.js:1873
-rx @ index-BYfj5_R4.js:1873
-es.Y @ index-BYfj5_R4.js:1869
-es.ca @ index-BYfj5_R4.js:1869
-H @ index-BYfj5_R4.js:1865
-F @ index-BYfj5_R4.js:1865
-K0 @ index-BYfj5_R4.js:1872
-t.bb @ index-BYfj5_R4.js:1872
-t.Ea @ index-BYfj5_R4.js:1872
-Pa @ index-BYfj5_R4.js:1871
-Na @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Sa @ index-BYfj5_R4.js:1870
-Promise.then
-t.send @ index-BYfj5_R4.js:1870
-t.ea @ index-BYfj5_R4.js:1872
-C0 @ index-BYfj5_R4.js:1869
-nx @ index-BYfj5_R4.js:1873
-t.Fa @ index-BYfj5_R4.js:1873
-pe @ index-BYfj5_R4.js:1865
-Promise.then
-se @ index-BYfj5_R4.js:1865
-tx @ index-BYfj5_R4.js:1873
-rx @ index-BYfj5_R4.js:1873
-es.Y @ index-BYfj5_R4.js:1869
-es.ca @ index-BYfj5_R4.js:1869
-H @ index-BYfj5_R4.js:1865
-F @ index-BYfj5_R4.js:1865
-K0 @ index-BYfj5_R4.js:1872
-t.bb @ index-BYfj5_R4.js:1872
-t.Ea @ index-BYfj5_R4.js:1872
-Pa @ index-BYfj5_R4.js:1871
-Na @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Sa @ index-BYfj5_R4.js:1870
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
-index-BYfj5_R4.js:1870  GET https://firestore.googleapis.com/google.firestore.v1.Firestore/Write/channel?gsessionid=gyDVf2VxVnZZC4gw7J9qLyTSgpT83t4IXlrkc1si5DjYZ5fnnrMY6Q&VER=8&database=projects%2Fclaxi-bakayise%2Fdatabases%2F(default)&RID=rpc&SID=HBW7VEZgonpfGoU_h3qM6g&AID=11&CI=1&TYPE=xmlhttp&zx=gqlv2d33f5qr&t=1 net::ERR_CONNECTION_CLOSED 200 (OK)
-t.send @ index-BYfj5_R4.js:1870
-t.ea @ index-BYfj5_R4.js:1872
-C0 @ index-BYfj5_R4.js:1869
-nx @ index-BYfj5_R4.js:1873
-t.Fa @ index-BYfj5_R4.js:1873
-pe @ index-BYfj5_R4.js:1865
-Promise.then
-se @ index-BYfj5_R4.js:1865
-tx @ index-BYfj5_R4.js:1873
-rx @ index-BYfj5_R4.js:1873
-es.Y @ index-BYfj5_R4.js:1869
-es.ca @ index-BYfj5_R4.js:1869
-H @ index-BYfj5_R4.js:1865
-F @ index-BYfj5_R4.js:1865
-K0 @ index-BYfj5_R4.js:1872
-t.bb @ index-BYfj5_R4.js:1872
-t.Ea @ index-BYfj5_R4.js:1872
-Pa @ index-BYfj5_R4.js:1871
-Na @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Sa @ index-BYfj5_R4.js:1870
-Promise.then
-t.send @ index-BYfj5_R4.js:1870
-t.ea @ index-BYfj5_R4.js:1872
-C0 @ index-BYfj5_R4.js:1869
-nx @ index-BYfj5_R4.js:1873
-t.Fa @ index-BYfj5_R4.js:1873
-pe @ index-BYfj5_R4.js:1865
-Promise.then
-se @ index-BYfj5_R4.js:1865
-tx @ index-BYfj5_R4.js:1873
-rx @ index-BYfj5_R4.js:1873
-es.Y @ index-BYfj5_R4.js:1869
-es.ca @ index-BYfj5_R4.js:1869
-H @ index-BYfj5_R4.js:1865
-F @ index-BYfj5_R4.js:1865
-K0 @ index-BYfj5_R4.js:1872
-t.bb @ index-BYfj5_R4.js:1872
-t.Ea @ index-BYfj5_R4.js:1872
-Pa @ index-BYfj5_R4.js:1871
-Na @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Sa @ index-BYfj5_R4.js:1870
-Promise.then
-t.send @ index-BYfj5_R4.js:1870
-t.ea @ index-BYfj5_R4.js:1872
-C0 @ index-BYfj5_R4.js:1869
-nx @ index-BYfj5_R4.js:1873
-t.Fa @ index-BYfj5_R4.js:1873
-pe @ index-BYfj5_R4.js:1865
-Promise.then
-se @ index-BYfj5_R4.js:1865
-tx @ index-BYfj5_R4.js:1873
-rx @ index-BYfj5_R4.js:1873
-es.Y @ index-BYfj5_R4.js:1869
-es.ca @ index-BYfj5_R4.js:1869
-H @ index-BYfj5_R4.js:1865
-F @ index-BYfj5_R4.js:1865
-K0 @ index-BYfj5_R4.js:1872
-t.bb @ index-BYfj5_R4.js:1872
-t.Ea @ index-BYfj5_R4.js:1872
-Pa @ index-BYfj5_R4.js:1871
-Na @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Sa @ index-BYfj5_R4.js:1870
-Promise.then
-t.send @ index-BYfj5_R4.js:1870
-t.ea @ index-BYfj5_R4.js:1872
-C0 @ index-BYfj5_R4.js:1869
-nx @ index-BYfj5_R4.js:1873
-t.Fa @ index-BYfj5_R4.js:1873
-pe @ index-BYfj5_R4.js:1865
-Promise.then
-se @ index-BYfj5_R4.js:1865
-tx @ index-BYfj5_R4.js:1873
-rx @ index-BYfj5_R4.js:1873
-es.Y @ index-BYfj5_R4.js:1869
-es.ca @ index-BYfj5_R4.js:1869
-H @ index-BYfj5_R4.js:1865
-F @ index-BYfj5_R4.js:1865
-K0 @ index-BYfj5_R4.js:1872
-t.bb @ index-BYfj5_R4.js:1872
-t.Ea @ index-BYfj5_R4.js:1872
-Pa @ index-BYfj5_R4.js:1871
-Na @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Sa @ index-BYfj5_R4.js:1870
-Promise.then
-t.send @ index-BYfj5_R4.js:1870
-t.ea @ index-BYfj5_R4.js:1872
-C0 @ index-BYfj5_R4.js:1869
-nx @ index-BYfj5_R4.js:1873
-t.Fa @ index-BYfj5_R4.js:1873
-pe @ index-BYfj5_R4.js:1865
-Promise.then
-se @ index-BYfj5_R4.js:1865
-tx @ index-BYfj5_R4.js:1873
-rx @ index-BYfj5_R4.js:1873
-es.Y @ index-BYfj5_R4.js:1869
-es.ca @ index-BYfj5_R4.js:1869
-H @ index-BYfj5_R4.js:1865
-F @ index-BYfj5_R4.js:1865
-K0 @ index-BYfj5_R4.js:1872
-t.bb @ index-BYfj5_R4.js:1872
-t.Ea @ index-BYfj5_R4.js:1872
-Pa @ index-BYfj5_R4.js:1871
-Na @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Sa @ index-BYfj5_R4.js:1870
-Promise.then
-t.send @ index-BYfj5_R4.js:1870
-t.ea @ index-BYfj5_R4.js:1872
-C0 @ index-BYfj5_R4.js:1869
-nx @ index-BYfj5_R4.js:1873
-t.Fa @ index-BYfj5_R4.js:1873
-pe @ index-BYfj5_R4.js:1865
-Promise.then
-se @ index-BYfj5_R4.js:1865
-tx @ index-BYfj5_R4.js:1873
-rx @ index-BYfj5_R4.js:1873
-es.Y @ index-BYfj5_R4.js:1869
-es.ca @ index-BYfj5_R4.js:1869
-H @ index-BYfj5_R4.js:1865
-F @ index-BYfj5_R4.js:1865
-K0 @ index-BYfj5_R4.js:1872
-t.bb @ index-BYfj5_R4.js:1872
-t.Ea @ index-BYfj5_R4.js:1872
-Pa @ index-BYfj5_R4.js:1871
-Na @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Sa @ index-BYfj5_R4.js:1870
-Promise.then
-t.send @ index-BYfj5_R4.js:1870
-t.ea @ index-BYfj5_R4.js:1872
-C0 @ index-BYfj5_R4.js:1869
-nx @ index-BYfj5_R4.js:1873
-t.ab @ index-BYfj5_R4.js:1873
-(anonymous) @ index-BYfj5_R4.js:1865
-setTimeout
-ba @ index-BYfj5_R4.js:1865
-t.Fa @ index-BYfj5_R4.js:1873
-pe @ index-BYfj5_R4.js:1865
-Promise.then
-se @ index-BYfj5_R4.js:1865
-tx @ index-BYfj5_R4.js:1873
-Ef @ index-BYfj5_R4.js:1870
-es.Y @ index-BYfj5_R4.js:1869
-es.ca @ index-BYfj5_R4.js:1869
-H @ index-BYfj5_R4.js:1865
-F @ index-BYfj5_R4.js:1865
-K0 @ index-BYfj5_R4.js:1872
-t.bb @ index-BYfj5_R4.js:1872
-t.Ea @ index-BYfj5_R4.js:1872
-Pa @ index-BYfj5_R4.js:1871
-t.Pa @ index-BYfj5_R4.js:1870
-Promise.then
-q0 @ index-BYfj5_R4.js:1870
-t.Sa @ index-BYfj5_R4.js:1870
-Promise.then
-t.send @ index-BYfj5_R4.js:1870
-t.ea @ index-BYfj5_R4.js:1872
-C0 @ index-BYfj5_R4.js:1869
-wf @ index-BYfj5_R4.js:1869
-t.Ga @ index-BYfj5_R4.js:1873
-pe @ index-BYfj5_R4.js:1865
-Promise.then
-se @ index-BYfj5_R4.js:1865
-Yc @ index-BYfj5_R4.js:1873
-t.connect @ index-BYfj5_R4.js:1873
-gn.m @ index-BYfj5_R4.js:1873
-Ho @ index-BYfj5_R4.js:3096
-send @ index-BYfj5_R4.js:3081
-k_ @ index-BYfj5_R4.js:3141
-na @ index-BYfj5_R4.js:3141
-R6 @ index-BYfj5_R4.js:3172
-(anonymous) @ index-BYfj5_R4.js:3141
-(anonymous) @ index-BYfj5_R4.js:3141
-(anonymous) @ index-BYfj5_R4.js:3400
-(anonymous) @ index-BYfj5_R4.js:3400
-Promise.then
-uc @ index-BYfj5_R4.js:3400
-enqueue @ index-BYfj5_R4.js:3400
-enqueueAndForget @ index-BYfj5_R4.js:3400
-(anonymous) @ index-BYfj5_R4.js:3141
-(anonymous) @ index-BYfj5_R4.js:3141
-o_ @ index-BYfj5_R4.js:3081
-(anonymous) @ index-BYfj5_R4.js:3096
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'host', discoveredTypes: Array(3)}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 11}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'host', discoveredTypes: Array(3)}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 12}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'relay', discoveredTypes: Array(3)}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 13}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'relay', discoveredTypes: Array(3)}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 14}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'relay', discoveredTypes: Array(3)}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 15}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'relay', discoveredTypes: Array(3)}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 16}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] clearRemoteScreenStream run. {hadRemoteScreenStream: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onRemoteScreenStream callback. {hasStream: false, streamId: null, trackIds: Array(0)}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 1, latestOfferRevision: 0, hasCurrentRemoteDescription: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] offer handling. {firestoreOfferRevision: 1, latestHandledOfferRevision: 0}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] setRemoteDescription start. {offerRevision: 1}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] ontrack fired. {kind: 'audio', incomingMid: '0', screenMid: null, trackId: 'd4ca7b46-42db-4f73-8990-83ad8f442b0f', muted: true, …}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] ontrack event. {kind: 'audio', trackId: 'd4ca7b46-42db-4f73-8990-83ad8f442b0f', readyState: 'live', muted: true, streamCount: 1, …}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] ontrack fired. {kind: 'video', incomingMid: '1', screenMid: null, trackId: '934aef1b-596a-4b06-a566-ffe1ed22eb3a', muted: true, …}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] ontrack event. {kind: 'video', trackId: '934aef1b-596a-4b06-a566-ffe1ed22eb3a', readyState: 'live', muted: true, streamCount: 0, …}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] ontrack video classification. {treatedAsRemoteScreenTrack: true, trackId: '934aef1b-596a-4b06-a566-ffe1ed22eb3a'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] onRemoteScreenStream call. {value: 'null', trackId: '934aef1b-596a-4b06-a566-ffe1ed22eb3a'}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onRemoteScreenStream callback. {hasStream: false, streamId: null, trackIds: Array(0)}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] setRemoteDescription success. {offerRevision: 1}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] attachRemoteScreenReceiverTrack called. {role: 'student'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Attached screen receiver track. {id: 'ad89fcb2-f3bf-46b6-8826-f5363ca943da', kind: 'video', muted: true, readyState: 'live'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Student applied remote offer. {offerRevision: 1}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Flushing queued remote ICE candidates. {count: 16}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] createAnswer start. {offerRevision: 1}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] createAnswer success. {offerRevision: 1}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] clearRemoteScreenStream run. {hadRemoteScreenStream: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onRemoteScreenStream callback. {hasStream: false, streamId: null, trackIds: Array(0)}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 1, latestOfferRevision: 1, hasCurrentRemoteDescription: true}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] iceConnectionState changed. {state: 'checking'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Local ICE candidate discovered. {type: 'host', protocol: 'udp', discoveredTypes: Array(3)}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] connectionState changed. {state: 'connecting'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Local ICE candidate discovered. {type: 'host', protocol: 'udp', discoveredTypes: Array(3)}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] iceConnectionState changed. {state: 'connected'}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] answer written. {offerRevision: 1}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Student created and saved answer. {offerRevision: 1}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] connectionState changed. {state: 'connected'}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] clearRemoteScreenStream run. {hadRemoteScreenStream: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onRemoteScreenStream callback. {hasStream: false, streamId: null, trackIds: Array(0)}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 1, latestOfferRevision: 1, hasCurrentRemoteDescription: true}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Selected ICE candidate pair. {relayUsed: false, localType: 'host', remoteType: 'host', localProtocol: 'udp', remoteProtocol: 'udp'}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] clearRemoteScreenStream run. {hadRemoteScreenStream: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onRemoteScreenStream callback. {hasStream: false, streamId: null, trackIds: Array(0)}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 1, latestOfferRevision: 1, hasCurrentRemoteDescription: true}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] clearRemoteScreenStream run. {hadRemoteScreenStream: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onRemoteScreenStream callback. {hasStream: false, streamId: null, trackIds: Array(0)}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 1, latestOfferRevision: 1, hasCurrentRemoteDescription: true}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] clearRemoteScreenStream run. {hadRemoteScreenStream: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onRemoteScreenStream callback. {hasStream: false, streamId: null, trackIds: Array(0)}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 1, latestOfferRevision: 1, hasCurrentRemoteDescription: true}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
@@ -1713,6 +1294,8 @@ index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage 
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'stun:stun.cloudflare.com:3478', errorCode: 701, errorText: 'STUN binding request timed out.', address: '10.123.9.x', port: 62577}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'stun:turn.cloudflare.com:3478', errorCode: 701, errorText: 'STUN binding request timed out.', address: '10.123.9.x', port: 62577}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
@@ -1739,6 +1322,186 @@ index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage 
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] track unmute. {id: '934aef1b-596a-4b06-a566-ffe1ed22eb3a', readyState: 'live'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] onRemoteScreenStream call. {value: 'stream', trackId: '934aef1b-596a-4b06-a566-ffe1ed22eb3a'}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onRemoteScreenStream callback. {hasStream: true, streamId: 'd9627e4e-4b2a-4e84-b655-b4dfe2eaf35b', trackIds: Array(0)}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] remote screen srcObject effect. {hasVideoElement: true, hasStream: true, hadPreviousSrcObject: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] srcObject assigned.
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] Attached remote screen stream to student video element. {hasStream: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: true}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 1, latestOfferRevision: 1, hasCurrentRemoteDescription: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: true}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 2, latestOfferRevision: 1, hasCurrentRemoteDescription: true}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] offer handling. {firestoreOfferRevision: 2, latestHandledOfferRevision: 1}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] setRemoteDescription start. {offerRevision: 2}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] setRemoteDescription success. {offerRevision: 2}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] attachRemoteScreenReceiverTrack called. {role: 'student'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Attached screen receiver track. {id: 'ad89fcb2-f3bf-46b6-8826-f5363ca943da', kind: 'video', muted: true, readyState: 'live'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Student applied remote offer. {offerRevision: 2}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] createAnswer start. {offerRevision: 2}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] createAnswer success. {offerRevision: 2}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: true}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 2, latestOfferRevision: 2, hasCurrentRemoteDescription: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] answer written. {offerRevision: 2}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Student created and saved answer. {offerRevision: 2}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: true}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 2, latestOfferRevision: 2, hasCurrentRemoteDescription: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] clearRemoteScreenStream run. {hadRemoteScreenStream: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onRemoteScreenStream callback. {hasStream: false, streamId: null, trackIds: Array(0)}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 2, latestOfferRevision: 2, hasCurrentRemoteDescription: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] remote screen srcObject effect. {hasVideoElement: false, hasStream: false, hadPreviousSrcObject: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] clearRemoteScreenStream run. {hadRemoteScreenStream: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onRemoteScreenStream callback. {hasStream: false, streamId: null, trackIds: Array(0)}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 3, latestOfferRevision: 2, hasCurrentRemoteDescription: true}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] offer handling. {firestoreOfferRevision: 3, latestHandledOfferRevision: 2}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] setRemoteDescription start. {offerRevision: 3}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] setRemoteDescription success. {offerRevision: 3}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] attachRemoteScreenReceiverTrack called. {role: 'student'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Attached screen receiver track. {id: 'ad89fcb2-f3bf-46b6-8826-f5363ca943da', kind: 'video', muted: true, readyState: 'live'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Student applied remote offer. {offerRevision: 3}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] createAnswer start. {offerRevision: 3}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] createAnswer success. {offerRevision: 3}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] clearRemoteScreenStream run. {hadRemoteScreenStream: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onRemoteScreenStream callback. {hasStream: false, streamId: null, trackIds: Array(0)}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 3, latestOfferRevision: 3, hasCurrentRemoteDescription: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] answer written. {offerRevision: 3}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Student created and saved answer. {offerRevision: 3}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] clearRemoteScreenStream run. {hadRemoteScreenStream: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onRemoteScreenStream callback. {hasStream: false, streamId: null, trackIds: Array(0)}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 3, latestOfferRevision: 3, hasCurrentRemoteDescription: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 3, latestOfferRevision: 3, hasCurrentRemoteDescription: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 4, latestOfferRevision: 3, hasCurrentRemoteDescription: true}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] offer handling. {firestoreOfferRevision: 4, latestHandledOfferRevision: 3}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] setRemoteDescription start. {offerRevision: 4}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] setRemoteDescription success. {offerRevision: 4}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] attachRemoteScreenReceiverTrack called. {role: 'student'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Attached screen receiver track. {id: 'ad89fcb2-f3bf-46b6-8826-f5363ca943da', kind: 'video', muted: true, readyState: 'live'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Student applied remote offer. {offerRevision: 4}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] createAnswer start. {offerRevision: 4}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] createAnswer success. {offerRevision: 4}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 4, latestOfferRevision: 4, hasCurrentRemoteDescription: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] answer written. {offerRevision: 4}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Student created and saved answer. {offerRevision: 4}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 4, latestOfferRevision: 4, hasCurrentRemoteDescription: true}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
@@ -1788,24 +1551,23 @@ index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage 
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
 
-
-Console for the tutor:
-index-BYfj5_R4.js:3935 [claxi:tutorOffer] Tutor offer response started. {response: 'accept', requestId: 'nszXpOJSSd4oqP06w9Mm'}
-index-BYfj5_R4.js:3935 [claxi:classRequestService] Accepting class request. {requestId: 'nszXpOJSSd4oqP06w9Mm', tutorId: 'G6HTIseQVCMuvKB0VpcdeXsMH682'}
-index-BYfj5_R4.js:3935 [claxi:classRequestService] Tutor offer transaction started. {requestId: 'nszXpOJSSd4oqP06w9Mm', tutorId: 'G6HTIseQVCMuvKB0VpcdeXsMH682', response: 'accept'}
-index-BYfj5_R4.js:3935 [claxi:classRequestService] Tutor offer transaction request state. {requestId: 'nszXpOJSSd4oqP06w9Mm', status: 'offered', currentOfferTutorId: 'G6HTIseQVCMuvKB0VpcdeXsMH682', existingSessionId: null}
-index-BYfj5_R4.js:3935 [claxi:classRequestService] Tutor offer transaction creating session. {requestId: 'nszXpOJSSd4oqP06w9Mm', sessionId: 'nszXpOJSSd4oqP06w9Mm'}
-index-BYfj5_R4.js:3935 [claxi:classRequestService] Tutor offer transaction succeeded. {requestId: 'nszXpOJSSd4oqP06w9Mm', tutorId: 'G6HTIseQVCMuvKB0VpcdeXsMH682', response: 'accept', sessionId: 'nszXpOJSSd4oqP06w9Mm', reused: false}
-index-BYfj5_R4.js:3935 [claxi:classRequestService] Class request accepted. {requestId: 'nszXpOJSSd4oqP06w9Mm', tutorId: 'G6HTIseQVCMuvKB0VpcdeXsMH682', sessionId: 'nszXpOJSSd4oqP06w9Mm', reused: false}
-index-BYfj5_R4.js:3935 [claxi:tutorOffer] Tutor accepted request successfully. {requestId: 'nszXpOJSSd4oqP06w9Mm', sessionId: 'nszXpOJSSd4oqP06w9Mm', reused: false}
+Console from the tutor side:
+index-BYfj5_R4.js:3935 [claxi:tutorOffer] Tutor offer response started. {response: 'accept', requestId: 'r52TMN67ADutSCxlvgJs'}
+index-BYfj5_R4.js:3935 [claxi:classRequestService] Accepting class request. {requestId: 'r52TMN67ADutSCxlvgJs', tutorId: 'G6HTIseQVCMuvKB0VpcdeXsMH682'}
+index-BYfj5_R4.js:3935 [claxi:classRequestService] Tutor offer transaction started. {requestId: 'r52TMN67ADutSCxlvgJs', tutorId: 'G6HTIseQVCMuvKB0VpcdeXsMH682', response: 'accept'}
+index-BYfj5_R4.js:3935 [claxi:classRequestService] Tutor offer transaction request state. {requestId: 'r52TMN67ADutSCxlvgJs', status: 'offered', currentOfferTutorId: 'G6HTIseQVCMuvKB0VpcdeXsMH682', existingSessionId: null}
+index-BYfj5_R4.js:3935 [claxi:classRequestService] Tutor offer transaction creating session. {requestId: 'r52TMN67ADutSCxlvgJs', sessionId: 'r52TMN67ADutSCxlvgJs'}
+index-BYfj5_R4.js:3935 [claxi:classRequestService] Tutor offer transaction succeeded. {requestId: 'r52TMN67ADutSCxlvgJs', tutorId: 'G6HTIseQVCMuvKB0VpcdeXsMH682', response: 'accept', sessionId: 'r52TMN67ADutSCxlvgJs', reused: false}
+index-BYfj5_R4.js:3935 [claxi:classRequestService] Class request accepted. {requestId: 'r52TMN67ADutSCxlvgJs', tutorId: 'G6HTIseQVCMuvKB0VpcdeXsMH682', sessionId: 'r52TMN67ADutSCxlvgJs', reused: false}
+index-BYfj5_R4.js:3935 [claxi:tutorOffer] Tutor accepted request successfully. {requestId: 'r52TMN67ADutSCxlvgJs', sessionId: 'r52TMN67ADutSCxlvgJs', reused: false}
 index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] remote screen srcObject effect. {hasVideoElement: false, hasStream: false, hadPreviousSrcObject: false}
 index-BYfj5_R4.js:3935 [claxi:tldraw] Loading tldraw SDK runtime module.
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] Initializing call. {sessionId: 'nszXpOJSSd4oqP06w9Mm', role: 'tutor', shouldJoinStudent: false, forceRelayOnly: false}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] Initializing call. {sessionId: 'r52TMN67ADutSCxlvgJs', role: 'tutor', shouldJoinStudent: false, forceRelayOnly: false}
+index-BYfj5_R4.js:3935 [claxi:tldraw] tldraw SDK loaded successfully.
 index-BYfj5_R4.js:3935 [claxi:iceServerService] Fetched ICE configuration. {serverCount: 2, hasStun: true, hasTurn: true, stunCount: 1, turnCount: 4, …}
 index-BYfj5_R4.js:3935 [claxi:webrtcService] Resolved ICE server config. {forceRelayOnly: false, iceTransportPolicy: 'all', servers: Array(2)}
 index-BYfj5_R4.js:3935 [claxi:webrtcService] Creating RTCPeerConnection with ICE servers. {forceRelayOnly: false, urls: Array(5)}
 index-BYfj5_R4.js:3935 [claxi:webrtcService] Requesting local media (audio only). {constraints: {…}}
-index-BYfj5_R4.js:3935 [claxi:tldraw] tldraw SDK loaded successfully.
 index-BYfj5_R4.js:3935 [claxi:webrtcService] Local media acquired (audio only). {audioTracks: 1, videoTracks: 0}
 index-BYfj5_R4.js:3935 [claxi:webrtcService] Using local media mode. {mode: 'audio_only'}
 index-BYfj5_R4.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: false, hasCurrentRemoteDescription: false}
@@ -1826,24 +1588,94 @@ index-BYfj5_R4.js:3935 [claxi:webrtcService] Local ICE candidate discovered. {ty
 index-BYfj5_R4.js:3935 [claxi:webrtcService] Local ICE candidate discovered. {type: 'relay', protocol: 'udp', discoveredTypes: Array(3)}
 index-BYfj5_R4.js:3935 [claxi:webrtcService] Local ICE candidate discovered. {type: 'relay', protocol: 'udp', discoveredTypes: Array(3)}
 index-BYfj5_R4.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: false, hasCurrentRemoteDescription: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] Skipping init because initialization already started. {initKey: 'nszXpOJSSd4oqP06w9Mm:tutor'}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] Skipping init because initialization already started. {initKey: 'r52TMN67ADutSCxlvgJs:tutor'}
 index-BYfj5_R4.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: false, hasCurrentRemoteDescription: false}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] Skipping init because initialization already started. {initKey: 'nszXpOJSSd4oqP06w9Mm:tutor'}
-index-BYfj5_R4.js:3935 [claxi:sessionRoom] WebRTC controller created successfully. {sessionId: 'nszXpOJSSd4oqP06w9Mm', role: 'tutor'}
-index-BYfj5_R4.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'stun:turn.cloudflare.com:3478', errorCode: 701, errorText: 'STUN binding request timed out.', address: '10.123.9.x', port: 58870}
-index-BYfj5_R4.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'stun:turn.cloudflare.com:3478', errorCode: 701, errorText: 'STUN binding request timed out.', address: '10.123.9.x', port: 58872}
-index-BYfj5_R4.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'turn:turn.cloudflare.com:3478?transport=udp', errorCode: 701, errorText: 'TURN allocate request timed out.', address: '10.123.9.x', port: 58870}
-index-BYfj5_R4.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'turn:turn.cloudflare.com:3478?transport=udp', errorCode: 701, errorText: 'TURN allocate request timed out.', address: '10.123.9.x', port: 58872}
-index-BYfj5_R4.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'stun:stun.cloudflare.com:3478', errorCode: 701, errorText: 'STUN binding request timed out.', address: '10.123.9.x', port: 58870}
-index-BYfj5_R4.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'stun:stun.cloudflare.com:3478', errorCode: 701, errorText: 'STUN binding request timed out.', address: '10.123.9.x', port: 58872}
-index-BYfj5_R4.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'turn:turn.cloudflare.com:3478?transport=tcp', errorCode: 701, errorText: 'TURN allocate request timed out.', address: '127.0.0.x', port: 62257}
-index-BYfj5_R4.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'turn:turn.cloudflare.com:3478?transport=tcp', errorCode: 701, errorText: 'TURN allocate request timed out.', address: '127.0.0.x', port: 63733}
-index-BYfj5_R4.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'turn:turn.cloudflare.com:3478?transport=tcp', errorCode: 701, errorText: 'TURN allocate request timed out.', address: '127.0.0.x', port: 49267}
-index-BYfj5_R4.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'turn:turn.cloudflare.com:3478?transport=tcp', errorCode: 701, errorText: 'TURN allocate request timed out.', address: '127.0.0.x', port: 65180}
-index-BYfj5_R4.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'turns:turn.cloudflare.com:443?transport=tcp', errorCode: 701, errorText: 'TURN allocate request timed out.', address: '127.0.0.x', port: 49666}
-index-BYfj5_R4.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'turns:turn.cloudflare.com:443?transport=tcp', errorCode: 701, errorText: 'TURN allocate request timed out.', address: '127.0.0.x', port: 60223}
-index-BYfj5_R4.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'turns:turn.cloudflare.com:443?transport=tcp', errorCode: 701, errorText: 'TURN allocate request timed out.', address: '127.0.0.x', port: 52691}
-index-BYfj5_R4.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'turns:turn.cloudflare.com:443?transport=tcp', errorCode: 701, errorText: 'TURN allocate request timed out.', address: '127.0.0.x', port: 56955}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] Skipping init because initialization already started. {initKey: 'r52TMN67ADutSCxlvgJs:tutor'}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] WebRTC controller created successfully. {sessionId: 'r52TMN67ADutSCxlvgJs', role: 'tutor'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] iceConnectionState changed. {state: 'checking'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] connectionState changed. {state: 'connecting'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: true, hasCurrentRemoteDescription: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'host', discoveredTypes: Array(3)}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 1}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'host', discoveredTypes: Array(3)}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 2}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'r52TMN67ADutSCxlvgJs:tutor'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] ontrack fired. {kind: 'audio', incomingMid: '0', screenMid: '1', trackId: 'c5508801-179f-4db2-9ea0-7d1fcf8e604f', muted: true, …}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:student] ontrack event. {kind: 'audio', trackId: 'c5508801-179f-4db2-9ea0-7d1fcf8e604f', readyState: 'live', muted: true, streamCount: 1, …}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Tutor applied remote answer.
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Flushing queued remote ICE candidates. {count: 2}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] iceConnectionState changed. {state: 'connected'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] connectionState changed. {state: 'connected'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Selected ICE candidate pair. {relayUsed: false, localType: 'host', remoteType: 'host', localProtocol: 'udp', remoteProtocol: 'udp'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: true, hasCurrentRemoteDescription: true}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: true, hasCurrentRemoteDescription: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'r52TMN67ADutSCxlvgJs:tutor'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: true, hasCurrentRemoteDescription: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'r52TMN67ADutSCxlvgJs:tutor'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'stun:turn.cloudflare.com:3478', errorCode: 701, errorText: 'STUN binding request timed out.', address: '10.123.9.x', port: 59596}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'turn:turn.cloudflare.com:3478?transport=udp', errorCode: 701, errorText: 'TURN allocate request timed out.', address: '10.123.9.x', port: 59596}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'stun:stun.cloudflare.com:3478', errorCode: 701, errorText: 'STUN binding request timed out.', address: '10.123.9.x', port: 59596}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'turn:turn.cloudflare.com:3478?transport=tcp', errorCode: 701, errorText: 'TURN allocate request timed out.', address: '127.0.0.x', port: 58878}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'turn:turn.cloudflare.com:3478?transport=tcp', errorCode: 701, errorText: 'TURN allocate request timed out.', address: '127.0.0.x', port: 52362}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'turns:turn.cloudflare.com:443?transport=tcp', errorCode: 701, errorText: 'TURN allocate request timed out.', address: '127.0.0.x', port: 60859}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'turns:turn.cloudflare.com:443?transport=tcp', errorCode: 701, errorText: 'TURN allocate request timed out.', address: '127.0.0.x', port: 50506}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:tutor] startScreenShare getDisplayMedia start.
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:tutor] startScreenShare getDisplayMedia success.
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:tutor] switchScreenTrack. {nextTrackState: 'live', hasSender: true, hasTransceiver: true}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:tutor] switchScreenTrack replaceTrack success. {nextTrackState: 'live'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:tutor] updateScreenShareDocState write. {active: true}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: true, hasCurrentRemoteDescription: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'r52TMN67ADutSCxlvgJs:tutor'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Tutor started screen share track. {id: 'f43c48fd-375a-45f1-9654-f94dd1e4d571', kind: 'video', readyState: 'live', label: 'window:395974:1'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:tutor] startScreenShare track details. {id: 'f43c48fd-375a-45f1-9654-f94dd1e4d571', kind: 'video', readyState: 'live', label: 'window:395974:1'}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: true, remote: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:tutor] publishUpdatedOffer start. {status: 'screen_sharing', offerRevisionBefore: 1, offerRevisionAfter: 2, screenShareActive: true}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: false, hasCurrentRemoteDescription: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'r52TMN67ADutSCxlvgJs:tutor'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Published updated WebRTC offer. {offerRevision: 2, status: 'screen_sharing'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: true, hasCurrentRemoteDescription: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'r52TMN67ADutSCxlvgJs:tutor'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Tutor applied remote answer.
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: true, hasCurrentRemoteDescription: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'r52TMN67ADutSCxlvgJs:tutor'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:tutor] stopScreenShare start. {hasActiveScreenStream: true}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:tutor] stopScreenShare active track before stop. {activeScreenTrackId: 'f43c48fd-375a-45f1-9654-f94dd1e4d571'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:tutor] stopScreenShare replaceTrack(null).
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:tutor] switchScreenTrack. {nextTrackState: 'null', hasSender: true, hasTransceiver: true}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:tutor] switchScreenTrack replaceTrack success. {nextTrackState: 'null'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:tutor] updateScreenShareDocState write. {active: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: true, hasCurrentRemoteDescription: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'r52TMN67ADutSCxlvgJs:tutor'}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:tutor] publishUpdatedOffer start. {status: 'connected', offerRevisionBefore: 2, offerRevisionAfter: 3, screenShareActive: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: false, hasCurrentRemoteDescription: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'r52TMN67ADutSCxlvgJs:tutor'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Published updated WebRTC offer. {offerRevision: 3, status: 'connected'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Tutor stopped screen share.
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: true, hasCurrentRemoteDescription: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'r52TMN67ADutSCxlvgJs:tutor'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Tutor applied remote answer.
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: true, hasCurrentRemoteDescription: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'r52TMN67ADutSCxlvgJs:tutor'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:tutor] startScreenShare getDisplayMedia start.
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:tutor] startScreenShare getDisplayMedia success.
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:tutor] switchScreenTrack. {nextTrackState: 'live', hasSender: true, hasTransceiver: true}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:tutor] switchScreenTrack replaceTrack success. {nextTrackState: 'live'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:tutor] updateScreenShareDocState write. {active: true}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: true, hasCurrentRemoteDescription: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'r52TMN67ADutSCxlvgJs:tutor'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Tutor started screen share track. {id: '9e12a36d-2757-4480-97bc-6e913e424778', kind: 'video', readyState: 'live', label: 'window:395974:1'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:tutor] startScreenShare track details. {id: '9e12a36d-2757-4480-97bc-6e913e424778', kind: 'video', readyState: 'live', label: 'window:395974:1'}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: true, remote: false}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] [claxi:screen:tutor] publishUpdatedOffer start. {status: 'screen_sharing', offerRevisionBefore: 3, offerRevisionAfter: 4, screenShareActive: true}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: false, hasCurrentRemoteDescription: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'r52TMN67ADutSCxlvgJs:tutor'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Published updated WebRTC offer. {offerRevision: 4, status: 'screen_sharing'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: true, hasCurrentRemoteDescription: true}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Tutor applied remote answer.
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'r52TMN67ADutSCxlvgJs:tutor'}
+index-BYfj5_R4.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: true, hasCurrentRemoteDescription: true}
+index-BYfj5_R4.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'r52TMN67ADutSCxlvgJs:tutor'}
 
 ```
 
