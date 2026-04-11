@@ -200,8 +200,19 @@ export default function SessionRoomPage() {
   }, []);
 
   useEffect(() => {
-    if (!remoteScreenVideoRef.current) return;
-    remoteScreenVideoRef.current.srcObject = remoteScreenStreamObj || null;
+    const videoEl = remoteScreenVideoRef.current;
+    debugLog('sessionRoom', '[claxi:screen:ui] remote screen srcObject effect.', {
+      hasVideoElement: Boolean(videoEl),
+      hasStream: Boolean(remoteScreenStreamObj),
+      hadPreviousSrcObject: Boolean(videoEl?.srcObject),
+    });
+    if (!videoEl) return;
+    videoEl.srcObject = remoteScreenStreamObj || null;
+    if (remoteScreenStreamObj) {
+      debugLog('sessionRoom', '[claxi:screen:ui] srcObject assigned.');
+    } else {
+      debugLog('sessionRoom', '[claxi:screen:ui] srcObject cleared.');
+    }
 
     debugLog('sessionRoom', 'Attached remote screen stream to student video element.', {
       hasStream: Boolean(remoteScreenStreamObj),
@@ -333,13 +344,19 @@ export default function SessionRoomPage() {
         },
 
         onRemoteScreenStream: (stream) => {
-          debugLog('sessionRoom', 'Received remote screen stream callback.', {
+          debugLog('sessionRoom', '[claxi:screen:ui] onRemoteScreenStream callback.', {
             hasStream: Boolean(stream),
+            streamId: stream?.id || null,
+            trackIds: stream?.getTracks?.().map((track) => track.id) || [],
           });
           setRemoteScreenStreamObj(stream || null);
         },
 
         onScreenShareStateChange: ({ local, remote }) => {
+          debugLog('sessionRoom', '[claxi:screen:ui] onScreenShareStateChange callback.', {
+            local: Boolean(local),
+            remote: Boolean(remote),
+          });
           setIsLocalScreenSharing(Boolean(local));
           setIsRemoteScreenSharing(Boolean(remote));
 
@@ -654,6 +671,10 @@ export default function SessionRoomPage() {
         }
       }}
     >
+      {debugLog('sessionRoom', '[claxi:screen:ui] renderStudentStage visibility.', {
+        isRemoteScreenSharing,
+        hasRemoteScreenStreamObj: Boolean(remoteScreenStreamObj),
+      })}
       {renderStudentStageHeader()}
 
       {isRemoteScreenSharing ? (

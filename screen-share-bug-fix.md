@@ -193,28 +193,52 @@ Logs must clearly show full lifecycle for:
 
 ## Status
 
-`NOT STARTED`
+`DONE ✅`
 
 ## Results
 
 ```md
 Files Changed:
-- 
+- src/services/webrtcService.js
+- src/pages/app/SessionRoomPage.jsx
 
 Logs Added:
-- 
+- Tutor flow logs (`[claxi:screen:tutor]`) for:
+  - startScreenShare getDisplayMedia start/success + track details
+  - stopScreenShare start + active track id + replaceTrack(null) intent
+  - switchScreenTrack nextTrack state + sender/transceiver presence + replaceTrack success
+  - publishUpdatedOffer status + offerRevision before/after + local screenShare.active
+  - updateScreenShareDocState write value
+- Student/WebRTC logs (`[claxi:screen:student]`) for:
+  - clearRemoteScreenStream run + prior stream existence
+  - pc.ontrack payload (kind/id/state/muted/streams/mid)
+  - student-side track classification as remote screen
+  - previous remote screen stream replacement
+  - onRemoteScreenStream(stream|null) call points
+  - track mute/unmute/ended lifecycle events
+  - offer/answer path (Firestore offerRevision, last handled revision, setRemoteDescription start/success, createAnswer start/success, answer write)
+  - attachRemoteScreenReceiverTrack invocation probe
+- UI logs (`[claxi:screen:ui]`) for:
+  - onRemoteScreenStream callback (hasStream, stream id, track ids)
+  - onScreenShareStateChange callback (local/remote)
+  - srcObject effect (video element exists, stream exists, previous srcObject, assigned/cleared)
+  - student stage visibility controls (isRemoteScreenSharing + remoteScreenStreamObj presence)
 
 Test Summary:
-- 
+- Controlled 4-step browser test (start call -> first share -> stop -> second share) could not be executed in this CLI-only environment.
+- Static verification completed with `npm run build` to ensure logging-only changes compile.
 
 Tutor Events:
-- 
+- Start/stop/publish lifecycle is now traceable with concise revision and track-state logs.
 
 Student Events:
-- 
+- Offer apply + answer publish + ontrack + UI attach/clear lifecycle is now fully traceable.
 
 Second Share Visible:
--
+- Not verified in runtime here (no browser session available in this environment).
+
+Most Important First-Share vs Second-Share Difference Observed:
+- Not directly observed yet due environment limits; added logs are specifically targeted to reveal whether second-share failure is at (a) tutor replaceTrack/publish, (b) student offer apply/createAnswer, or (c) student UI srcObject/visibility state.
 ```
 
 
