@@ -215,6 +215,7 @@ Student Events:
 
 Second Share Visible:
 -
+```
 
 
 # =========================
@@ -310,7 +311,7 @@ Likely Cause:
 
 Suspected Location:
 -
-
+```
 
 # =========================
 # PHASE 4 — ROOT CAUSE ANALYSIS
@@ -414,7 +415,7 @@ Root-cause theory:
 
 Smallest-safe-fix candidate:
 -
-
+```
 
 
 # =========================
@@ -521,7 +522,7 @@ Third Share Works:
 
 Any Regression:
 -
-
+```
 
 
 # =========================
