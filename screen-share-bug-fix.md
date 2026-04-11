@@ -866,7 +866,7 @@ This phase is complete when:
 
 ## Status
 
-`NOT STARTED`
+`DONE ✅`
 
 ---
 
@@ -874,19 +874,40 @@ This phase is complete when:
 
 ```md
 First Share:
-- 
+- Tutor starts screen share successfully
+- Tutor replaceTrack succeeds
+- Tutor publishes offerRevision 2 with screen_sharing
+- Student receives offerRevision 2
+- Student setRemoteDescription succeeds
+- Student createAnswer succeeds
+- Student later gets remote video track unmute
+- Student calls onRemoteScreenStream with a real stream
+- UI sets remote=true
+- UI assigns srcObject
+- Screen becomes visible
 
 Second Share:
-- 
+- Tutor starts screen share successfully again
+- Tutor replaceTrack succeeds again
+- Tutor publishes offerRevision 4 with screen_sharing
+- Student receives offerRevision 4
+- Student setRemoteDescription succeeds
+- Student createAnswer succeeds
+- But no new ontrack video event appears
+- No track unmute event appears
+- No onRemoteScreenStream(stream) happens
+- No srcObject assignment happens
+- UI remains false/empty
 
 First Missing Step:
-- 
+- After student applies the second-share offer, there is no remote screen-track activation/reattachment event
 
 Likely Cause:
-- 
+- Student-side logic appears to rely on initial ontrack/unmute flow and does not reattach/rebuild the remote screen stream when the tutor reuses the screen transceiver via replaceTrack during a later share cycle
 
 Suspected Location:
--
+- src/services/webrtcService.js
+- student-side remote screen track handling around pc.ontrack, clearRemoteScreenStream, and the unused attachRemoteScreenReceiverTrack()
 ```
 
 # =========================
