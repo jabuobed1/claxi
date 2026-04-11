@@ -951,8 +951,7 @@ export async function createWebRtcSessionController({
     activeScreenStream.getTracks().forEach((track) => track.stop());
     activeScreenStream = null;
 
-    debugLog('webrtcService', '[claxi:screen:tutor] stopScreenShare replaceTrack(null).');
-    await switchScreenTrack(null);
+    debugLog('webrtcService', '[claxi:screen:tutor] stopScreenShare skipping replaceTrack(null) to preserve sender/transceiver for future re-share.');
     await updateScreenShareDocState(false);
 
     isLocalScreenSharing = false;
@@ -981,6 +980,14 @@ export async function createWebRtcSessionController({
     }
 
     activeScreenStream = screenStream;
+
+    debugLog('webrtcService', '[claxi:screen:tutor] startScreenShare about to replace existing sender track.', {
+      newTrackId: screenTrack.id,
+      newTrackReadyState: screenTrack.readyState,
+      senderHasTrack: Boolean(screenTransceiver?.sender?.track),
+      existingSenderTrackId: screenTransceiver?.sender?.track?.id || null,
+      existingSenderTrackReadyState: screenTransceiver?.sender?.track?.readyState || null,
+    });
 
     await switchScreenTrack(screenTrack);
     await updateScreenShareDocState(true);
