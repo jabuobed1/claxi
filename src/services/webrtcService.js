@@ -381,74 +381,19 @@ export async function createWebRtcSessionController({
       return;
     }
 
-    debugLog('webrtcService', 'Attached screen receiver track.', {
+    debugLog('webrtcService', 'Attached screen receiver track for observation only.', {
       id: receiverTrack.id,
       kind: receiverTrack.kind,
       muted: receiverTrack.muted,
       readyState: receiverTrack.readyState,
     });
 
-    const existingVideoTrack = remoteScreenStream.getVideoTracks()[0] || null;
-    const hasUsableExistingTrack =
-      Boolean(existingVideoTrack)
-      && existingVideoTrack.readyState === 'live'
-      && currentRemoteScreenTrackId === existingVideoTrack.id;
-
-    if (!hasUsableExistingTrack) {
-      remoteScreenStream.getTracks().forEach((track) => {
-        remoteScreenStream.removeTrack(track);
-      });
-      remoteScreenStream.addTrack(receiverTrack);
-      currentRemoteScreenTrackId = receiverTrack.id;
-    }
-
-    const publishAttachedScreen = () => {
-      const videoTrack = remoteScreenStream.getVideoTracks()[0] || null;
-      const hasTrack = Boolean(videoTrack) && videoTrack.readyState === 'live';
-
-      isRemoteScreenSharing = hasTrack;
-      onRemoteScreenStream?.(hasTrack ? remoteScreenStream : null);
-      emitScreenShareState();
-    };
-
-    const handleUnmute = () => {
-      debugLog('webrtcService', 'Remote screen receiver track unmuted.', {
-        id: receiverTrack.id,
-        readyState: receiverTrack.readyState,
-      });
-      publishAttachedScreen();
-    };
-
-    const handleMute = () => {
-      debugLog('webrtcService', 'Remote screen receiver track muted.', {
-        id: receiverTrack.id,
-        readyState: receiverTrack.readyState,
-      });
-    };
-
-    const handleEnded = () => {
-      remoteScreenStream.getTracks().forEach((track) => {
-        if (track.id === receiverTrack.id || track.readyState === 'ended') {
-          remoteScreenStream.removeTrack(track);
-        }
-      });
-
+    receiverTrack.onended = () => {
       debugLog('webrtcService', 'Remote screen receiver track ended.', {
         id: receiverTrack.id,
         readyState: receiverTrack.readyState,
       });
-
-      currentRemoteScreenTrackId = null;
-      isRemoteScreenSharing = false;
-      onRemoteScreenStream?.(null);
-      emitScreenShareState();
     };
-
-    receiverTrack.onunmute = handleUnmute;
-    receiverTrack.onmute = handleMute;
-    receiverTrack.onended = handleEnded;
-
-    publishAttachedScreen();
   };
 
   pc.ontrack = (event) => {
