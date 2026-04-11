@@ -389,10 +389,10 @@ export async function createWebRtcSessionController({
     });
 
     const rebuildRemoteScreenStream = () => {
-      const existingTrackIds = remoteScreenStream.getTracks().map((track) => track.id);
-      const alreadyHasReceiverTrack = existingTrackIds.includes(receiverTrack.id);
+      const existingVideoTrack = remoteScreenStream.getVideoTracks()[0] || null;
+      const alreadyUsingReceiverTrack = existingVideoTrack?.id === receiverTrack.id;
 
-      if (!alreadyHasReceiverTrack || remoteScreenStream.getVideoTracks().length === 0) {
+      if (!alreadyUsingReceiverTrack) {
         remoteScreenStream.getTracks().forEach((track) => {
           remoteScreenStream.removeTrack(track);
         });
@@ -439,6 +439,7 @@ export async function createWebRtcSessionController({
         id: receiverTrack.id,
         readyState: receiverTrack.readyState,
       });
+
       isRemoteScreenSharing = false;
       onRemoteScreenStream?.(null);
       emitScreenShareState();
@@ -466,7 +467,16 @@ export async function createWebRtcSessionController({
     receiverTrack.onmute = handleMute;
     receiverTrack.onended = handleEnded;
 
-    publishAttachedScreen();
+    rebuildRemoteScreenStream();
+
+    if (!receiverTrack.muted) {
+      publishAttachedScreen();
+    } else {
+      debugLog('webrtcService', '[claxi:screen:student] helper attach deferred publish because receiver is muted.', {
+        receiverTrackId: receiverTrack.id,
+        receiverReadyState: receiverTrack.readyState,
+      });
+    }
   };
 
   pc.ontrack = (event) => {
