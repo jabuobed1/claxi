@@ -239,6 +239,558 @@ Second Share Visible:
 
 Most Important First-Share vs Second-Share Difference Observed:
 - Not directly observed yet due environment limits; added logs are specifically targeted to reveal whether second-share failure is at (a) tutor replaceTrack/publish, (b) student offer apply/createAnswer, or (c) student UI srcObject/visibility state.
+
+Tutor Console Log:
+index-B16ApZen.js:3935 [claxi:tutorOffer] Tutor offer response started. {response: 'accept', requestId: 'YBz83g6kfsCJykTUKdOm'}
+index-B16ApZen.js:3935 [claxi:classRequestService] Accepting class request. {requestId: 'YBz83g6kfsCJykTUKdOm', tutorId: 'G6HTIseQVCMuvKB0VpcdeXsMH682'}
+index-B16ApZen.js:3935 [claxi:classRequestService] Tutor offer transaction started. {requestId: 'YBz83g6kfsCJykTUKdOm', tutorId: 'G6HTIseQVCMuvKB0VpcdeXsMH682', response: 'accept'}
+index-B16ApZen.js:3935 [claxi:classRequestService] Tutor offer transaction request state. {requestId: 'YBz83g6kfsCJykTUKdOm', status: 'offered', currentOfferTutorId: 'G6HTIseQVCMuvKB0VpcdeXsMH682', existingSessionId: null}
+index-B16ApZen.js:3935 [claxi:classRequestService] Tutor offer transaction creating session. {requestId: 'YBz83g6kfsCJykTUKdOm', sessionId: 'YBz83g6kfsCJykTUKdOm'}
+index-B16ApZen.js:3935 [claxi:classRequestService] Tutor offer transaction succeeded. {requestId: 'YBz83g6kfsCJykTUKdOm', tutorId: 'G6HTIseQVCMuvKB0VpcdeXsMH682', response: 'accept', sessionId: 'YBz83g6kfsCJykTUKdOm', reused: false}
+index-B16ApZen.js:3935 [claxi:classRequestService] Class request accepted. {requestId: 'YBz83g6kfsCJykTUKdOm', tutorId: 'G6HTIseQVCMuvKB0VpcdeXsMH682', sessionId: 'YBz83g6kfsCJykTUKdOm', reused: false}
+index-B16ApZen.js:3935 [claxi:tutorOffer] Tutor accepted request successfully. {requestId: 'YBz83g6kfsCJykTUKdOm', sessionId: 'YBz83g6kfsCJykTUKdOm', reused: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] remote screen srcObject effect. {hasVideoElement: false, hasStream: false, hadPreviousSrcObject: false}
+index-B16ApZen.js:3935 [claxi:tldraw] Loading tldraw SDK runtime module.
+index-B16ApZen.js:3935 [claxi:sessionRoom] Initializing call. {sessionId: 'YBz83g6kfsCJykTUKdOm', role: 'tutor', shouldJoinStudent: false, forceRelayOnly: false}
+index-B16ApZen.js:3935 [claxi:iceServerService] Fetched ICE configuration. {serverCount: 2, hasStun: true, hasTurn: true, stunCount: 1, turnCount: 4, …}
+index-B16ApZen.js:3935 [claxi:webrtcService] Resolved ICE server config. {forceRelayOnly: false, iceTransportPolicy: 'all', servers: Array(2)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Creating RTCPeerConnection with ICE servers. {forceRelayOnly: false, urls: Array(5)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Requesting local media (audio only). {constraints: {…}}
+index-B16ApZen.js:3935 [claxi:tldraw] tldraw SDK loaded successfully.
+index-B16ApZen.js:3935 [claxi:webrtcService] Local media acquired (audio only). {audioTracks: 1, videoTracks: 0}
+index-B16ApZen.js:3935 [claxi:webrtcService] Using local media mode. {mode: 'audio_only'}
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: false, hasCurrentRemoteDescription: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] Local ICE candidate discovered. {type: 'host', protocol: 'udp', discoveredTypes: Array(1)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Local ICE candidate discovered. {type: 'srflx', protocol: 'udp', discoveredTypes: Array(2)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Local ICE candidate discovered. {type: 'srflx', protocol: 'udp', discoveredTypes: Array(2)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Local ICE candidate discovered. {type: 'host', protocol: 'udp', discoveredTypes: Array(2)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Local ICE candidate discovered. {type: 'relay', protocol: 'udp', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Local ICE candidate discovered. {type: 'host', protocol: 'tcp', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Local ICE candidate discovered. {type: 'host', protocol: 'tcp', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Local ICE candidate discovered. {type: 'host', protocol: 'udp', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Local ICE candidate discovered. {type: 'srflx', protocol: 'udp', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Local ICE candidate discovered. {type: 'host', protocol: 'udp', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Local ICE candidate discovered. {type: 'relay', protocol: 'udp', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Local ICE candidate discovered. {type: 'host', protocol: 'tcp', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Local ICE candidate discovered. {type: 'host', protocol: 'tcp', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: false, hasCurrentRemoteDescription: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] Skipping init because initialization already started. {initKey: 'YBz83g6kfsCJykTUKdOm:tutor'}
+index-B16ApZen.js:3935 [claxi:webrtcService] Local ICE candidate discovered. {type: 'relay', protocol: 'udp', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Local ICE candidate discovered. {type: 'relay', protocol: 'udp', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Local ICE candidate discovered. {type: 'relay', protocol: 'udp', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Local ICE candidate discovered. {type: 'relay', protocol: 'udp', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: false, hasCurrentRemoteDescription: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] Skipping init because initialization already started. {initKey: 'YBz83g6kfsCJykTUKdOm:tutor'}
+index-B16ApZen.js:3935 [claxi:sessionRoom] WebRTC controller created successfully. {sessionId: 'YBz83g6kfsCJykTUKdOm', role: 'tutor'}
+index-B16ApZen.js:3935 [claxi:webrtcService] iceConnectionState changed. {state: 'checking'}
+index-B16ApZen.js:3935 [claxi:webrtcService] connectionState changed. {state: 'connecting'}
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: true, hasCurrentRemoteDescription: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'host', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 1}
+index-B16ApZen.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'host', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 2}
+index-B16ApZen.js:3935 [claxi:webrtcService] ontrack fired. {kind: 'audio', incomingMid: '0', screenMid: '1', trackId: 'b259dcad-4e55-4a89-9a1e-70d36d5a82ba', muted: true, …}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] ontrack event. {kind: 'audio', trackId: 'b259dcad-4e55-4a89-9a1e-70d36d5a82ba', readyState: 'live', muted: true, streamCount: 1, …}
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor applied remote answer.
+index-B16ApZen.js:3935 [claxi:webrtcService] Flushing queued remote ICE candidates. {count: 2}
+index-B16ApZen.js:3935 [claxi:webrtcService] iceConnectionState changed. {state: 'connected'}
+index-B16ApZen.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'YBz83g6kfsCJykTUKdOm:tutor'}
+index-B16ApZen.js:3935 [claxi:webrtcService] connectionState changed. {state: 'connected'}
+index-B16ApZen.js:3935 [claxi:webrtcService] Selected ICE candidate pair. {relayUsed: false, localType: 'host', remoteType: 'host', localProtocol: 'udp', remoteProtocol: 'udp'}
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: true, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: true, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'YBz83g6kfsCJykTUKdOm:tutor'}
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: true, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'YBz83g6kfsCJykTUKdOm:tutor'}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:tutor] startScreenShare getDisplayMedia start.
+index-B16ApZen.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'stun:turn.cloudflare.com:3478', errorCode: 701, errorText: 'STUN binding request timed out.', address: '10.123.9.x', port: 64307}
+index-B16ApZen.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'stun:stun.cloudflare.com:3478', errorCode: 701, errorText: 'STUN binding request timed out.', address: '10.123.9.x', port: 64307}
+index-B16ApZen.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'turn:turn.cloudflare.com:3478?transport=udp', errorCode: 701, errorText: 'TURN allocate request timed out.', address: '10.123.9.x', port: 64307}
+index-B16ApZen.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'turn:turn.cloudflare.com:3478?transport=tcp', errorCode: 701, errorText: 'TURN allocate request timed out.', address: '127.0.0.x', port: 49810}
+index-B16ApZen.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'turn:turn.cloudflare.com:3478?transport=tcp', errorCode: 701, errorText: 'TURN allocate request timed out.', address: '127.0.0.x', port: 63082}
+index-B16ApZen.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'turns:turn.cloudflare.com:443?transport=tcp', errorCode: 701, errorText: 'TURN allocate request timed out.', address: '127.0.0.x', port: 65436}
+index-B16ApZen.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'turns:turn.cloudflare.com:443?transport=tcp', errorCode: 701, errorText: 'TURN allocate request timed out.', address: '127.0.0.x', port: 59763}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:tutor] startScreenShare getDisplayMedia success.
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:tutor] switchScreenTrack. {nextTrackState: 'live', hasSender: true, hasTransceiver: true}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:tutor] switchScreenTrack replaceTrack success. {nextTrackState: 'live'}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:tutor] updateScreenShareDocState write. {active: true}
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: true, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'YBz83g6kfsCJykTUKdOm:tutor'}
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor started screen share track. {id: 'f2973e49-7229-49bf-b074-844b5dc85c7f', kind: 'video', readyState: 'live', label: 'window:395974:1'}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:tutor] startScreenShare track details. {id: 'f2973e49-7229-49bf-b074-844b5dc85c7f', kind: 'video', readyState: 'live', label: 'window:395974:1'}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: true, remote: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:tutor] publishUpdatedOffer start. {status: 'screen_sharing', offerRevisionBefore: 1, offerRevisionAfter: 2, screenShareActive: true}
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: false, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'YBz83g6kfsCJykTUKdOm:tutor'}
+index-B16ApZen.js:3935 [claxi:webrtcService] Published updated WebRTC offer. {offerRevision: 2, status: 'screen_sharing'}
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: true, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'YBz83g6kfsCJykTUKdOm:tutor'}
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor applied remote answer.
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: true, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'YBz83g6kfsCJykTUKdOm:tutor'}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:tutor] stopScreenShare start. {hasActiveScreenStream: true}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:tutor] stopScreenShare active track before stop. {activeScreenTrackId: 'f2973e49-7229-49bf-b074-844b5dc85c7f'}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:tutor] stopScreenShare replaceTrack(null).
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:tutor] switchScreenTrack. {nextTrackState: 'null', hasSender: true, hasTransceiver: true}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:tutor] switchScreenTrack replaceTrack success. {nextTrackState: 'null'}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:tutor] updateScreenShareDocState write. {active: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: true, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'YBz83g6kfsCJykTUKdOm:tutor'}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:tutor] publishUpdatedOffer start. {status: 'connected', offerRevisionBefore: 2, offerRevisionAfter: 3, screenShareActive: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: false, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'YBz83g6kfsCJykTUKdOm:tutor'}
+index-B16ApZen.js:3935 [claxi:webrtcService] Published updated WebRTC offer. {offerRevision: 3, status: 'connected'}
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor stopped screen share.
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: true, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor applied remote answer.
+index-B16ApZen.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'YBz83g6kfsCJykTUKdOm:tutor'}
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: true, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'YBz83g6kfsCJykTUKdOm:tutor'}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:tutor] startScreenShare getDisplayMedia start.
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:tutor] startScreenShare getDisplayMedia success.
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:tutor] switchScreenTrack. {nextTrackState: 'live', hasSender: true, hasTransceiver: true}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:tutor] switchScreenTrack replaceTrack success. {nextTrackState: 'live'}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:tutor] updateScreenShareDocState write. {active: true}
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: true, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'YBz83g6kfsCJykTUKdOm:tutor'}
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor started screen share track. {id: '85dad264-41fd-4a87-a998-bca40079fe99', kind: 'video', readyState: 'live', label: 'window:395974:1'}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:tutor] startScreenShare track details. {id: '85dad264-41fd-4a87-a998-bca40079fe99', kind: 'video', readyState: 'live', label: 'window:395974:1'}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: true, remote: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:tutor] publishUpdatedOffer start. {status: 'screen_sharing', offerRevisionBefore: 3, offerRevisionAfter: 4, screenShareActive: true}
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: false, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'YBz83g6kfsCJykTUKdOm:tutor'}
+index-B16ApZen.js:3935 [claxi:webrtcService] Published updated WebRTC offer. {offerRevision: 4, status: 'screen_sharing'}
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: true, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'YBz83g6kfsCJykTUKdOm:tutor'}
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor applied remote answer.
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: true, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'YBz83g6kfsCJykTUKdOm:tutor'}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:tutor] stopScreenShare start. {hasActiveScreenStream: true}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:tutor] stopScreenShare active track before stop. {activeScreenTrackId: '85dad264-41fd-4a87-a998-bca40079fe99'}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:tutor] stopScreenShare replaceTrack(null).
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:tutor] switchScreenTrack. {nextTrackState: 'null', hasSender: true, hasTransceiver: true}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:tutor] switchScreenTrack replaceTrack success. {nextTrackState: 'null'}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:tutor] updateScreenShareDocState write. {active: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: true, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'YBz83g6kfsCJykTUKdOm:tutor'}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:tutor] publishUpdatedOffer start. {status: 'connected', offerRevisionBefore: 4, offerRevisionAfter: 5, screenShareActive: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: false, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'YBz83g6kfsCJykTUKdOm:tutor'}
+index-B16ApZen.js:3935 [claxi:webrtcService] Published updated WebRTC offer. {offerRevision: 5, status: 'connected'}
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor stopped screen share.
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: true, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor applied remote answer.
+index-B16ApZen.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'YBz83g6kfsCJykTUKdOm:tutor'}
+index-B16ApZen.js:3935 [claxi:webrtcService] Tutor evaluating remote answer. {hasAnswer: true, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] Skipping init because rtcRef already exists. {initKey: 'YBz83g6kfsCJykTUKdOm:tutor'}
+
+Student Console Log:
+index-B16ApZen.js:3935 [claxi:classRequestService] Creating class request. {studentId: 'bSzYwO6ByzOcjzioNOzK4i43Dji2', topic: 'Testing', durationMinutes: 'Per-minute billing'}
+index-B16ApZen.js:3935 [claxi:classRequestService] Class request created. Backend lifecycle trigger will process matching. {requestId: 'YBz83g6kfsCJykTUKdOm'}
+index-B16ApZen.js:3935 request status: undefined
+index-B16ApZen.js:3935 requestId: YBz83g6kfsCJykTUKdOm
+index-B16ApZen.js:3935 sessions: []
+index-B16ApZen.js:3935 matchingSession: undefined
+index-B16ApZen.js:3935 request status: pending
+index-B16ApZen.js:3935 requestId: YBz83g6kfsCJykTUKdOm
+index-B16ApZen.js:3935 sessions: [{…}]
+index-B16ApZen.js:3935 matchingSession: undefined
+index-B16ApZen.js:3935 request status: offered
+index-B16ApZen.js:3935 requestId: YBz83g6kfsCJykTUKdOm
+index-B16ApZen.js:3935 sessions: [{…}]
+index-B16ApZen.js:3935 matchingSession: undefined
+index-B16ApZen.js:3935 request status: accepted
+index-B16ApZen.js:3935 requestId: YBz83g6kfsCJykTUKdOm
+index-B16ApZen.js:3935 sessions: (2) [{…}, {…}]
+index-B16ApZen.js:3935 matchingSession: {id: 'YBz83g6kfsCJykTUKdOm', notes: '', ratings: {…}, whiteboardRoomId: 'YBz83g6kfsCJykTUKdOm', requestDescription: 'Testing', …}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] remote screen srcObject effect. {hasVideoElement: false, hasStream: false, hadPreviousSrcObject: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] Initializing call. {sessionId: 'YBz83g6kfsCJykTUKdOm', role: 'student', shouldJoinStudent: true, forceRelayOnly: false}
+index-B16ApZen.js:3935 [claxi:sessionService] Student joining session. {sessionId: 'YBz83g6kfsCJykTUKdOm', requestId: 'YBz83g6kfsCJykTUKdOm'}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:iceServerService] Fetched ICE configuration. {serverCount: 2, hasStun: true, hasTurn: true, stunCount: 1, turnCount: 4, …}
+index-B16ApZen.js:3935 [claxi:webrtcService] Resolved ICE server config. {forceRelayOnly: false, iceTransportPolicy: 'all', servers: Array(2)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Creating RTCPeerConnection with ICE servers. {forceRelayOnly: false, urls: Array(5)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Requesting local media (audio only). {constraints: {…}}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] Local media acquired (audio only). {audioTracks: 1, videoTracks: 0}
+index-B16ApZen.js:3935 [claxi:webrtcService] Using local media mode. {mode: 'audio_only'}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] WebRTC controller created successfully. {sessionId: 'YBz83g6kfsCJykTUKdOm', role: 'student'}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'srflx', discoveredTypes: Array(1)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 1}
+index-B16ApZen.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'host', discoveredTypes: Array(2)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 2}
+index-B16ApZen.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'srflx', discoveredTypes: Array(2)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 3}
+index-B16ApZen.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'host', discoveredTypes: Array(2)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 4}
+index-B16ApZen.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'relay', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 5}
+index-B16ApZen.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'host', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 6}
+index-B16ApZen.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'host', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 7}
+index-B16ApZen.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'host', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 8}
+index-B16ApZen.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'srflx', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 9}
+index-B16ApZen.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'host', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 10}
+index-B16ApZen.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'relay', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 11}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'host', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 12}
+index-B16ApZen.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'host', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 13}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'relay', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 14}
+index-B16ApZen.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'relay', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 15}
+index-B16ApZen.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'relay', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 16}
+index-B16ApZen.js:3935 [claxi:webrtcService] Remote ICE candidate received. {type: 'relay', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:webrtcService] Queued remote ICE candidate until remote description is ready. {queuedCount: 17}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] clearRemoteScreenStream run. {hadRemoteScreenStream: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onRemoteScreenStream callback. {hasStream: false, streamId: null, trackIds: Array(0)}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 1, latestOfferRevision: 0, hasCurrentRemoteDescription: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] offer handling. {firestoreOfferRevision: 1, latestHandledOfferRevision: 0}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] setRemoteDescription start. {offerRevision: 1}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] ontrack fired. {kind: 'audio', incomingMid: '0', screenMid: null, trackId: '943ce5a1-e549-4287-a120-2035f13ad85b', muted: true, …}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] ontrack event. {kind: 'audio', trackId: '943ce5a1-e549-4287-a120-2035f13ad85b', readyState: 'live', muted: true, streamCount: 1, …}
+index-B16ApZen.js:3935 [claxi:webrtcService] ontrack fired. {kind: 'video', incomingMid: '1', screenMid: null, trackId: '9e04d287-abba-4500-88eb-1c801972b5fa', muted: true, …}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] ontrack event. {kind: 'video', trackId: '9e04d287-abba-4500-88eb-1c801972b5fa', readyState: 'live', muted: true, streamCount: 0, …}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] ontrack video classification. {treatedAsRemoteScreenTrack: true, trackId: '9e04d287-abba-4500-88eb-1c801972b5fa'}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] onRemoteScreenStream call. {value: 'null', trackId: '9e04d287-abba-4500-88eb-1c801972b5fa'}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onRemoteScreenStream callback. {hasStream: false, streamId: null, trackIds: Array(0)}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] setRemoteDescription success. {offerRevision: 1}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student applied remote offer. {offerRevision: 1}
+index-B16ApZen.js:3935 [claxi:webrtcService] Flushing queued remote ICE candidates. {count: 17}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] createAnswer start. {offerRevision: 1}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] createAnswer success. {offerRevision: 1}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] clearRemoteScreenStream run. {hadRemoteScreenStream: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onRemoteScreenStream callback. {hasStream: false, streamId: null, trackIds: Array(0)}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 1, latestOfferRevision: 1, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] iceConnectionState changed. {state: 'checking'}
+index-B16ApZen.js:3935 [claxi:webrtcService] Local ICE candidate discovered. {type: 'host', protocol: 'udp', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:webrtcService] connectionState changed. {state: 'connecting'}
+index-B16ApZen.js:3935 [claxi:webrtcService] Local ICE candidate discovered. {type: 'host', protocol: 'udp', discoveredTypes: Array(3)}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] iceConnectionState changed. {state: 'connected'}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] answer written. {offerRevision: 1}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student created and saved answer. {offerRevision: 1}
+index-B16ApZen.js:3935 [claxi:webrtcService] connectionState changed. {state: 'connected'}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] clearRemoteScreenStream run. {hadRemoteScreenStream: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onRemoteScreenStream callback. {hasStream: false, streamId: null, trackIds: Array(0)}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 1, latestOfferRevision: 1, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] Selected ICE candidate pair. {relayUsed: false, localType: 'host', remoteType: 'host', localProtocol: 'udp', remoteProtocol: 'udp'}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] clearRemoteScreenStream run. {hadRemoteScreenStream: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onRemoteScreenStream callback. {hasStream: false, streamId: null, trackIds: Array(0)}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 1, latestOfferRevision: 1, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] clearRemoteScreenStream run. {hadRemoteScreenStream: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onRemoteScreenStream callback. {hasStream: false, streamId: null, trackIds: Array(0)}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 1, latestOfferRevision: 1, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] clearRemoteScreenStream run. {hadRemoteScreenStream: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onRemoteScreenStream callback. {hasStream: false, streamId: null, trackIds: Array(0)}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 1, latestOfferRevision: 1, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'stun:stun.cloudflare.com:3478', errorCode: 701, errorText: 'STUN binding request timed out.', address: '10.123.9.x', port: 52305}
+index-B16ApZen.js:3935 [claxi:webrtcService] ICE candidate error. {url: 'stun:turn.cloudflare.com:3478', errorCode: 701, errorText: 'STUN binding request timed out.', address: '10.123.9.x', port: 52305}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] track unmute. {id: '9e04d287-abba-4500-88eb-1c801972b5fa', readyState: 'live'}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] onRemoteScreenStream call. {value: 'stream', trackId: '9e04d287-abba-4500-88eb-1c801972b5fa'}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onRemoteScreenStream callback. {hasStream: true, streamId: 'f709f646-d5b1-4a07-972c-e9a7c557fa8a', trackIds: Array(0)}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] remote screen srcObject effect. {hasVideoElement: true, hasStream: true, hadPreviousSrcObject: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] srcObject assigned.
+index-B16ApZen.js:3935 [claxi:sessionRoom] Attached remote screen stream to student video element. {hasStream: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: true}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 1, latestOfferRevision: 1, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: true}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 2, latestOfferRevision: 1, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] offer handling. {firestoreOfferRevision: 2, latestHandledOfferRevision: 1}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] setRemoteDescription start. {offerRevision: 2}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] setRemoteDescription success. {offerRevision: 2}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student applied remote offer. {offerRevision: 2}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] createAnswer start. {offerRevision: 2}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] createAnswer success. {offerRevision: 2}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: true}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 2, latestOfferRevision: 2, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] answer written. {offerRevision: 2}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student created and saved answer. {offerRevision: 2}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: true}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 2, latestOfferRevision: 2, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: true, hasRemoteScreenStreamObj: true}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] clearRemoteScreenStream run. {hadRemoteScreenStream: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onRemoteScreenStream callback. {hasStream: false, streamId: null, trackIds: Array(0)}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 2, latestOfferRevision: 2, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] remote screen srcObject effect. {hasVideoElement: false, hasStream: false, hadPreviousSrcObject: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] clearRemoteScreenStream run. {hadRemoteScreenStream: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onRemoteScreenStream callback. {hasStream: false, streamId: null, trackIds: Array(0)}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 3, latestOfferRevision: 2, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] offer handling. {firestoreOfferRevision: 3, latestHandledOfferRevision: 2}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] setRemoteDescription start. {offerRevision: 3}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] setRemoteDescription success. {offerRevision: 3}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student applied remote offer. {offerRevision: 3}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] createAnswer start. {offerRevision: 3}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] createAnswer success. {offerRevision: 3}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] clearRemoteScreenStream run. {hadRemoteScreenStream: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onRemoteScreenStream callback. {hasStream: false, streamId: null, trackIds: Array(0)}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 3, latestOfferRevision: 3, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] answer written. {offerRevision: 3}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student created and saved answer. {offerRevision: 3}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] clearRemoteScreenStream run. {hadRemoteScreenStream: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onRemoteScreenStream callback. {hasStream: false, streamId: null, trackIds: Array(0)}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 3, latestOfferRevision: 3, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 3, latestOfferRevision: 3, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 4, latestOfferRevision: 3, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] offer handling. {firestoreOfferRevision: 4, latestHandledOfferRevision: 3}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] setRemoteDescription start. {offerRevision: 4}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] setRemoteDescription success. {offerRevision: 4}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student applied remote offer. {offerRevision: 4}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] createAnswer start. {offerRevision: 4}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] createAnswer success. {offerRevision: 4}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 4, latestOfferRevision: 4, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] answer written. {offerRevision: 4}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student created and saved answer. {offerRevision: 4}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 4, latestOfferRevision: 4, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] clearRemoteScreenStream run. {hadRemoteScreenStream: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onRemoteScreenStream callback. {hasStream: false, streamId: null, trackIds: Array(0)}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 4, latestOfferRevision: 4, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] clearRemoteScreenStream run. {hadRemoteScreenStream: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onRemoteScreenStream callback. {hasStream: false, streamId: null, trackIds: Array(0)}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 5, latestOfferRevision: 4, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] offer handling. {firestoreOfferRevision: 5, latestHandledOfferRevision: 4}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] setRemoteDescription start. {offerRevision: 5}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] setRemoteDescription success. {offerRevision: 5}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student applied remote offer. {offerRevision: 5}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] createAnswer start. {offerRevision: 5}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] createAnswer success. {offerRevision: 5}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] clearRemoteScreenStream run. {hadRemoteScreenStream: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onRemoteScreenStream callback. {hasStream: false, streamId: null, trackIds: Array(0)}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 5, latestOfferRevision: 5, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] answer written. {offerRevision: 5}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student created and saved answer. {offerRevision: 5}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] [claxi:screen:student] clearRemoteScreenStream run. {hadRemoteScreenStream: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onRemoteScreenStream callback. {hasStream: false, streamId: null, trackIds: Array(0)}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] onScreenShareStateChange callback. {local: false, remote: false}
+index-B16ApZen.js:3935 [claxi:webrtcService] Student evaluating remote offer. {hasOffer: true, offerRevision: 5, latestOfferRevision: 5, hasCurrentRemoteDescription: true}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+index-B16ApZen.js:3935 [claxi:sessionRoom] [claxi:screen:ui] renderStudentStage visibility. {isRemoteScreenSharing: false, hasRemoteScreenStreamObj: false}
+
 ```
 
 
