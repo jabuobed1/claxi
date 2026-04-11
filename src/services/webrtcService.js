@@ -799,6 +799,7 @@ export async function createWebRtcSessionController({
       debugLog('webrtcService', '[claxi:screen:student] setRemoteDescription success.', {
         offerRevision,
       });
+      attachRemoteScreenReceiverTrack();
       debugLog('webrtcService', 'Student applied remote offer.', {
         offerRevision,
       });
