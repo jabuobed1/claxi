@@ -7,7 +7,7 @@ Run:
 
 git status
 git add .
-git commit -m "Commit the screen sharing bug has been fixed - 11.04.2026 - 12."
+git commit -m "Commit the screen sharing bug has been fixed and rating bug fixed - 11.04.2026 - 12."
 git push origin main
 
 (This ensures Codex sees your latest work from GitHub)
