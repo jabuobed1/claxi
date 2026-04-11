@@ -207,10 +207,40 @@ export default function SessionRoomPage() {
       hadPreviousSrcObject: Boolean(videoEl?.srcObject),
     });
     if (!videoEl) return;
+
     videoEl.srcObject = remoteScreenStreamObj || null;
+
     if (remoteScreenStreamObj) {
-      debugLog('sessionRoom', '[claxi:screen:ui] srcObject assigned.');
+      debugLog('sessionRoom', '[claxi:screen:ui] srcObject assigned.', {
+        trackIds: remoteScreenStreamObj.getTracks().map((track) => track.id),
+        videoTrackIds: remoteScreenStreamObj.getVideoTracks().map((track) => track.id),
+      });
+
+      const handleLoadedMetadata = async () => {
+        debugLog('sessionRoom', '[claxi:screen:ui] remote screen loadedmetadata.', {
+          videoWidth: videoEl.videoWidth,
+          videoHeight: videoEl.videoHeight,
+          readyState: videoEl.readyState,
+        });
+
+        try {
+          await videoEl.play();
+          debugLog('sessionRoom', '[claxi:screen:ui] remote screen video play succeeded.', {
+            paused: videoEl.paused,
+            readyState: videoEl.readyState,
+            videoWidth: videoEl.videoWidth,
+            videoHeight: videoEl.videoHeight,
+          });
+        } catch (error) {
+          debugLog('sessionRoom', '[claxi:screen:ui] remote screen video play failed.', {
+            message: error?.message || String(error),
+          });
+        }
+      };
+
+      videoEl.onloadedmetadata = handleLoadedMetadata;
     } else {
+      videoEl.onloadedmetadata = null;
       debugLog('sessionRoom', '[claxi:screen:ui] srcObject cleared.');
     }
 
