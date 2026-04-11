@@ -225,6 +225,7 @@ export async function createWebRtcSessionController({
   let isLocalScreenSharing = false;
   let isRemoteScreenSharing = false;
   let currentRemoteScreenTrackId = null;
+  let lastKnownRemoteScreenTrack = null;
   const unsubscribers = [];
 
   async function flushPendingRemoteCandidates() {
@@ -359,10 +360,13 @@ export async function createWebRtcSessionController({
       Boolean(remoteScreenStream) && remoteScreenStream.getTracks().length > 0;
     debugLog('webrtcService', '[claxi:screen:student] clearRemoteScreenStream run.', {
       hadRemoteScreenStream,
+      lastKnownRemoteScreenTrackId: lastKnownRemoteScreenTrack?.id || null,
     });
+
     remoteScreenStream.getTracks().forEach((track) => {
       remoteScreenStream.removeTrack(track);
     });
+
     currentRemoteScreenTrackId = null;
     isRemoteScreenSharing = false;
     onRemoteScreenStream?.(null);
@@ -372,12 +376,16 @@ export async function createWebRtcSessionController({
   const attachRemoteScreenReceiverTrack = () => {
     debugLog('webrtcService', '[claxi:screen:student] attachRemoteScreenReceiverTrack called.', {
       role,
+      lastKnownRemoteScreenTrackId: lastKnownRemoteScreenTrack?.id || null,
+      lastKnownRemoteScreenTrackMuted: lastKnownRemoteScreenTrack?.muted ?? null,
+      lastKnownRemoteScreenTrackReadyState: lastKnownRemoteScreenTrack?.readyState || null,
     });
+
     if (role !== 'student') return;
 
-    const receiverTrack = screenTransceiver?.receiver?.track;
+    const receiverTrack = lastKnownRemoteScreenTrack;
     if (!receiverTrack) {
-      debugLog('webrtcService', 'No screen receiver track available yet.');
+      debugLog('webrtcService', '[claxi:screen:student] No last known remote screen track available yet.');
       return;
     }
 
@@ -388,30 +396,24 @@ export async function createWebRtcSessionController({
       readyState: receiverTrack.readyState,
     });
 
-    const rebuildRemoteScreenStream = () => {
-      const existingVideoTrack = remoteScreenStream.getVideoTracks()[0] || null;
-      const alreadyUsingReceiverTrack = existingVideoTrack?.id === receiverTrack.id;
+    const existingVideoTrack = remoteScreenStream.getVideoTracks()[0] || null;
+    const shouldReplaceTrack =
+      !existingVideoTrack || existingVideoTrack.id !== receiverTrack.id;
 
-      if (!alreadyUsingReceiverTrack) {
-        remoteScreenStream.getTracks().forEach((track) => {
-          remoteScreenStream.removeTrack(track);
-        });
-        remoteScreenStream.addTrack(receiverTrack);
-      }
-
+    if (shouldReplaceTrack) {
+      remoteScreenStream.getTracks().forEach((track) => {
+        remoteScreenStream.removeTrack(track);
+      });
+      remoteScreenStream.addTrack(receiverTrack);
       currentRemoteScreenTrackId = receiverTrack.id;
-    };
+    }
 
     const publishAttachedScreen = () => {
-      rebuildRemoteScreenStream();
-
       const videoTrack = remoteScreenStream.getVideoTracks()[0] || null;
-      const hasUsableTrack =
+      const hasTrack =
         Boolean(videoTrack)
         && videoTrack.readyState === 'live'
         && !receiverTrack.muted;
-
-      isRemoteScreenSharing = hasUsableTrack;
 
       debugLog('webrtcService', '[claxi:screen:student] helper publishAttachedScreen.', {
         receiverTrackId: receiverTrack.id,
@@ -419,15 +421,16 @@ export async function createWebRtcSessionController({
         receiverReadyState: receiverTrack.readyState,
         streamTrackIds: remoteScreenStream.getTracks().map((track) => track.id),
         streamVideoTrackIds: remoteScreenStream.getVideoTracks().map((track) => track.id),
-        value: hasUsableTrack ? 'stream' : 'null',
+        hasTrack,
       });
 
-      onRemoteScreenStream?.(hasUsableTrack ? remoteScreenStream : null);
+      isRemoteScreenSharing = hasTrack;
+      onRemoteScreenStream?.(hasTrack ? remoteScreenStream : null);
       emitScreenShareState();
     };
 
     const handleUnmute = () => {
-      debugLog('webrtcService', '[claxi:screen:student] helper receiver track unmute.', {
+      debugLog('webrtcService', 'Remote screen receiver track unmuted.', {
         id: receiverTrack.id,
         readyState: receiverTrack.readyState,
       });
@@ -435,7 +438,7 @@ export async function createWebRtcSessionController({
     };
 
     const handleMute = () => {
-      debugLog('webrtcService', '[claxi:screen:student] helper receiver track mute.', {
+      debugLog('webrtcService', 'Remote screen receiver track muted.', {
         id: receiverTrack.id,
         readyState: receiverTrack.readyState,
       });
@@ -452,10 +455,14 @@ export async function createWebRtcSessionController({
         }
       });
 
-      debugLog('webrtcService', '[claxi:screen:student] helper receiver track ended.', {
+      debugLog('webrtcService', 'Remote screen receiver track ended.', {
         id: receiverTrack.id,
         readyState: receiverTrack.readyState,
       });
+
+      if (lastKnownRemoteScreenTrack?.id === receiverTrack.id) {
+        lastKnownRemoteScreenTrack = null;
+      }
 
       currentRemoteScreenTrackId = null;
       isRemoteScreenSharing = false;
@@ -467,15 +474,17 @@ export async function createWebRtcSessionController({
     receiverTrack.onmute = handleMute;
     receiverTrack.onended = handleEnded;
 
-    rebuildRemoteScreenStream();
-
     if (!receiverTrack.muted) {
       publishAttachedScreen();
     } else {
-      debugLog('webrtcService', '[claxi:screen:student] helper attach deferred publish because receiver is muted.', {
-        receiverTrackId: receiverTrack.id,
-        receiverReadyState: receiverTrack.readyState,
-      });
+      debugLog(
+        'webrtcService',
+        '[claxi:screen:student] helper attach deferred publish because receiver is muted.',
+        {
+          receiverTrackId: receiverTrack.id,
+          receiverReadyState: receiverTrack.readyState,
+        },
+      );
     }
   };
 
@@ -508,6 +517,9 @@ export async function createWebRtcSessionController({
         treatedAsRemoteScreenTrack: true,
         trackId: incomingTrack.id,
       });
+
+      lastKnownRemoteScreenTrack = incomingTrack;
+
       const alreadyExists = remoteScreenStream.getTracks().some((track) => track.id === incomingTrack.id);
       if (!alreadyExists) {
         const hadPreviousTrack = remoteScreenStream.getTracks().length > 0;
@@ -584,6 +596,11 @@ export async function createWebRtcSessionController({
           }
         });
 
+        if (lastKnownRemoteScreenTrack?.id === incomingTrack.id) {
+          lastKnownRemoteScreenTrack = null;
+        }
+
+        currentRemoteScreenTrackId = null;
         isRemoteScreenSharing = false;
         debugLog('webrtcService', '[claxi:screen:student] onRemoteScreenStream call.', {
           value: 'null',
@@ -595,13 +612,13 @@ export async function createWebRtcSessionController({
 
       publishScreenState();
       return;
-    }
+    };
 
     const alreadyExists = remoteCameraStream.getTracks().some((track) => track.id === incomingTrack.id);
     if (!alreadyExists) {
       remoteCameraStream.addTrack(incomingTrack);
       onRemoteStream?.(remoteCameraStream);
-    }
+    };
 
     incomingTrack.addEventListener('ended', () => {
       remoteCameraStream.getTracks().forEach((track) => {
@@ -948,10 +965,13 @@ export async function createWebRtcSessionController({
     debugLog('webrtcService', '[claxi:screen:tutor] stopScreenShare active track before stop.', {
       activeScreenTrackId: activeTrack?.id || null,
     });
+
+    debugLog('webrtcService', '[claxi:screen:tutor] stopScreenShare replaceTrack(null).');
+    await switchScreenTrack(null);
+
     activeScreenStream.getTracks().forEach((track) => track.stop());
     activeScreenStream = null;
 
-    debugLog('webrtcService', '[claxi:screen:tutor] stopScreenShare skipping replaceTrack(null) to preserve sender/transceiver for future re-share.');
     await updateScreenShareDocState(false);
 
     isLocalScreenSharing = false;
