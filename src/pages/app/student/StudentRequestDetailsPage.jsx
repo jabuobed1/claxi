@@ -105,6 +105,12 @@ export default function StudentRequestDetailsPage() {
                 value={request.tutorName || 'Not assigned yet'}
                 muted={!request.tutorName}
               />
+              <DetailItem
+                icon={BookOpen}
+                label="Quoted total"
+                value={request.pricingSnapshot?.totalAmount ? `R${Number(request.pricingSnapshot.totalAmount).toFixed(2)} (${request.pricingSnapshot?.pricingBand || 'normal'})` : 'Not quoted'}
+                muted={!request.pricingSnapshot?.totalAmount}
+              />
             </div>
 
             <div className="grid gap-4 lg:grid-cols-[1.35fr_0.95fr]">

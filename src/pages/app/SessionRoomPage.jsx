@@ -16,9 +16,9 @@ import TldrawSdkEmbed from '../../components/app/TldrawSdkEmbed';
 import { useAuth } from '../../hooks/useAuth';
 import { useStudentSessions, useTutorSessions } from '../../hooks/useSessions';
 import { SESSION_STATUS } from '../../constants/lifecycle';
-import { BILLING_RULES } from '../../utils/onboarding';
 import {
   endSession,
+  finalizeSessionClosure,
   joinSessionAsStudent,
   submitSessionRating,
   updateSession,
@@ -26,8 +26,6 @@ import {
 import { createWebRtcSessionController } from '../../services/webrtcService';
 import { fetchIceServers } from '../../services/iceServerService';
 import { debugLog } from '../../utils/devLogger';
-import { updateClassRequest } from '../../services/classRequestService';
-import { REQUEST_STATUSES } from '../../utils/requestStatus';
 
 const HANDLED_KEY = 'claxi_handled_session_room_ratings';
 const RATABLE_STATUSES = new Set([
@@ -147,6 +145,9 @@ export default function SessionRoomPage() {
   const [isRemoteScreenSharing, setIsRemoteScreenSharing] = useState(false);
   const [remoteScreenStreamObj, setRemoteScreenStreamObj] = useState(null);
   const [showStudentControls, setShowStudentControls] = useState(true);
+  const [hasAcceptedExtension, setHasAcceptedExtension] = useState(false);
+  const [graceEndsAtMs, setGraceEndsAtMs] = useState(null);
+  const extensionPromptShownRef = useRef(false);
 
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
@@ -159,6 +160,7 @@ export default function SessionRoomPage() {
   const rtcInitStartedRef = useRef(false);
   const hadSessionRef = useRef(false);
   const studentControlsTimeoutRef = useRef(null);
+  const autoEndingRef = useRef(false);
 
   const callSeconds = useLiveSeconds(session?.callStartedAt);
   const billedSeconds = useLiveSeconds(session?.billingStartedAt);
@@ -169,6 +171,11 @@ export default function SessionRoomPage() {
   const forceRelayOnly = String(import.meta.env.VITE_WEBRTC_FORCE_RELAY_ONLY || '').toLowerCase() === 'true';
   const whiteboardRoom = session?.whiteboardRoomId || session?.requestId || session?.id;
   const graceRemaining = Math.max(0, Math.ceil(((session?.joinGraceEndsAt || 0) - Date.now()) / 1000));
+  const extensionGraceRemainingSeconds = hasAcceptedExtension && graceEndsAtMs
+    ? Math.max(0, Math.ceil((graceEndsAtMs - Date.now()) / 1000))
+    : 0;
+  const selectedDurationMinutes = Number(session?.durationMinutes || session?.pricingSnapshot?.durationMinutes || 0);
+  const selectedDurationSeconds = Math.max(0, Math.round(selectedDurationMinutes * 60));
 
   const connectionTone = useMemo(() => {
     if (networkError) return 'danger';
@@ -195,6 +202,10 @@ export default function SessionRoomPage() {
     rtcInitStartedRef.current = false;
     setRemoteScreenStreamObj(null);
     setShowStudentControls(true);
+    setHasAcceptedExtension(false);
+    setGraceEndsAtMs(null);
+    extensionPromptShownRef.current = false;
+    autoEndingRef.current = false;
   }, [session?.id, role]);
 
   useEffect(() => {
@@ -557,36 +568,16 @@ export default function SessionRoomPage() {
     const cancellationReason = askCancellationReason();
     if (!cancellationReason) return;
 
-    const sessionSecondsForCancellation = Math.max(callSeconds, billedSeconds);
-    const shouldChargeForCancellation = sessionSecondsForCancellation >= 30;
-    const endedAt = Date.now();
-
-    if (session.requestId) {
-      await updateClassRequest(session.requestId, {
-        status: REQUEST_STATUSES.CANCELED_DURING,
-        canceledAt: endedAt,
-        canceledBy: role,
-        canceledReason: cancellationReason,
-      });
-    }
-
     rtcRef.current?.close?.();
     rtcRef.current = null;
     rtcInitStartedRef.current = false;
     setRemoteScreenStreamObj(null);
     setShowStudentControls(false);
 
-    await updateSession(session.id, {
-      status: SESSION_STATUS.CANCELED_DURING,
-      endedAt,
-      canceledAt: endedAt,
+    await finalizeSessionClosure(session, {
+      closureType: SESSION_STATUS.CANCELED_DURING,
       canceledBy: role,
       canceledReason: cancellationReason,
-      chargeOnCancellation: shouldChargeForCancellation,
-      cancellationChargeApplies: shouldChargeForCancellation,
-      cancellationBillableSeconds: shouldChargeForCancellation ? sessionSecondsForCancellation : 0,
-      billingEndedAt: endedAt,
-      ...(shouldChargeForCancellation ? {} : { billingStartedAt: null }),
     });
 
     if (role === 'student') {
@@ -617,6 +608,38 @@ export default function SessionRoomPage() {
 
     navigate('/app/tutor', { replace: true });
   };
+
+  useEffect(() => {
+    if (role !== 'student') return;
+    if (!session || session.status !== SESSION_STATUS.IN_PROGRESS) return;
+    if (!selectedDurationSeconds || !session.billingStartedAt) return;
+
+    const elapsedSeconds = billedSeconds;
+    const warningThreshold = Math.max(0, selectedDurationSeconds - 60);
+
+    if (!extensionPromptShownRef.current && elapsedSeconds >= warningThreshold) {
+      extensionPromptShownRef.current = true;
+      const shouldExtend = window.confirm('Your selected lesson time is almost up. Continue and get a 2-minute grace period?');
+      if (shouldExtend) {
+        setHasAcceptedExtension(true);
+        setGraceEndsAtMs(Number(session.billingStartedAt) + ((selectedDurationSeconds + 120) * 1000));
+      }
+    }
+
+    if (!hasAcceptedExtension && elapsedSeconds >= selectedDurationSeconds && !autoEndingRef.current) {
+      autoEndingRef.current = true;
+      endCurrentSession().catch((error) => {
+        autoEndingRef.current = false;
+        setNetworkError(error.message || 'Unable to end session at selected time.');
+      });
+    }
+  }, [
+    billedSeconds,
+    hasAcceptedExtension,
+    role,
+    selectedDurationSeconds,
+    session,
+  ]);
 
   const submitRating = async (overall) => {
     if (!session || isSaving) return;
@@ -701,6 +724,14 @@ export default function SessionRoomPage() {
           {session.status === SESSION_STATUS.WAITING_STUDENT ? (
             <StageBadge icon={Clock3} tone="warning">
               Join window {graceRemaining}s
+            </StageBadge>
+          ) : null}
+
+          {hasAcceptedExtension ? (
+            <StageBadge icon={Clock3} tone={extensionGraceRemainingSeconds > 0 ? 'success' : 'info'}>
+              {extensionGraceRemainingSeconds > 0
+                ? `Grace period ${extensionGraceRemainingSeconds}s`
+                : 'Overtime billed at locked rate'}
             </StageBadge>
           ) : null}
         </div>
@@ -838,11 +869,11 @@ export default function SessionRoomPage() {
               compact={controlsCompact}
             />
 
-            {role === 'tutor' ? (
+            {role === 'tutor' || role === 'student' ? (
               <RailButton
                 onClick={endCurrentSession}
                 icon={PhoneOff}
-                label="End class"
+                label={role === 'student' ? 'End session' : 'End class'}
                 danger
                 compact={controlsCompact}
               />

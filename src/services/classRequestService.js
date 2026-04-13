@@ -7,7 +7,8 @@ import {
   SESSION_STATUS,
   canTransitionRequest,
 } from '../constants/lifecycle';
-import { BILLING_RULES, PLATFORM_FEE_RATE, TUTOR_PAYOUT_RATE } from '../utils/onboarding';
+import { PLATFORM_FEE_RATE, TUTOR_PAYOUT_RATE } from '../utils/onboarding';
+import { normalizePricingSnapshot } from '../utils/pricing';
 import { createNotification } from './notificationService';
 import { EMAIL_EVENT_TYPES, queueEmailEvent } from './emailEventService';
 import { getTutorCandidatesForRequest } from './userService';
@@ -340,6 +341,9 @@ export async function createClassRequest(payload) {
   const requestBody = {
     ...payload,
     subject: 'Mathematics',
+    durationMinutes: Number(payload.durationMinutes || 10),
+    pricingSnapshot: payload.pricingSnapshot || null,
+    pricingQuoteId: payload.pricingSnapshot?.quoteId || null,
     mode: 'online',
     meetingProviderPreference: payload.meetingProviderPreference || MEETING_PROVIDERS.ANY,
     status: REQUEST_STATUS.PENDING,
@@ -633,6 +637,9 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
           scheduledDate: existing.preferredDate,
           scheduledTime: existing.preferredTime,
           duration: existing.duration,
+          durationMinutes: Number(existing.durationMinutes || 10),
+          pricingSnapshot: existing.pricingSnapshot || null,
+          pricingQuoteId: existing.pricingQuoteId || existing.pricingSnapshot?.quoteId || null,
           meetingProvider: MEETING_PROVIDERS.WEBRTC,
           meetingLink: '',
           meetingId: '',
@@ -804,6 +811,9 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
               scheduledDate: requestData.preferredDate,
               scheduledTime: requestData.preferredTime,
               duration: requestData.duration,
+              durationMinutes: Number(requestData.durationMinutes || 10),
+              pricingSnapshot: requestData.pricingSnapshot || null,
+              pricingQuoteId: requestData.pricingQuoteId || requestData.pricingSnapshot?.quoteId || null,
               meetingProvider: MEETING_PROVIDERS.WEBRTC,
               meetingLink: '',
               meetingId: '',
@@ -863,6 +873,9 @@ export async function handleTutorOfferResponse({ requestId, tutorId, tutorName, 
               scheduledDate: requestData.preferredDate,
               scheduledTime: requestData.preferredTime,
               duration: requestData.duration,
+              durationMinutes: Number(requestData.durationMinutes || 10),
+              pricingSnapshot: requestData.pricingSnapshot || null,
+              pricingQuoteId: requestData.pricingQuoteId || requestData.pricingSnapshot?.quoteId || null,
               whiteboardRoomId: requestData.whiteboardRoomId || requestId,
               requestAttachment: requestData.attachment || null,
               requestDescription: requestData.description || '',
@@ -1091,13 +1104,24 @@ export async function cancelClassRequest({ requestId, canceledBy, reason }) {
 
 export async function settleSessionBilling(session) {
   const billedSeconds = Math.max(0, Math.floor((Date.now() - (session.billingStartedAt || Date.now())) / 1000));
-  const totalAmount = Number(((billedSeconds / 60) * BILLING_RULES.DISPLAY_RATE_PER_MINUTE).toFixed(2));
+  const billedMinutes = Number((billedSeconds / 60).toFixed(2));
+  const pricingSnapshot = normalizePricingSnapshot(session.pricingSnapshot);
+  const totalAmount = Number((
+    Number(pricingSnapshot.adjustedBaseAmount || pricingSnapshot.baseAmount || 0)
+    + (billedMinutes * Number(pricingSnapshot.adjustedRatePerMinute || pricingSnapshot.ratePerMinute || 0))
+  ).toFixed(2));
   const tutorAmount = Number((totalAmount * TUTOR_PAYOUT_RATE).toFixed(2));
   const platformAmount = Number((totalAmount * PLATFORM_FEE_RATE).toFixed(2));
 
   return {
     billedSeconds,
+    billedMinutes,
     totalAmount,
+    pricingSnapshot: {
+      ...pricingSnapshot,
+      billedMinutes,
+      finalAmount: totalAmount,
+    },
     payoutBreakdown: {
       platformFeeRate: PLATFORM_FEE_RATE,
       tutorRate: TUTOR_PAYOUT_RATE,
