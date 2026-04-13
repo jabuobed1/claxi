@@ -1,6 +1,7 @@
 import { getFirebaseClients } from '../firebase/config';
 import { REQUEST_STATUS, SESSION_STATUS, PAYMENT_STATUS, canTransitionSession, deriveRequestStatusFromSession } from '../constants/lifecycle';
-import { BILLING_RULES, TUTOR_PAYOUT_RATE, PLATFORM_FEE_RATE } from '../utils/onboarding';
+import { TUTOR_PAYOUT_RATE, PLATFORM_FEE_RATE } from '../utils/onboarding';
+import { normalizePricingSnapshot } from '../utils/pricing';
 import { createNotification } from './notificationService';
 import { EMAIL_EVENT_TYPES, queueEmailEvent } from './emailEventService';
 import { getUserProfile, updateUserRatingSummary } from './userService';
@@ -217,7 +218,12 @@ export async function endSession(session) {
     const endedAt = Date.now();
     const startedAt = Number(session.billingStartedAt || session.studentJoinedAt || session.callStartedAt || endedAt);
     const billedSeconds = Math.max(0, Math.floor((endedAt - startedAt) / 1000));
-    const totalAmount = Number(((billedSeconds / 60) * BILLING_RULES.DISPLAY_RATE_PER_MINUTE).toFixed(2));
+    const billedMinutes = Number((billedSeconds / 60).toFixed(2));
+    const pricingSnapshot = normalizePricingSnapshot(session.pricingSnapshot);
+    const totalAmount = Number((
+      Number(pricingSnapshot.adjustedBaseAmount || pricingSnapshot.baseAmount || 0)
+      + (billedMinutes * Number(pricingSnapshot.adjustedRatePerMinute || pricingSnapshot.ratePerMinute || 0))
+    ).toFixed(2));
     const tutorAmount = Number((totalAmount * TUTOR_PAYOUT_RATE).toFixed(2));
     const platformAmount = Number((totalAmount * PLATFORM_FEE_RATE).toFixed(2));
 
@@ -226,7 +232,13 @@ export async function endSession(session) {
       status: SESSION_STATUS.COMPLETED,
       endedAt,
       billedSeconds,
+      billedMinutes,
       totalAmount,
+      pricingSnapshot: {
+        ...pricingSnapshot,
+        billedMinutes,
+        finalAmount: totalAmount,
+      },
       payoutBreakdown: {
         platformFeeRate: PLATFORM_FEE_RATE,
         tutorRate: TUTOR_PAYOUT_RATE,
@@ -291,7 +303,7 @@ export async function endSession(session) {
       subject: session.subject,
       topic: session.topic,
       amount: Number(updated.totalAmount || 0),
-      rate: BILLING_RULES.DISPLAY_RATE_PER_MINUTE,
+      rate: Number(updated.pricingSnapshot?.adjustedRatePerMinute || updated.pricingSnapshot?.ratePerMinute || 0),
       paymentStatus: updated.paymentStatus,
     }),
   ]);

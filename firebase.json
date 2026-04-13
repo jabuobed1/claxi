@@ -24,6 +24,10 @@
         "function": "finalizeSessionBilling"
       },
       {
+        "source": "/pricing-quote",
+        "function": "getPricingQuote"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

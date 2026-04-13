@@ -5,6 +5,13 @@ const { logger } = require('firebase-functions');
 const admin = require('firebase-admin');
 const { Resend } = require('resend');
 const { randomUUID } = require('crypto');
+const {
+  DEFAULT_PRICING_CONFIG,
+  computePricingQuote,
+  loadPricingConfig,
+  sanitizePricingSnapshot,
+  roundCurrency,
+} = require('./pricingEngine');
 
 admin.initializeApp();
 
@@ -265,6 +272,93 @@ function getSafeSecretPreview(value) {
     length: value.length,
   };
 }
+
+async function getPricingSignalContext(subject) {
+  const [activeRequestsSnap, onlineTutorsSnap, verifiedTutorsSnap] = await Promise.all([
+    db.collection('classRequests').where('status', 'in', ['pending', 'matching', 'offered', 'no_tutor_available']).get(),
+    db.collection('users').where('activeRole', '==', 'tutor').where('onlineStatus', '==', 'online').get(),
+    db.collection('users').where('activeRole', '==', 'tutor').where('tutorProfile.verificationStatus', '==', 'verified').get(),
+  ]);
+
+  return {
+    now: new Date(),
+    subject,
+    activeRequests: activeRequestsSnap.size,
+    onlineTutors: onlineTutorsSnap.size,
+    verifiedTutors: verifiedTutorsSnap.size,
+  };
+}
+
+exports.getPricingQuote = onRequest({ cors: true }, async (req, res) => {
+  if (req.method !== 'POST') {
+    res.status(405).json({ success: false, message: 'Method not allowed' });
+    return;
+  }
+
+  const token = getBearerToken(req);
+  if (!token) {
+    res.status(401).json({ success: false, message: 'Unauthorized request.' });
+    return;
+  }
+
+  const decoded = await admin.auth().verifyIdToken(token).catch(() => null);
+  if (!decoded?.uid) {
+    res.status(401).json({ success: false, message: 'Unauthorized request.' });
+    return;
+  }
+
+  const durationMinutes = Math.max(1, Math.floor(Number(req.body?.durationMinutes || 0)));
+  const subject = String(req.body?.subject || 'general').trim();
+  if (!durationMinutes) {
+    res.status(400).json({ success: false, message: 'durationMinutes is required.' });
+    return;
+  }
+
+  const config = await loadPricingConfig(db, DEFAULT_PRICING_CONFIG);
+  const signalContext = await getPricingSignalContext(subject).catch(() => ({ now: new Date(), subject }));
+  const quote = computePricingQuote({
+    minutes: durationMinutes,
+    subject,
+    signalContext,
+    config,
+  });
+
+  const quotedAt = new Date();
+  const lockExpiresAt = new Date(quotedAt.getTime() + (Number(config.quoteTtlSeconds || 300) * 1000));
+  const quoteRef = db.collection('pricingQuotes').doc();
+  const quotePayload = {
+    ...quote,
+    quoteId: quoteRef.id,
+    quotedAt: quotedAt.toISOString(),
+    lockedAt: quotedAt.toISOString(),
+    lockExpiresAt: lockExpiresAt.toISOString(),
+    signalContext: {
+      activeRequests: signalContext.activeRequests ?? null,
+      onlineTutors: signalContext.onlineTutors ?? null,
+      verifiedTutors: signalContext.verifiedTutors ?? null,
+    },
+    requestContext: {
+      studentId: decoded.uid,
+      durationMinutes,
+      subject,
+    },
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    expiresAt: admin.firestore.Timestamp.fromDate(lockExpiresAt),
+  };
+
+  await quoteRef.set(quotePayload);
+  logger.info('pricing_quote_generated', {
+    quoteId: quoteRef.id,
+    userId: decoded.uid,
+    band: quote.pricingBand,
+    totalAmount: quote.totalAmount,
+    durationMinutes,
+    subject: quote.subject,
+    configVersion: quote.configVersion,
+  });
+
+  res.status(200).json({ success: true, quote: sanitizePricingSnapshot(quotePayload) });
+});
 
 exports.getIceConfig = onRequest(
   {
@@ -644,7 +738,6 @@ exports.verifyPaystack = onRequest({ cors: true, secrets: [PAYSTACK_SECRET_KEY] 
 });
 
 const BILLING_RULES = {
-  DISPLAY_RATE_PER_MINUTE: 5,
   PLATFORM_FEE_RATE: 0.3,
   TUTOR_PAYOUT_RATE: 0.7,
 };
@@ -725,7 +818,34 @@ exports.finalizeSessionBilling = onRequest({ cors: true, secrets: [PAYSTACK_SECR
   const endedAt = Date.now();
   const startedAt = Number(session.billingStartedAt || session.studentJoinedAt || session.callStartedAt || endedAt);
   const billedSeconds = Math.max(0, Math.floor((endedAt - startedAt) / 1000));
-  const totalAmount = Number(((billedSeconds / 60) * BILLING_RULES.DISPLAY_RATE_PER_MINUTE).toFixed(2));
+  const billedMinutes = Number((billedSeconds / 60).toFixed(2));
+
+  let trustedSnapshot = sanitizePricingSnapshot(session.pricingSnapshot || {});
+  if (session.pricingSnapshot?.quoteId) {
+    const quoteSnap = await db.collection('pricingQuotes').doc(session.pricingSnapshot.quoteId).get();
+    if (quoteSnap.exists) {
+      trustedSnapshot = sanitizePricingSnapshot(quoteSnap.data());
+    }
+  }
+
+  const isLegacySession = !trustedSnapshot;
+  const fallbackRate = 1.8;
+  const snapshot = trustedSnapshot || sanitizePricingSnapshot({
+    pricingBand: 'normal',
+    baseAmount: 12,
+    ratePerMinute: fallbackRate,
+    adjustedBaseAmount: 12,
+    adjustedRatePerMinute: fallbackRate,
+    durationMinutes: Math.max(1, Math.round(billedMinutes)),
+    totalAmount: 12 + (fallbackRate * billedMinutes),
+    configVersion: 'pricing-v2.0.0-legacy-fallback',
+    explanationLabel: 'Legacy fallback pricing',
+  });
+
+  const totalAmount = roundCurrency(
+    Number(snapshot.adjustedBaseAmount || snapshot.baseAmount || 0)
+    + (billedMinutes * Number(snapshot.adjustedRatePerMinute || snapshot.ratePerMinute || fallbackRate)),
+  );
   const tutorAmount = Number((totalAmount * BILLING_RULES.TUTOR_PAYOUT_RATE).toFixed(2));
   const platformAmount = Number((totalAmount * BILLING_RULES.PLATFORM_FEE_RATE).toFixed(2));
 
@@ -756,7 +876,15 @@ exports.finalizeSessionBilling = onRequest({ cors: true, secrets: [PAYSTACK_SECR
     status: 'completed',
     endedAt,
     billedSeconds,
+    billedMinutes,
     totalAmount,
+    pricingSnapshot: {
+      ...snapshot,
+      billedMinutes,
+      finalAmount: totalAmount,
+      finalizedAt: new Date(endedAt).toISOString(),
+      legacyFallbackUsed: isLegacySession,
+    },
     payoutBreakdown: {
       platformFeeRate: BILLING_RULES.PLATFORM_FEE_RATE,
       tutorRate: BILLING_RULES.TUTOR_PAYOUT_RATE,
@@ -791,9 +919,22 @@ exports.finalizeSessionBilling = onRequest({ cors: true, secrets: [PAYSTACK_SECR
   await batch.commit();
 
   const updatedSnap = await sessionRef.get();
+  const updatedSession = { id: updatedSnap.id, ...updatedSnap.data() };
+  logger.info('pricing_billing_finalized', {
+    sessionId,
+    requestId: session.requestId || null,
+    quoteId: updatedSession?.pricingSnapshot?.quoteId || null,
+    configVersion: updatedSession?.pricingSnapshot?.configVersion || null,
+    pricingBand: updatedSession?.pricingSnapshot?.pricingBand || null,
+    billedMinutes,
+    totalAmount,
+    paymentStatus,
+    legacyFallbackUsed: Boolean(updatedSession?.pricingSnapshot?.legacyFallbackUsed),
+  });
+
   res.status(200).json({
     success: true,
-    session: { id: updatedSnap.id, ...updatedSnap.data() },
+    session: updatedSession,
     charge: { ok: charge.ok, reason: charge.reason || null },
   });
 });

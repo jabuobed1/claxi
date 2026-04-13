@@ -16,7 +16,6 @@ import TldrawSdkEmbed from '../../components/app/TldrawSdkEmbed';
 import { useAuth } from '../../hooks/useAuth';
 import { useStudentSessions, useTutorSessions } from '../../hooks/useSessions';
 import { SESSION_STATUS } from '../../constants/lifecycle';
-import { BILLING_RULES } from '../../utils/onboarding';
 import {
   endSession,
   joinSessionAsStudent,
