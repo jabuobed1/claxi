@@ -17,12 +17,7 @@ export const TUTOR_VERIFICATION_STATUSES = {
 
 export const PLATFORM_FEE_RATE = 0.3;
 export const TUTOR_PAYOUT_RATE = 0.7;
-
-export const BILLING_RULES = {
-  CURRENCY: 'ZAR',
-  DISPLAY_RATE_PER_MINUTE: 5,
-  DISPLAY_RATE_PER_SECOND: 5 / 60,
-};
+export const BILLING_CURRENCY = 'ZAR';
 
 export function getStudentOnboardingStatus(user) {
   const studentProfile = user?.studentProfile || {};

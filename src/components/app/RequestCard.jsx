@@ -63,6 +63,12 @@ export default function RequestCard({ request, action }) {
           </p>
         ) : null}
 
+        {request.pricingSnapshot?.totalAmount ? (
+          <p className="min-w-0 break-words text-zinc-500">
+            Quote: R{Number(request.pricingSnapshot.totalAmount || 0).toFixed(2)} ({request.pricingSnapshot.pricingBand || 'normal'})
+          </p>
+        ) : null}
+
         {request.tutorName ? (
           <p className="flex min-w-0 items-start gap-2 break-words">
             <UserCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400" />

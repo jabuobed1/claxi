@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { CreditCard, Paperclip, Send, X, FileText, ImageIcon } from 'lucide-react';
 import OnboardingStatusBanner from '../../../components/app/OnboardingStatusBanner';
@@ -6,8 +6,10 @@ import { useAuth } from '../../../hooks/useAuth';
 import { useStudentRequests } from '../../../hooks/useClassRequests';
 import { createClassRequest } from '../../../services/classRequestService';
 import { uploadUserFile } from '../../../services/storageService';
-import { BILLING_RULES, getStudentOnboardingStatus } from '../../../utils/onboarding';
+import { getStudentOnboardingStatus } from '../../../utils/onboarding';
 import { REQUEST_STATUSES } from '../../../utils/requestStatus';
+import { DEFAULT_LESSON_DURATION, LESSON_DURATION_OPTIONS, formatRand } from '../../../utils/pricing';
+import { fetchPricingQuote } from '../../../services/pricingService';
 
 export default function StudentDashboardPage() {
   const { user } = useAuth();
@@ -18,6 +20,8 @@ export default function StudentDashboardPage() {
     user?.paymentMethods?.find((card) => card.isDefault)?.id || user?.paymentMethods?.[0]?.id || ''
   );
   const [attachments, setAttachments] = useState([]);
+  const [durationMinutes, setDurationMinutes] = useState(DEFAULT_LESSON_DURATION);
+  const [quote, setQuote] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const { requests } = useStudentRequests(user?.uid);
@@ -48,6 +52,15 @@ export default function StudentDashboardPage() {
   const onTopicChange = (event) => {
     setTopic(event.target.value);
     resizeTextarea();
+  };
+
+  const refreshQuote = async (minutes) => {
+    const nextQuote = await fetchPricingQuote({
+      durationMinutes: minutes,
+      subject: 'Mathematics',
+    });
+    setQuote(nextQuote);
+    return nextQuote;
   };
 
   const onFileChange = (event) => {
@@ -84,6 +97,7 @@ export default function StudentDashboardPage() {
     setIsSubmitting(true);
 
     try {
+      const activeQuote = quote || (await refreshQuote(durationMinutes));
       const requestText =
         topic.trim() || `Help me with attached file${attachments.length > 1 ? 's' : ''}: ${attachments.map((file) => file.name).join(', ')}`;
 
@@ -114,7 +128,8 @@ export default function StudentDashboardPage() {
         description: topic.trim(),
         preferredDate: '',
         preferredTime: '',
-        duration: 'Per-minute billing',
+        duration: `${durationMinutes} minutes`,
+        durationMinutes,
         meetingProviderPreference: 'any',
         mode: 'online',
         imageAttachment: uploadedAttachments.map((file) => file.fileName).join(', '),
@@ -124,6 +139,7 @@ export default function StudentDashboardPage() {
         studentName: user.fullName || user.displayName || user.email,
         studentEmail: user.email,
         selectedCardId: cardId,
+        pricingSnapshot: activeQuote,
       });
 
       navigate(`/app/student/request/${requestId}`, {
@@ -140,6 +156,23 @@ export default function StudentDashboardPage() {
   };
 
   const displayName = user?.fullName || user?.displayName || 'Student';
+
+  useEffect(() => {
+    if (!onboardingStatus.complete) return;
+    refreshQuote(durationMinutes).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onboardingStatus.complete]);
+
+  const handleDurationChange = async (event) => {
+    const minutes = Number(event.target.value || DEFAULT_LESSON_DURATION);
+    setDurationMinutes(minutes);
+    setError('');
+    try {
+      await refreshQuote(minutes);
+    } catch (quoteError) {
+      setError(quoteError.message || 'Unable to refresh pricing quote.');
+    }
+  };
 
   return (
     <div className="relative flex min-h-[calc(100vh-13rem)] flex-col overflow-hidden bg-transparent">
@@ -241,6 +274,19 @@ export default function StudentDashboardPage() {
 
               <div className="mt-3 flex flex-col gap-3">
                 <div className="flex flex-wrap items-center gap-2">
+                  <label className="inline-flex h-11 min-w-[140px] items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 text-zinc-700 transition hover:border-emerald-300 hover:bg-emerald-50">
+                    <span className="text-xs font-semibold text-zinc-500">Duration</span>
+                    <select
+                      value={durationMinutes}
+                      onChange={handleDurationChange}
+                      className="w-auto bg-transparent text-xs text-zinc-800 outline-none"
+                    >
+                      {LESSON_DURATION_OPTIONS.map((option) => (
+                        <option key={option} value={option}>{option} min</option>
+                      ))}
+                    </select>
+                  </label>
+
                   <label className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 text-zinc-700 transition hover:border-emerald-300 hover:bg-emerald-50">
                     <Paperclip className="h-4 w-4 shrink-0" />
                     <span className="hidden text-xs font-semibold sm:inline">Add files</span>
@@ -283,9 +329,15 @@ export default function StudentDashboardPage() {
                   }`}
                 >
                   <Send className="h-4 w-4" />
-                  {isSubmitting ? 'Requesting...' : `Request R${BILLING_RULES.DISPLAY_RATE_PER_MINUTE}/min`}
+                  {isSubmitting ? 'Requesting...' : `Request ${quote ? formatRand(quote.totalAmount) : 'quote'}`}
                 </button>
               </div>
+
+              {quote ? (
+                <p className="mt-2 text-xs text-zinc-600">
+                  {quote.explanationLabel} • {quote.pricingBand} band • base {formatRand(quote.adjustedBaseAmount)} + {formatRand(quote.adjustedRatePerMinute)}/min
+                </p>
+              ) : null}
 
               {!user?.paymentMethods?.length ? (
                 <p className="mt-2 text-xs text-amber-700">
