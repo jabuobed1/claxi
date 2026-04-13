@@ -1,6 +1,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { computePricingQuote, DEFAULT_PRICING_CONFIG, sanitizePricingSnapshot } = require('./pricingEngine');
+const {
+  computeFinalAmountFromSnapshot,
+  computePricingQuote,
+  DEFAULT_PRICING_CONFIG,
+  sanitizePricingSnapshot,
+} = require('./pricingEngine');
 
 test('computes normal quote near baseline for 10 minutes', () => {
   const quote = computePricingQuote({
@@ -50,4 +55,42 @@ test('sanitizes legacy snapshot safely', () => {
   assert.equal(sanitized.durationMinutes, 20);
   assert.equal(sanitized.totalAmount, 48);
   assert.equal(sanitized.pricingBand, 'normal');
+});
+
+test('early cancellation bills base only', () => {
+  const result = computeFinalAmountFromSnapshot({
+    snapshot: {
+      baseAmount: 12,
+      adjustedBaseAmount: 12,
+      ratePerMinute: 1.8,
+      adjustedRatePerMinute: 1.8,
+      durationMinutes: 30,
+      totalAmount: 66,
+    },
+    billedMinutes: 3,
+    selectedDurationMinutes: 30,
+    closureType: 'canceled_during',
+  });
+
+  assert.equal(result.isEarlyCancellation, true);
+  assert.equal(result.totalAmount, 12);
+});
+
+test('late cancellation bills base plus minute usage', () => {
+  const result = computeFinalAmountFromSnapshot({
+    snapshot: {
+      baseAmount: 12,
+      adjustedBaseAmount: 12,
+      ratePerMinute: 1.8,
+      adjustedRatePerMinute: 1.8,
+      durationMinutes: 30,
+      totalAmount: 66,
+    },
+    billedMinutes: 8,
+    selectedDurationMinutes: 30,
+    closureType: 'canceled_during',
+  });
+
+  assert.equal(result.isEarlyCancellation, false);
+  assert.equal(result.totalAmount, 26.4);
 });

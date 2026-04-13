@@ -257,6 +257,38 @@ function sanitizePricingSnapshot(snapshot = {}) {
   };
 }
 
+function computeFinalAmountFromSnapshot({
+  snapshot,
+  billedMinutes = 0,
+  closureType = 'completed',
+  selectedDurationMinutes = null,
+}) {
+  const safeSnapshot = sanitizePricingSnapshot(snapshot);
+  const safeBilledMinutes = Math.max(0, Number(billedMinutes || 0));
+  const selectedDuration = Math.max(
+    1,
+    Number(selectedDurationMinutes || safeSnapshot?.durationMinutes || 1),
+  );
+  const earlyCancelThresholdMinutes = Number((selectedDuration * 0.1).toFixed(2));
+  const isCancel = closureType === 'canceled' || closureType === 'canceled_during';
+  const isEarlyCancellation = isCancel && safeBilledMinutes <= earlyCancelThresholdMinutes;
+  const baseAmount = roundCurrency(safeSnapshot?.adjustedBaseAmount || safeSnapshot?.baseAmount || 0);
+  const perMinuteRate = roundCurrency(safeSnapshot?.adjustedRatePerMinute || safeSnapshot?.ratePerMinute || 0);
+
+  const totalAmount = isEarlyCancellation
+    ? baseAmount
+    : roundCurrency(baseAmount + (safeBilledMinutes * perMinuteRate));
+
+  return {
+    totalAmount,
+    perMinuteRate,
+    baseAmount,
+    earlyCancelThresholdMinutes,
+    isEarlyCancellation,
+    selectedDurationMinutes: selectedDuration,
+  };
+}
+
 async function loadPricingConfig(db, fallback = DEFAULT_PRICING_CONFIG) {
   try {
     const snap = await db.collection('systemConfig').doc('pricingEngine').get();
@@ -286,5 +318,6 @@ module.exports = {
   computePricingQuote,
   loadPricingConfig,
   sanitizePricingSnapshot,
+  computeFinalAmountFromSnapshot,
   roundCurrency,
 };

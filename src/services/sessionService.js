@@ -209,6 +209,12 @@ export async function joinSessionAsStudent(session, selectedCardId, selectedCard
 }
 
 export async function endSession(session) {
+  return finalizeSessionClosure(session, { closureType: SESSION_STATUS.COMPLETED });
+}
+
+export async function finalizeSessionClosure(session, options = {}) {
+  const closureType = options.closureType || SESSION_STATUS.COMPLETED;
+  const isCancellation = closureType === SESSION_STATUS.CANCELED_DURING || closureType === SESSION_STATUS.CANCELED;
   debugLog('sessionService', 'Ending session and settling billing.', { sessionId: session?.id, requestId: session?.requestId });
   const clients = await getFirebaseClients();
   let updated;
@@ -220,17 +226,25 @@ export async function endSession(session) {
     const billedSeconds = Math.max(0, Math.floor((endedAt - startedAt) / 1000));
     const billedMinutes = Number((billedSeconds / 60).toFixed(2));
     const pricingSnapshot = normalizePricingSnapshot(session.pricingSnapshot);
+    const selectedDurationMinutes = Number(session.durationMinutes || pricingSnapshot.durationMinutes || 0);
+    const earlyThreshold = Number((selectedDurationMinutes * 0.1).toFixed(2));
+    const isEarlyCancellation = isCancellation && billedMinutes <= earlyThreshold;
     const totalAmount = Number((
-      Number(pricingSnapshot.adjustedBaseAmount || pricingSnapshot.baseAmount || 0)
-      + (billedMinutes * Number(pricingSnapshot.adjustedRatePerMinute || pricingSnapshot.ratePerMinute || 0))
+      isEarlyCancellation
+        ? Number(pricingSnapshot.adjustedBaseAmount || pricingSnapshot.baseAmount || 0)
+        : Number(pricingSnapshot.adjustedBaseAmount || pricingSnapshot.baseAmount || 0)
+          + (billedMinutes * Number(pricingSnapshot.adjustedRatePerMinute || pricingSnapshot.ratePerMinute || 0))
     ).toFixed(2));
     const tutorAmount = Number((totalAmount * TUTOR_PAYOUT_RATE).toFixed(2));
     const platformAmount = Number((totalAmount * PLATFORM_FEE_RATE).toFixed(2));
 
     updated = await updateSession(session.id, {
       ...session,
-      status: SESSION_STATUS.COMPLETED,
+      status: closureType,
       endedAt,
+      canceledAt: isCancellation ? endedAt : null,
+      canceledBy: isCancellation ? (options.canceledBy || null) : null,
+      canceledReason: isCancellation ? (options.canceledReason || '') : null,
       billedSeconds,
       billedMinutes,
       totalAmount,
@@ -238,6 +252,9 @@ export async function endSession(session) {
         ...pricingSnapshot,
         billedMinutes,
         finalAmount: totalAmount,
+        closureType,
+        earlyCancellation: isEarlyCancellation,
+        earlyCancelThresholdMinutes: earlyThreshold,
       },
       payoutBreakdown: {
         platformFeeRate: PLATFORM_FEE_RATE,
@@ -260,7 +277,12 @@ export async function endSession(session) {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${idToken}`,
       },
-      body: JSON.stringify({ sessionId: session.id }),
+      body: JSON.stringify({
+        sessionId: session.id,
+        closureType,
+        canceledBy: options.canceledBy || null,
+        canceledReason: options.canceledReason || '',
+      }),
     });
 
     const payload = await response.json().catch(() => ({}));
@@ -281,7 +303,7 @@ export async function endSession(session) {
       userId: session.studentId,
       title: isPaid ? 'Session ended' : 'Payment declined - wallet updated',
       message: isPaid
-        ? `Billing complete: R${Number(updated.totalAmount || 0).toFixed(2)} (${Number(updated.billedSeconds || 0)}s).`
+        ? `${isCancellation ? 'Cancellation billing' : 'Billing'} complete: R${Number(updated.totalAmount || 0).toFixed(2)} (${Number(updated.billedSeconds || 0)}s).`
         : `Card declined. Wallet updated to cover R${Number(updated.totalAmount || 0).toFixed(2)} outstanding.`,
       type: 'session_billing',
       requestId: session.requestId,

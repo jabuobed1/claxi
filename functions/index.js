@@ -8,9 +8,9 @@ const { randomUUID } = require('crypto');
 const {
   DEFAULT_PRICING_CONFIG,
   computePricingQuote,
+  computeFinalAmountFromSnapshot,
   loadPricingConfig,
   sanitizePricingSnapshot,
-  roundCurrency,
 } = require('./pricingEngine');
 
 admin.initializeApp();
@@ -791,6 +791,9 @@ exports.finalizeSessionBilling = onRequest({ cors: true, secrets: [PAYSTACK_SECR
   }
 
   const sessionId = req.body?.sessionId?.toString().trim();
+  const closureType = req.body?.closureType === 'canceled_during' ? 'canceled_during' : 'completed';
+  const canceledBy = req.body?.canceledBy ? String(req.body.canceledBy) : null;
+  const canceledReason = req.body?.canceledReason ? String(req.body.canceledReason).trim() : '';
   if (!sessionId) {
     res.status(400).json({ success: false, message: 'Missing sessionId.' });
     return;
@@ -810,7 +813,7 @@ exports.finalizeSessionBilling = onRequest({ cors: true, secrets: [PAYSTACK_SECR
     return;
   }
 
-  if (session.status === 'completed') {
+  if (['completed', 'canceled_during', 'canceled'].includes(session.status)) {
     res.status(200).json({ success: true, session: { id: sessionId, ...session } });
     return;
   }
@@ -842,10 +845,13 @@ exports.finalizeSessionBilling = onRequest({ cors: true, secrets: [PAYSTACK_SECR
     explanationLabel: 'Legacy fallback pricing',
   });
 
-  const totalAmount = roundCurrency(
-    Number(snapshot.adjustedBaseAmount || snapshot.baseAmount || 0)
-    + (billedMinutes * Number(snapshot.adjustedRatePerMinute || snapshot.ratePerMinute || fallbackRate)),
-  );
+  const settlement = computeFinalAmountFromSnapshot({
+    snapshot,
+    billedMinutes,
+    closureType,
+    selectedDurationMinutes: Number(session.durationMinutes || snapshot.durationMinutes || 0),
+  });
+  const totalAmount = settlement.totalAmount;
   const tutorAmount = Number((totalAmount * BILLING_RULES.TUTOR_PAYOUT_RATE).toFixed(2));
   const platformAmount = Number((totalAmount * BILLING_RULES.PLATFORM_FEE_RATE).toFixed(2));
 
@@ -873,17 +879,22 @@ exports.finalizeSessionBilling = onRequest({ cors: true, secrets: [PAYSTACK_SECR
 
   const batch = db.batch();
   batch.set(sessionRef, {
-    status: 'completed',
+    status: closureType,
     endedAt,
     billedSeconds,
     billedMinutes,
     totalAmount,
+    canceledBy: closureType === 'canceled_during' ? canceledBy : null,
+    canceledReason: closureType === 'canceled_during' ? canceledReason : null,
     pricingSnapshot: {
       ...snapshot,
       billedMinutes,
       finalAmount: totalAmount,
       finalizedAt: new Date(endedAt).toISOString(),
       legacyFallbackUsed: isLegacySession,
+      closureType,
+      earlyCancellation: settlement.isEarlyCancellation,
+      earlyCancelThresholdMinutes: settlement.earlyCancelThresholdMinutes,
     },
     payoutBreakdown: {
       platformFeeRate: BILLING_RULES.PLATFORM_FEE_RATE,
@@ -898,9 +909,13 @@ exports.finalizeSessionBilling = onRequest({ cors: true, secrets: [PAYSTACK_SECR
   }, { merge: true });
 
   batch.set(db.collection('classRequests').doc(session.requestId), {
-    status: 'completed',
-    statusDetail: 'Session ended. Billing completed.',
+    status: closureType === 'canceled_during' ? 'canceled_during' : 'completed',
+    statusDetail: closureType === 'canceled_during'
+      ? 'Session canceled. Billing completed.'
+      : 'Session ended. Billing completed.',
     endedAt,
+    canceledBy: closureType === 'canceled_during' ? canceledBy : null,
+    canceledReason: closureType === 'canceled_during' ? canceledReason : null,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   }, { merge: true });
 
@@ -930,6 +945,8 @@ exports.finalizeSessionBilling = onRequest({ cors: true, secrets: [PAYSTACK_SECR
     totalAmount,
     paymentStatus,
     legacyFallbackUsed: Boolean(updatedSession?.pricingSnapshot?.legacyFallbackUsed),
+    closureType,
+    earlyCancellation: settlement.isEarlyCancellation,
   });
 
   res.status(200).json({
