@@ -1,8 +1,15 @@
 import { getFirebaseClients } from '../firebase/config';
 import { DEFAULT_SUBJECTS } from '../constants/subjects';
 
-function buildDefaultProfile({ uid, email, displayName, role }) {
+const DEFAULT_STUDENT_FREE_MINUTES = 90;
+
+function buildReferralCode(uid) {
+  return `CLX-${String(uid || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 8).toUpperCase()}`;
+}
+
+function buildDefaultProfile({ uid, email, displayName, role, referralCode, referredBy = null, pendingReferralCode = null }) {
   const normalizedRole = role || 'student';
+  const safeReferralCode = String(referralCode || buildReferralCode(uid)).trim().toUpperCase();
 
   return {
     uid,
@@ -40,13 +47,28 @@ function buildDefaultProfile({ uid, email, displayName, role }) {
       currency: 'ZAR',
       updatedAt: new Date().toISOString(),
     },
+    freeMinutesRemaining: normalizedRole === 'student' ? DEFAULT_STUDENT_FREE_MINUTES : 0,
+    referralCode: safeReferralCode,
+    referredBy,
+    pendingReferralCode: pendingReferralCode || null,
+    referralRewardCount: 0,
+    totalFreeMinutesEarned: normalizedRole === 'student' ? DEFAULT_STUDENT_FREE_MINUTES : 0,
+    totalFreeMinutesUsed: 0,
+    growth: {
+      completionRequirements: {
+        emailVerified: false,
+        phoneVerified: false,
+      },
+      accountCompletionRewardProcessed: false,
+      lastGrowthSyncedAt: null,
+    },
   };
 }
 
-export async function upsertUserProfile({ uid, email, displayName, role }) {
+export async function upsertUserProfile({ uid, email, displayName, role, pendingReferralCode = null }) {
   const clients = await getFirebaseClients();
 
-  const profileShape = buildDefaultProfile({ uid, email, displayName, role });
+  const profileShape = buildDefaultProfile({ uid, email, displayName, role, pendingReferralCode });
 
   if (!clients) {
     return profileShape;

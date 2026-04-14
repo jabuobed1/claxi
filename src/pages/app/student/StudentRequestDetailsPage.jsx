@@ -108,7 +108,9 @@ export default function StudentRequestDetailsPage() {
               <DetailItem
                 icon={BookOpen}
                 label="Quoted total"
-                value={request.pricingSnapshot?.totalAmount ? `R${Number(request.pricingSnapshot.totalAmount).toFixed(2)} (${request.pricingSnapshot?.pricingBand || 'normal'})` : 'Not quoted'}
+                value={request.pricingSnapshot?.totalAmount
+                  ? `Original R${Number(request.pricingSnapshot.originalPrice ?? request.pricingSnapshot.totalAmount).toFixed(2)} • Discount R${Number(request.pricingSnapshot.discountApplied || 0).toFixed(2)} • Pay R${Number(request.pricingSnapshot.finalPrice ?? request.pricingSnapshot.totalAmount).toFixed(2)}`
+                  : 'Not quoted'}
                 muted={!request.pricingSnapshot?.totalAmount}
               />
             </div>
