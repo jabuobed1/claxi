@@ -28,6 +28,10 @@
         "function": "getPricingQuote"
       },
       {
+        "source": "/sync-student-growth",
+        "function": "syncStudentGrowth"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

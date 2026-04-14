@@ -28,6 +28,8 @@ const DEFAULT_STUN_URLS = ['stun:stun.l.google.com:19302'];
 const DEFAULT_TURN_TTL_SECONDS = 600;
 const MATCHING_TIMEOUT_MS = 3 * 60 * 1000;
 const OFFER_TIMEOUT_MS = 30 * 1000;
+const DEFAULT_STUDENT_FREE_MINUTES = 90;
+const REFERRAL_REWARD_MINUTES = 30;
 const REQUEST_STATUS = {
   PENDING: 'pending',
   MATCHING: 'matching',
@@ -273,6 +275,25 @@ function getSafeSecretPreview(value) {
   };
 }
 
+function applyFreeMinuteDiscount({ originalPrice, durationMinutes, freeMinutesRemaining }) {
+  const safeOriginalPrice = Math.max(0, Number(originalPrice || 0));
+  const safeDurationMinutes = Math.max(1, Number(durationMinutes || 1));
+  const availableFreeMinutes = Math.max(0, Number(freeMinutesRemaining || 0));
+  const freeMinutesApplied = Math.min(availableFreeMinutes, safeDurationMinutes);
+  const discountRatio = freeMinutesApplied > 0 ? (freeMinutesApplied / safeDurationMinutes) : 0;
+  const discountApplied = Number((safeOriginalPrice * discountRatio).toFixed(2));
+  const finalPrice = Number(Math.max(0, safeOriginalPrice - discountApplied).toFixed(2));
+
+  return {
+    originalPrice: Number(safeOriginalPrice.toFixed(2)),
+    requestedDurationMinutes: safeDurationMinutes,
+    freeMinutesApplied: Number(freeMinutesApplied.toFixed(2)),
+    discountApplied,
+    finalPrice,
+    discountSource: freeMinutesApplied > 0 ? 'free_minutes' : null,
+  };
+}
+
 async function getPricingSignalContext(subject) {
   const [activeRequestsSnap, onlineTutorsSnap, verifiedTutorsSnap] = await Promise.all([
     db.collection('classRequests').where('status', 'in', ['pending', 'matching', 'offered', 'no_tutor_available']).get(),
@@ -322,12 +343,20 @@ exports.getPricingQuote = onRequest({ cors: true }, async (req, res) => {
     signalContext,
     config,
   });
+  const studentSnap = await db.collection('users').doc(decoded.uid).get();
+  const studentData = studentSnap.data() || {};
+  const freeMinutePreview = applyFreeMinuteDiscount({
+    originalPrice: quote.totalAmount,
+    durationMinutes,
+    freeMinutesRemaining: studentData.freeMinutesRemaining || 0,
+  });
 
   const quotedAt = new Date();
   const lockExpiresAt = new Date(quotedAt.getTime() + (Number(config.quoteTtlSeconds || 300) * 1000));
   const quoteRef = db.collection('pricingQuotes').doc();
   const quotePayload = {
     ...quote,
+    ...freeMinutePreview,
     quoteId: quoteRef.id,
     quotedAt: quotedAt.toISOString(),
     lockedAt: quotedAt.toISOString(),
@@ -341,6 +370,7 @@ exports.getPricingQuote = onRequest({ cors: true }, async (req, res) => {
       studentId: decoded.uid,
       durationMinutes,
       subject,
+      freeMinutesRemaining: Number(studentData.freeMinutesRemaining || 0),
     },
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     expiresAt: admin.firestore.Timestamp.fromDate(lockExpiresAt),
@@ -358,6 +388,138 @@ exports.getPricingQuote = onRequest({ cors: true }, async (req, res) => {
   });
 
   res.status(200).json({ success: true, quote: sanitizePricingSnapshot(quotePayload) });
+});
+
+exports.syncStudentGrowth = onRequest({ cors: true }, async (req, res) => {
+  if (req.method !== 'POST') {
+    res.status(405).json({ success: false, message: 'Method not allowed' });
+    return;
+  }
+
+  const token = getBearerToken(req);
+  if (!token) {
+    res.status(401).json({ success: false, message: 'Unauthorized request.' });
+    return;
+  }
+
+  const decoded = await admin.auth().verifyIdToken(token).catch(() => null);
+  if (!decoded?.uid) {
+    res.status(401).json({ success: false, message: 'Unauthorized request.' });
+    return;
+  }
+
+  const authUser = await admin.auth().getUser(decoded.uid).catch(() => null);
+  const emailVerified = Boolean(authUser?.emailVerified || decoded.email_verified);
+  const userRef = db.collection('users').doc(decoded.uid);
+
+  await db.runTransaction(async (transaction) => {
+    const userSnap = await transaction.get(userRef);
+    if (!userSnap.exists) return;
+    const userData = userSnap.data() || {};
+    const isStudent = (userData.activeRole || userData.role || '').toLowerCase() === 'student';
+
+    const baseUpdates = {
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      growth: {
+        ...(userData.growth || {}),
+        completionRequirements: {
+          ...((userData.growth || {}).completionRequirements || {}),
+          emailVerified,
+          phoneVerified: Boolean(((userData.growth || {}).completionRequirements || {}).phoneVerified || false),
+        },
+        lastGrowthSyncedAt: new Date().toISOString(),
+      },
+      emailVerified,
+      emailVerifiedAt: emailVerified
+        ? (userData.emailVerifiedAt || admin.firestore.FieldValue.serverTimestamp())
+        : null,
+    };
+
+    if (!isStudent) {
+      transaction.set(userRef, baseUpdates, { merge: true });
+      return;
+    }
+
+    const existingFreeMinutes = Number(userData.freeMinutesRemaining ?? DEFAULT_STUDENT_FREE_MINUTES);
+    const existingEarned = Number(userData.totalFreeMinutesEarned ?? DEFAULT_STUDENT_FREE_MINUTES);
+    transaction.set(userRef, {
+      ...baseUpdates,
+      freeMinutesRemaining: Number.isFinite(existingFreeMinutes) ? existingFreeMinutes : DEFAULT_STUDENT_FREE_MINUTES,
+      totalFreeMinutesEarned: Number.isFinite(existingEarned) ? existingEarned : DEFAULT_STUDENT_FREE_MINUTES,
+      totalFreeMinutesUsed: Number(userData.totalFreeMinutesUsed || 0),
+      referralRewardCount: Number(userData.referralRewardCount || 0),
+    }, { merge: true });
+
+    const alreadyProcessed = Boolean((userData.growth || {}).accountCompletionRewardProcessed);
+    if (!emailVerified || alreadyProcessed) return;
+
+    const pendingReferralCode = String(userData.pendingReferralCode || '').trim().toUpperCase();
+    if (!pendingReferralCode) {
+      transaction.set(userRef, {
+        growth: {
+          ...(userData.growth || {}),
+          accountCompletionRewardProcessed: true,
+          accountCompletionQualifiedAt: new Date().toISOString(),
+        },
+      }, { merge: true });
+      return;
+    }
+
+    const referrerQuery = db.collection('users').where('referralCode', '==', pendingReferralCode).limit(1);
+    const referrerQuerySnap = await transaction.get(referrerQuery);
+    const referrerDoc = referrerQuerySnap.docs[0];
+    const referrerId = referrerDoc?.id || null;
+    if (!referrerId || referrerId === decoded.uid) {
+      transaction.set(userRef, {
+        pendingReferralCode: null,
+        growth: {
+          ...(userData.growth || {}),
+          accountCompletionRewardProcessed: true,
+          accountCompletionQualifiedAt: new Date().toISOString(),
+        },
+      }, { merge: true });
+      return;
+    }
+
+    const referralRef = db.collection('referrals').doc(`${referrerId}_${decoded.uid}`);
+    const referralSnap = await transaction.get(referralRef);
+    const rewardAlreadyGranted = Boolean(referralSnap.exists && referralSnap.data()?.rewardGranted);
+
+    transaction.set(referralRef, {
+      referrerId,
+      referredUserId: decoded.uid,
+      referralCode: pendingReferralCode,
+      status: 'completed',
+      rewardGranted: true,
+      rewardMinutesGranted: REFERRAL_REWARD_MINUTES,
+      createdAt: referralSnap.exists ? (referralSnap.data()?.createdAt || admin.firestore.FieldValue.serverTimestamp()) : admin.firestore.FieldValue.serverTimestamp(),
+      completedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    if (!rewardAlreadyGranted) {
+      const referrerRef = db.collection('users').doc(referrerId);
+      transaction.set(referrerRef, {
+        freeMinutesRemaining: admin.firestore.FieldValue.increment(REFERRAL_REWARD_MINUTES),
+        totalFreeMinutesEarned: admin.firestore.FieldValue.increment(REFERRAL_REWARD_MINUTES),
+        referralRewardCount: admin.firestore.FieldValue.increment(1),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    }
+
+    transaction.set(userRef, {
+      referredBy: referrerId,
+      pendingReferralCode: null,
+      growth: {
+        ...(userData.growth || {}),
+        accountCompletionRewardProcessed: true,
+        accountCompletionQualifiedAt: new Date().toISOString(),
+      },
+    }, { merge: true });
+  });
+
+  const profileSnap = await userRef.get();
+  res.status(200).json({ success: true, profile: { uid: decoded.uid, ...(profileSnap.data() || {}) } });
 });
 
 exports.getIceConfig = onRequest(
@@ -851,25 +1013,33 @@ exports.finalizeSessionBilling = onRequest({ cors: true, secrets: [PAYSTACK_SECR
     closureType,
     selectedDurationMinutes: Number(session.durationMinutes || snapshot.durationMinutes || 0),
   });
-  const totalAmount = settlement.totalAmount;
-  const tutorAmount = Number((totalAmount * BILLING_RULES.TUTOR_PAYOUT_RATE).toFixed(2));
-  const platformAmount = Number((totalAmount * BILLING_RULES.PLATFORM_FEE_RATE).toFixed(2));
+  const originalPrice = Number(settlement.totalAmount || 0);
 
   const studentRef = db.collection('users').doc(session.studentId);
   const studentSnap = await studentRef.get();
   const studentData = studentSnap.data() || {};
+  const freeMinuteDiscount = applyFreeMinuteDiscount({
+    originalPrice,
+    durationMinutes: Math.max(0, billedMinutes),
+    freeMinutesRemaining: Number(studentData.freeMinutesRemaining || 0),
+  });
+  const totalAmount = freeMinuteDiscount.finalPrice;
+  const tutorAmount = Number((originalPrice * BILLING_RULES.TUTOR_PAYOUT_RATE).toFixed(2));
+  const platformAmount = Number((originalPrice * BILLING_RULES.PLATFORM_FEE_RATE).toFixed(2));
   const paymentMethods = studentData.paymentMethods || [];
   const selectedCard = paymentMethods.find((card) => card.id === session.selectedCardId)
     || paymentMethods.find((card) => card.isDefault)
     || paymentMethods[0]
     || null;
 
-  const charge = await chargeAuthorizationWithPaystack({
-    paystackSecretKey: PAYSTACK_SECRET_KEY.value(),
-    email: studentData.email || session.studentEmail || '',
-    amount: totalAmount,
-    authorizationCode: selectedCard?.paystackAuthorizationCode || '',
-  });
+  const charge = totalAmount <= 0
+    ? { ok: true, reason: null, transactionId: 'free-minutes-covered' }
+    : await chargeAuthorizationWithPaystack({
+        paystackSecretKey: PAYSTACK_SECRET_KEY.value(),
+        email: studentData.email || session.studentEmail || '',
+        amount: totalAmount,
+        authorizationCode: selectedCard?.paystackAuthorizationCode || '',
+      });
 
   const paymentStatus = charge.ok ? 'paid' : 'wallet_debt_recorded';
   const wallet = studentData.wallet || { balance: 0, currency: 'ZAR' };
@@ -884,12 +1054,23 @@ exports.finalizeSessionBilling = onRequest({ cors: true, secrets: [PAYSTACK_SECR
     billedSeconds,
     billedMinutes,
     totalAmount,
+    originalPrice,
+    discountApplied: freeMinuteDiscount.discountApplied,
+    finalPrice: freeMinuteDiscount.finalPrice,
+    discountSource: freeMinuteDiscount.discountSource,
+    freeMinutesApplied: freeMinuteDiscount.freeMinutesApplied,
+    requestedDurationMinutes: Number(session.durationMinutes || snapshot.durationMinutes || 0),
     canceledBy: closureType === 'canceled_during' ? canceledBy : null,
     canceledReason: closureType === 'canceled_during' ? canceledReason : null,
     pricingSnapshot: {
       ...snapshot,
       billedMinutes,
-      finalAmount: totalAmount,
+      originalPrice,
+      discountApplied: freeMinuteDiscount.discountApplied,
+      finalAmount: freeMinuteDiscount.finalPrice,
+      finalPayablePrice: freeMinuteDiscount.finalPrice,
+      discountSource: freeMinuteDiscount.discountSource,
+      freeMinutesApplied: freeMinuteDiscount.freeMinutesApplied,
       finalizedAt: new Date(endedAt).toISOString(),
       legacyFallbackUsed: isLegacySession,
       closureType,
@@ -919,6 +1100,14 @@ exports.finalizeSessionBilling = onRequest({ cors: true, secrets: [PAYSTACK_SECR
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   }, { merge: true });
 
+  if (freeMinuteDiscount.freeMinutesApplied > 0) {
+    batch.set(studentRef, {
+      freeMinutesRemaining: Number(Math.max(0, Number(studentData.freeMinutesRemaining || 0) - freeMinuteDiscount.freeMinutesApplied).toFixed(2)),
+      totalFreeMinutesUsed: Number((Number(studentData.totalFreeMinutesUsed || 0) + freeMinuteDiscount.freeMinutesApplied).toFixed(2)),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+  }
+
   if (!charge.ok) {
     batch.set(studentRef, {
       wallet: {
@@ -942,7 +1131,10 @@ exports.finalizeSessionBilling = onRequest({ cors: true, secrets: [PAYSTACK_SECR
     configVersion: updatedSession?.pricingSnapshot?.configVersion || null,
     pricingBand: updatedSession?.pricingSnapshot?.pricingBand || null,
     billedMinutes,
+    originalPrice,
     totalAmount,
+    discountApplied: freeMinuteDiscount.discountApplied,
+    freeMinutesApplied: freeMinuteDiscount.freeMinutesApplied,
     paymentStatus,
     legacyFallbackUsed: Boolean(updatedSession?.pricingSnapshot?.legacyFallbackUsed),
     closureType,

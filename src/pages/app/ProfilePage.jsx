@@ -133,6 +133,18 @@ export default function ProfilePage() {
         </dl>
       </SectionCard>
 
+      {(user?.activeRole || user?.role) === 'student' ? (
+        <SectionCard title="Free minutes & referrals" subtitle="Share your code to earn +30 free minutes when a referred student completes signup and verifies email.">
+          <div className="space-y-2 text-sm text-zinc-700">
+            <p><span className="font-semibold">Free minutes remaining:</span> {Number(user?.freeMinutesRemaining || 0).toFixed(2)} min</p>
+            <p><span className="font-semibold">Referral code:</span> {user?.referralCode || 'Not assigned yet'}</p>
+            <p className="text-xs text-zinc-500">
+              Share link: {`${window.location.origin}/signup?ref=${encodeURIComponent(user?.referralCode || '')}`}
+            </p>
+          </div>
+        </SectionCard>
+      ) : null}
+
       <SectionCard title="Delete account" subtitle="This permanently removes your profile and access.">
         <div className="space-y-3">
           <p className="text-sm text-rose-600">Type DELETE below to confirm permanent account deletion.</p>

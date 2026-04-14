@@ -10,6 +10,7 @@ import { getStudentOnboardingStatus } from '../../../utils/onboarding';
 import { REQUEST_STATUSES } from '../../../utils/requestStatus';
 import { DEFAULT_LESSON_DURATION, LESSON_DURATION_OPTIONS, formatRand } from '../../../utils/pricing';
 import { fetchPricingQuote } from '../../../services/pricingService';
+import { estimateFreeMinutePricing } from '../../../services/studentGrowthService';
 
 export default function StudentDashboardPage() {
   const { user } = useAuth();
@@ -42,6 +43,13 @@ export default function StudentDashboardPage() {
     ].includes(request.status),
   );
   const latestRequest = requests[0] || null;
+  const pricingPreview = quote
+    ? estimateFreeMinutePricing({
+        originalPrice: quote.totalAmount,
+        requestedDurationMinutes: durationMinutes,
+        freeMinutesRemaining: user?.freeMinutesRemaining || 0,
+      })
+    : null;
 
   const resizeTextarea = () => {
     if (!textareaRef.current) return;
@@ -98,6 +106,20 @@ export default function StudentDashboardPage() {
 
     try {
       const activeQuote = quote || (await refreshQuote(durationMinutes));
+      const activePricingPreview = estimateFreeMinutePricing({
+        originalPrice: activeQuote.totalAmount,
+        requestedDurationMinutes: durationMinutes,
+        freeMinutesRemaining: user?.freeMinutesRemaining || 0,
+      });
+      const quoteWithDiscount = {
+        ...activeQuote,
+        originalPrice: activePricingPreview.originalPrice,
+        discountApplied: activePricingPreview.discountApplied,
+        finalPrice: activePricingPreview.finalPrice,
+        discountSource: activePricingPreview.discountSource,
+        freeMinutesApplied: activePricingPreview.freeMinutesApplied,
+        requestedDurationMinutes: durationMinutes,
+      };
       const requestText =
         topic.trim() || `Help me with attached file${attachments.length > 1 ? 's' : ''}: ${attachments.map((file) => file.name).join(', ')}`;
 
@@ -139,7 +161,7 @@ export default function StudentDashboardPage() {
         studentName: user.fullName || user.displayName || user.email,
         studentEmail: user.email,
         selectedCardId: cardId,
-        pricingSnapshot: activeQuote,
+        pricingSnapshot: quoteWithDiscount,
       });
 
       navigate(`/app/student/request/${requestId}`, {
@@ -211,6 +233,13 @@ export default function StudentDashboardPage() {
                 Describe or upload the question you need help with.
               </p>
             </div>
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-indigo-200 bg-indigo-50/80 p-4 text-sm text-indigo-900">
+            <p className="font-semibold">Free minutes balance: {Number(user?.freeMinutesRemaining || 0).toFixed(2)} min</p>
+            <p className="mt-1 text-xs text-indigo-700">
+              Use your referral code <span className="font-semibold">{user?.referralCode || 'Loading...'}</span> to invite students and earn +30 min each.
+            </p>
           </div>
 
           {activeOrOngoingRequest || latestRequest ? (
@@ -329,13 +358,13 @@ export default function StudentDashboardPage() {
                   }`}
                 >
                   <Send className="h-4 w-4" />
-                  {isSubmitting ? 'Requesting...' : `Request ${quote ? formatRand(quote.totalAmount) : 'quote'}`}
+                  {isSubmitting ? 'Requesting...' : `Request ${pricingPreview ? formatRand(pricingPreview.finalPrice) : quote ? formatRand(quote.totalAmount) : 'quote'}`}
                 </button>
               </div>
 
-              {quote ? (
+              {quote && pricingPreview ? (
                 <p className="mt-2 text-xs text-zinc-600">
-                  {quote.explanationLabel} • {quote.pricingBand} band • base {formatRand(quote.adjustedBaseAmount)} + {formatRand(quote.adjustedRatePerMinute)}/min
+                  Original {formatRand(pricingPreview.originalPrice)} • Free-minute discount {formatRand(pricingPreview.discountApplied)} ({pricingPreview.freeMinutesApplied.toFixed(2)} min) • Pay now {formatRand(pricingPreview.finalPrice)}
                 </p>
               ) : null}
 

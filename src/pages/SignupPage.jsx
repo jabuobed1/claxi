@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { ArrowLeft, Mail, Lock, User, GraduationCap, BookOpen } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -21,6 +21,8 @@ export default function SignupPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [searchParams] = useSearchParams();
+  const [referralCode, setReferralCode] = useState(() => String(searchParams.get('ref') || '').trim().toUpperCase());
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { signup } = useAuth();
@@ -32,7 +34,7 @@ export default function SignupPage() {
 
     try {
       setIsSubmitting(true);
-      const user = await signup({ name, email, password, role });
+      const user = await signup({ name, email, password, role, referralCode });
       navigate(user.role === 'tutor' ? '/app/tutor' : '/app/student');
     } catch (submissionError) {
       setError(submissionError.message || 'Unable to create account right now.');
@@ -137,6 +139,21 @@ export default function SignupPage() {
                   placeholder="name@company.com"
                 />
               </div>
+            </div>
+
+            <div>
+              <label htmlFor="referralCode" className="mb-2 block text-sm font-bold text-zinc-900">
+                Referral code (optional)
+              </label>
+              <input
+                id="referralCode"
+                name="referralCode"
+                type="text"
+                value={referralCode}
+                onChange={(e) => setReferralCode(e.target.value.toUpperCase().trim())}
+                className="block w-full rounded-2xl border border-zinc-300 bg-zinc-50 py-3 px-4 text-zinc-900 placeholder-zinc-400 transition-all focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30"
+                placeholder="CLX-XXXXXX"
+              />
             </div>
 
             <div>

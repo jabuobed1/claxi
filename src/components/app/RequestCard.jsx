@@ -65,7 +65,8 @@ export default function RequestCard({ request, action }) {
 
         {request.pricingSnapshot?.totalAmount ? (
           <p className="min-w-0 break-words text-zinc-500">
-            Quote: R{Number(request.pricingSnapshot.totalAmount || 0).toFixed(2)} ({request.pricingSnapshot.pricingBand || 'normal'})
+            Quote: R{Number((request.pricingSnapshot.originalPrice ?? request.pricingSnapshot.totalAmount) || 0).toFixed(2)}
+            {' '}→ Pay R{Number((request.pricingSnapshot.finalPrice ?? request.pricingSnapshot.totalAmount) || 0).toFixed(2)}
           </p>
         ) : null}
 

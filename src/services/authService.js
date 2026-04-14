@@ -1,5 +1,6 @@
 import { getFirebaseClients } from '../firebase/config';
 import { EMAIL_EVENT_TYPES, queueEmailEvent } from './emailEventService';
+import { syncStudentGrowth } from './studentGrowthService';
 import { deleteUserProfile, getUserProfile, upsertUserProfile } from './userService';
 
 const MOCK_USER_KEY = 'claxi_mock_user';
@@ -52,8 +53,13 @@ export function subscribeToAuthChanges(callback) {
       }
 
       try {
+        await syncStudentGrowth().catch(() => null);
         const profile = (await getUserProfile(firebaseUser.uid)) || getFallbackProfile(firebaseUser);
-        callback(normalizeUserProfile({ ...profile, uid: firebaseUser.uid }, { uid: firebaseUser.uid }));
+        callback(normalizeUserProfile({
+          ...profile,
+          uid: firebaseUser.uid,
+          emailVerified: Boolean(firebaseUser.emailVerified),
+        }, { uid: firebaseUser.uid }));
       } catch (error) {
         console.warn('Failed to load Firestore profile during auth state change. Falling back to auth profile.', error);
         callback(normalizeUserProfile(getFallbackProfile(firebaseUser), getFallbackProfile(firebaseUser)));
@@ -81,6 +87,7 @@ export async function loginWithEmail({ email, password }) {
 
   const { auth, authModule } = clients;
   const credential = await authModule.signInWithEmailAndPassword(auth, email, password);
+  await syncStudentGrowth().catch(() => null);
 
   let profile = null;
   try {
@@ -99,7 +106,7 @@ export async function loginWithEmail({ email, password }) {
   });
 }
 
-export async function signupWithEmail({ name, email, password, role }) {
+export async function signupWithEmail({ name, email, password, role, referralCode = '' }) {
   const clients = await getFirebaseClients();
 
   if (!clients) {
@@ -125,6 +132,7 @@ export async function signupWithEmail({ name, email, password, role }) {
       email,
       displayName: name,
       role,
+      pendingReferralCode: String(referralCode || '').trim().toUpperCase() || null,
     });
   } catch (error) {
     console.warn('Failed to create Firestore profile during signup. Falling back to auth user.', error);
@@ -143,6 +151,8 @@ export async function signupWithEmail({ name, email, password, role }) {
     fullName: name,
     role,
   });
+
+  await syncStudentGrowth().catch(() => null);
 
   return normalizeUserProfile({
     uid: credential.user.uid,
