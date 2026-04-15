@@ -1,16 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { CreditCard, Paperclip, Send, X, FileText, ImageIcon } from 'lucide-react';
+import { Send } from 'lucide-react';
 import OnboardingStatusBanner from '../../../components/app/OnboardingStatusBanner';
+import StudentTopNav from '../../../components/app/student/StudentTopNav';
+import StudentRequestInputPanel from '../../../components/app/student/StudentRequestInputPanel';
 import { useAuth } from '../../../hooks/useAuth';
 import { useStudentRequests } from '../../../hooks/useClassRequests';
 import { createClassRequest } from '../../../services/classRequestService';
 import { uploadUserFile } from '../../../services/storageService';
 import { getStudentOnboardingStatus } from '../../../utils/onboarding';
 import { REQUEST_STATUSES } from '../../../utils/requestStatus';
-import { DEFAULT_LESSON_DURATION, LESSON_DURATION_OPTIONS, formatRand } from '../../../utils/pricing';
+import { DEFAULT_LESSON_DURATION, formatRand } from '../../../utils/pricing';
 import { fetchPricingQuote } from '../../../services/pricingService';
 import { estimateFreeMinutePricing } from '../../../services/studentGrowthService';
+
+const STUDENT_HERO_IMAGE =
+  'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=2000&q=80';
 
 export default function StudentDashboardPage() {
   const { user } = useAuth();
@@ -197,189 +202,114 @@ export default function StudentDashboardPage() {
   };
 
   return (
-    <div className="relative flex min-h-[calc(100vh-13rem)] flex-col overflow-hidden bg-transparent">
-      {!onboardingStatus.complete ? (
-        <div className="mb-4">
-          <OnboardingStatusBanner user={user} role="student" />
-          <div className="mt-3 rounded-2xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-            <p>{onboardingStatus.message}</p>
-            <Link
-              to="/app/onboarding?role=student"
-              className="mt-2 inline-flex rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white"
-            >
-              Complete profile
-            </Link>
-          </div>
-        </div>
-      ) : null}
+    <div className="relative -mx-4 -mt-4 flex min-h-[calc(100vh-4rem)] flex-col overflow-hidden bg-zinc-950 md:-mx-6 md:-mt-6 md:min-h-[calc(100vh-5rem)]">
+      <img
+        src={STUDENT_HERO_IMAGE}
+        alt="Student learning environment"
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/55 to-black/85" />
 
-      <div className="relative flex flex-1 flex-col px-4 pt-4 md:px-6 md:pt-6">
-        <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col">
-          <div className="overflow-hidden rounded-[2rem] border border-white/60 bg-white/70 p-6 backdrop-blur-xl md:p-10">
-            <div className="max-w-3xl">
-              <div className="mb-4 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-700">
-                Smart class requests
-              </div>
+      <StudentTopNav displayName={displayName} />
 
-              <h1 className="text-3xl font-black leading-tight tracking-tight text-zinc-950 md:text-3xl">
-                Hello{' '}
-                <span className="bg-gradient-to-r from-emerald-500 via-teal-500 to-blue-500 bg-clip-text text-transparent">
-                  {displayName}
-                </span>
-                , request anything you would like help with.
-              </h1>
-
-              <p className="mt-4 max-w-2xl text-sm leading-6 text-zinc-600 md:text-base">
-                Describe or upload the question you need help with.
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-4 rounded-2xl border border-indigo-200 bg-indigo-50/80 p-4 text-sm text-indigo-900">
-            <p className="font-semibold">Free minutes balance: {Number(user?.freeMinutesRemaining || 0).toFixed(2)} min</p>
-            <p className="mt-1 text-xs text-indigo-700">
-              Use your referral code <span className="font-semibold">{user?.referralCode || 'Loading...'}</span> to invite students and earn +30 min each.
-            </p>
-          </div>
-
-          {activeOrOngoingRequest || latestRequest ? (
-            <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 text-sm text-emerald-900">
-              <p className="font-semibold">Recent and active sessions</p>
-              {activeOrOngoingRequest ? (
-                <p className="mt-1">
-                  Active request: <span className="font-semibold">{activeOrOngoingRequest.topic || 'Mathematics request'}</span> ({activeOrOngoingRequest.status}).
-                  <Link to={`/app/student/request/${activeOrOngoingRequest.id}`} className="ml-1 underline">Open status</Link>
-                </p>
-              ) : null}
-              {latestRequest ? (
-                <p className="mt-1">
-                  Last request: <span className="font-semibold">{latestRequest.topic || 'Mathematics request'}</span>.
-                  <Link to={`/app/student/requests/${latestRequest.id}`} className="ml-1 underline">View details</Link>
-                </p>
-              ) : null}
+      <div className="relative z-10 mt-auto px-4 pb-5 pt-24 sm:px-6">
+        <div className="mx-auto w-full max-w-2xl">
+          {!onboardingStatus.complete ? (
+            <div className="mb-3 rounded-2xl border border-amber-200/20 bg-black/35 p-3 text-sm text-amber-100 backdrop-blur-xl">
+              <OnboardingStatusBanner user={user} role="student" />
+              <p className="mt-2">{onboardingStatus.message}</p>
+              <Link
+                to="/app/onboarding?role=student"
+                className="mt-3 inline-flex rounded-xl bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white"
+              >
+                Complete profile
+              </Link>
             </div>
           ) : null}
 
-          <div className="flex-1" />
+          <div className="inline-flex items-center rounded-full border border-emerald-300/30 bg-emerald-500/20 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-100">
+            Student Request
+          </div>
 
-          <div className="sticky bottom-0 z-20 mt-8 pb-1 md:pb-1">
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white via-white/90 to-transparent" />
+          <h1 className="mt-3 text-3xl font-black leading-tight tracking-tight text-white sm:text-4xl">
+            Request a tutor instantly with Claxi
+          </h1>
 
-            <div className="relative rounded-[2rem] bg-transparent p-1 md:p-1">
-              <div className="rounded-[1.5rem] border border-zinc-200/80 bg-white px-4 py-3 shadow-inner md:px-5 md:py-4">
-                {attachments.length > 0 ? (
-                  <div className="mb-3 flex flex-wrap gap-2">
-                    {attachments.map((file, index) => {
-                      const isImage = file.type.startsWith('image/');
-                      return (
-                        <div
-                          key={`${file.name}-${file.size}-${file.lastModified}-${index}`}
-                          className="inline-flex max-w-full items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800"
-                        >
-                          {isImage ? <ImageIcon className="h-3.5 w-3.5 shrink-0" /> : <FileText className="h-3.5 w-3.5 shrink-0" />}
-                          <span className="max-w-[180px] truncate font-medium md:max-w-[260px]">{file.name}</span>
-                          <button
-                            type="button"
-                            onClick={() => removeAttachment(index)}
-                            className="inline-flex h-4 w-4 items-center justify-center rounded-full text-emerald-700 transition hover:bg-emerald-100"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
+          <p className="mt-2 text-sm text-zinc-200/90">Hi {displayName}. Ask a question, attach your work, and continue in one step.</p>
+
+          <div className="mt-4 space-y-3">
+            <StudentRequestInputPanel
+              topic={topic}
+              onTopicChange={onTopicChange}
+              textareaRef={textareaRef}
+              attachments={attachments}
+              onFileChange={onFileChange}
+              onRemoveAttachment={removeAttachment}
+              durationMinutes={durationMinutes}
+              onDurationChange={handleDurationChange}
+              cardId={cardId}
+              onCardChange={setCardId}
+              paymentMethods={user?.paymentMethods || []}
+            />
+
+            {activeOrOngoingRequest || latestRequest ? (
+              <div className="rounded-2xl border border-white/15 bg-black/30 p-3 text-xs text-zinc-200 backdrop-blur-xl">
+                {activeOrOngoingRequest ? (
+                  <p>
+                    Active request:{' '}
+                    <span className="font-semibold text-white">{activeOrOngoingRequest.topic || 'Mathematics request'}</span>.
+                    <Link to={`/app/student/request/${activeOrOngoingRequest.id}`} className="ml-1 underline underline-offset-2 text-emerald-300">Open status</Link>
+                  </p>
                 ) : null}
-
-                <textarea
-                  ref={textareaRef}
-                  value={topic}
-                  onChange={onTopicChange}
-                  placeholder="Ask for a class, explain the topic, or upload files..."
-                  rows={1}
-                  className="max-h-[220px] min-h-[28px] w-full resize-none overflow-y-auto bg-transparent py-1 text-sm leading-7 text-zinc-900 placeholder:text-zinc-400 outline-none md:text-[15px]"
-                />
+                {!activeOrOngoingRequest && latestRequest ? (
+                  <p>
+                    Last request:{' '}
+                    <span className="font-semibold text-white">{latestRequest.topic || 'Mathematics request'}</span>.
+                    <Link to={`/app/student/requests/${latestRequest.id}`} className="ml-1 underline underline-offset-2 text-emerald-300">View details</Link>
+                  </p>
+                ) : null}
               </div>
+            ) : null}
 
-              <div className="mt-3 flex flex-col gap-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <label className="inline-flex h-11 min-w-[140px] items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 text-zinc-700 transition hover:border-emerald-300 hover:bg-emerald-50">
-                    <span className="text-xs font-semibold text-zinc-500">Duration</span>
-                    <select
-                      value={durationMinutes}
-                      onChange={handleDurationChange}
-                      className="w-auto bg-transparent text-xs text-zinc-800 outline-none"
-                    >
-                      {LESSON_DURATION_OPTIONS.map((option) => (
-                        <option key={option} value={option}>{option} min</option>
-                      ))}
-                    </select>
-                  </label>
+            <button
+              type="button"
+              onClick={goToRequestStatus}
+              disabled={!canSend || isSubmitting}
+              className={`inline-flex min-h-14 w-full flex-col items-center justify-center rounded-2xl px-4 py-2 text-white shadow-lg transition ${
+                canSend
+                  ? 'bg-[#10B981] hover:bg-emerald-500'
+                  : 'bg-zinc-500/80'
+              }`}
+            >
+              <span className="inline-flex items-center gap-2 text-base font-bold">
+                <Send className="h-4 w-4" />
+                {isSubmitting ? 'Requesting...' : 'Continue'}
+              </span>
+              <span className="mt-0.5 text-xs text-white/90">
+                Estimated price:{' '}
+                {pricingPreview
+                  ? formatRand(pricingPreview.finalPrice)
+                  : quote
+                    ? formatRand(quote.totalAmount)
+                    : '...'}
+              </span>
+            </button>
 
-                  <label className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 text-zinc-700 transition hover:border-emerald-300 hover:bg-emerald-50">
-                    <Paperclip className="h-4 w-4 shrink-0" />
-                    <span className="hidden text-xs font-semibold sm:inline">Add files</span>
-                    <input
-                      type="file"
-                      accept="application/pdf,image/*"
-                      multiple
-                      onChange={onFileChange}
-                      className="hidden"
-                    />
-                  </label>
+            {quote && pricingPreview ? (
+              <p className="text-xs text-zinc-300">
+                Original {formatRand(pricingPreview.originalPrice)} • Free-minute discount {formatRand(pricingPreview.discountApplied)} ({pricingPreview.freeMinutesApplied.toFixed(2)} min)
+              </p>
+            ) : null}
 
-                  <label className="inline-flex h-11 min-w-[52px] items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-3 text-zinc-700 transition hover:border-emerald-300 hover:bg-emerald-50 sm:min-w-[180px]">
-                    <CreditCard className="h-4 w-4 shrink-0" />
-                    <span className="hidden text-xs font-semibold text-zinc-500 sm:inline">Card</span>
-                    <select
-                      value={cardId}
-                      onChange={(event) => setCardId(event.target.value)}
-                      className="w-auto max-w-[130px] bg-transparent text-xs text-zinc-800 outline-none sm:max-w-none"
-                    >
-                      <option value="">Select</option>
-                      {(user?.paymentMethods || []).map((card) => (
-                        <option key={card.id} value={card.id}>
-                          {card.nickname.charAt(0).toUpperCase() + card.nickname.slice(1)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+            <p className="text-xs text-zinc-300">
+              Free minutes balance: {Number(user?.freeMinutesRemaining || 0).toFixed(2)} min • Referral code: {user?.referralCode || 'Loading...'}
+            </p>
 
-                </div>
+            {!user?.paymentMethods?.length ? (
+              <p className="text-xs text-amber-300">Add a payment card from Payment page first.</p>
+            ) : null}
 
-                <button
-                  type="button"
-                  onClick={goToRequestStatus}
-                  disabled={!canSend || isSubmitting}
-                  className={`inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-sm font-bold text-white transition md:h-14 md:text-[15px] ${
-                    canSend
-                      ? 'bg-emerald-600 hover:bg-emerald-700'
-                      : 'bg-zinc-400'
-                  }`}
-                >
-                  <Send className="h-4 w-4" />
-                  {isSubmitting ? 'Requesting...' : `Request ${pricingPreview ? formatRand(pricingPreview.finalPrice) : quote ? formatRand(quote.totalAmount) : 'quote'}`}
-                </button>
-              </div>
-
-              {quote && pricingPreview ? (
-                <p className="mt-2 text-xs text-zinc-600">
-                  Original {formatRand(pricingPreview.originalPrice)} • Free-minute discount {formatRand(pricingPreview.discountApplied)} ({pricingPreview.freeMinutesApplied.toFixed(2)} min) • Pay now {formatRand(pricingPreview.finalPrice)}
-                </p>
-              ) : null}
-
-              {!user?.paymentMethods?.length ? (
-                <p className="mt-2 text-xs text-amber-700">
-                  Add a payment card from Payment page first.
-                </p>
-              ) : null}
-
-              {error ? (
-                <p className="mt-2 text-xs text-rose-700">
-                  {error}
-                </p>
-              ) : null}
-            </div>
+            {error ? <p className="text-xs text-rose-300">{error}</p> : null}
           </div>
         </div>
       </div>
