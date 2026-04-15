@@ -9,7 +9,7 @@ git status
 git add .
 git commit -m "Commit before pulling student referrals and free sign up minutes - 14.04.2026 - 1."
 git push origin main
-
+git push origin main --force
 (This ensures Codex sees your latest work from GitHub)
 
 ---
