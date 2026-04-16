@@ -15,8 +15,8 @@ export const TUTOR_VERIFICATION_STATUSES = {
   REJECTED: 'rejected',
 };
 
-export const PLATFORM_FEE_RATE = 0.3;
-export const TUTOR_PAYOUT_RATE = 0.7;
+export const PLATFORM_FEE_RATE = 0.27;
+export const TUTOR_PAYOUT_RATE = 0.73;
 export const BILLING_CURRENCY = 'ZAR';
 
 export function getStudentOnboardingStatus(user) {
@@ -82,7 +82,7 @@ export function getTutorOnboardingStatus(user) {
       complete: false,
       step: TUTOR_PROFILE_STEPS.PAYOUT,
       title: 'Add payout details',
-      message: 'Add banking details so Claxi can send your 70% payout share.',
+      message: 'Add banking details so Claxi can send your 73% payout share.',
     };
   }
 

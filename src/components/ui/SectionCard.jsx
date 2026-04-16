@@ -1,6 +1,6 @@
-export default function SectionCard({ title, subtitle, action, children }) {
+export default function SectionCard({ title, subtitle, action, children, className = '' }) {
   return (
-    <section className="rounded-[24px] border border-white/10 bg-zinc-900/75 p-4 shadow-[0_16px_35px_rgba(2,6,23,0.4)] backdrop-blur md:rounded-[28px] md:p-6">
+    <section className={`rounded-[24px] border border-white/10 bg-zinc-900/75 p-4 shadow-[0_16px_35px_rgba(2,6,23,0.4)] backdrop-blur md:rounded-[28px] md:p-6 ${className}`}>
       {(title || action) && (
         <div className="mb-5 flex items-start justify-between gap-3">
           <div>
