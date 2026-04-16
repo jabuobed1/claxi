@@ -14,7 +14,6 @@ export function getRoleNavigation(role) {
   if (normalized === 'tutor') {
     return [
       { to: '/app/tutor', label: 'Home', icon: Home, end: true },
-      { to: '/app/tutor/available-requests', label: 'Schedule', icon: CalendarClock },
       { to: '/app/tutor/my-classes', label: 'Classes', icon: BookOpen },
       { to: '/app/tutor/payments', label: 'Payment', icon: Wallet },
     ];

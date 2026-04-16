@@ -4,22 +4,17 @@ import { BookOpen, CalendarClock, Home, UserCircle2, Wallet } from 'lucide-react
 function navConfig(role, restrictTutorActions = false) {
   if (role === 'tutor') {
     const tutorLinks = [
-      { to: '/app/tutor/my-classes', label: 'Classes', icon: BookOpen },
       { to: '/app/tutor', label: 'Home', icon: Home, end: true },
+      { to: '/app/tutor/my-classes', label: 'Classes', icon: BookOpen },
       { to: '/app/tutor/payments', label: 'Payment', icon: Wallet },
       { to: '/app/profile', label: 'Profile', icon: UserCircle2 },
     ];
-
-    if (!restrictTutorActions) {
-      tutorLinks.splice(1, 0, { to: '/app/tutor/available-requests', label: 'Schedule', icon: CalendarClock });
-    }
 
     return tutorLinks;
   }
 
   return [
     { to: '/app/student/requests', label: 'Classes', icon: BookOpen },
-    { to: '/app/student/request-class', label: 'Schedule', icon: CalendarClock },
     { to: '/app/student', label: 'Home', icon: Home, end: true },
     { to: '/app/student/payment', label: 'Payment', icon: Wallet },
     { to: '/app/profile', label: 'Profile', icon: UserCircle2 },
