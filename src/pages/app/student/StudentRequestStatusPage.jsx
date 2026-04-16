@@ -1,15 +1,6 @@
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
-import {
-  ArrowRight,
-  BookOpen,
-  CalendarClock,
-  CheckCircle2,
-  Clock3,
-  Search,
-  Sparkles,
-  XCircle,
-} from 'lucide-react';
+import { ArrowRight, CheckCircle2, Search, XCircle } from 'lucide-react';
 import PageHeader from '../../../components/ui/PageHeader';
 import SectionCard from '../../../components/ui/SectionCard';
 import { useStudentRequest } from '../../../hooks/useClassRequests';
@@ -19,71 +10,39 @@ import { REQUEST_STATUSES } from '../../../utils/requestStatus';
 import { cancelClassRequest } from '../../../services/classRequestService';
 
 function getStatusCopy(status) {
-  if ([REQUEST_STATUSES.PENDING, REQUEST_STATUSES.MATCHING].includes(status)) return 'Searching for tutors';
-  if (status === REQUEST_STATUSES.OFFERED) return 'Waiting for tutor to accept';
-  if (status === REQUEST_STATUSES.ACCEPTED) return 'Tutor accepted';
-  if (status === REQUEST_STATUSES.IN_SESSION) return 'Session has started';
-  if (status === REQUEST_STATUSES.WAITING_STUDENT || status === REQUEST_STATUSES.IN_PROGRESS) return 'Class link is ready';
-  if (status === REQUEST_STATUSES.NO_TUTOR_AVAILABLE) return 'No available tutor';
-  if (status === REQUEST_STATUSES.COMPLETED) return 'Your session is complete';
-  if (status === REQUEST_STATUSES.CANCELED) return 'This request has been canceled';
-  if (status === REQUEST_STATUSES.CANCELED_DURING) return 'This request was canceled during class';
-  if (status === REQUEST_STATUSES.EXPIRED) return 'Request expired';
-  return 'Preparing your request';
+  if ([REQUEST_STATUSES.PENDING, REQUEST_STATUSES.MATCHING, REQUEST_STATUSES.OFFERED].includes(status)) return 'Searching for a tutor';
+  if ([REQUEST_STATUSES.ACCEPTED, REQUEST_STATUSES.WAITING_STUDENT, REQUEST_STATUSES.IN_PROGRESS, REQUEST_STATUSES.IN_SESSION].includes(status)) return 'Tutor found';
+  if (status === REQUEST_STATUSES.NO_TUTOR_AVAILABLE) return 'No tutor available';
+  if (status === REQUEST_STATUSES.COMPLETED) return 'Class completed';
+  if ([REQUEST_STATUSES.CANCELED, REQUEST_STATUSES.CANCELED_DURING, REQUEST_STATUSES.EXPIRED].includes(status)) return 'Request closed';
+  return 'Request made';
 }
 
 function getStatusMeta(status) {
-  if ([REQUEST_STATUSES.PENDING, REQUEST_STATUSES.MATCHING].includes(status)) {
+  if ([REQUEST_STATUSES.PENDING, REQUEST_STATUSES.MATCHING, REQUEST_STATUSES.OFFERED].includes(status)) {
     return {
-      label: 'Matching in progress',
+      label: 'Searching for tutor',
       tone: 'emerald',
       icon: Search,
-      badge: 'We are finding the best tutor for you',
+      badge: 'Request made • searching for tutor',
     };
   }
 
-  if (status === REQUEST_STATUSES.OFFERED) {
+  if ([REQUEST_STATUSES.ACCEPTED, REQUEST_STATUSES.WAITING_STUDENT, REQUEST_STATUSES.IN_PROGRESS, REQUEST_STATUSES.IN_SESSION].includes(status)) {
     return {
-      label: 'Tutor offer sent',
-      tone: 'blue',
-      icon: Clock3,
-      badge: 'Waiting for tutor confirmation',
-    };
-  }
-
-  if (status === REQUEST_STATUSES.ACCEPTED) {
-    return {
-      label: 'Tutor accepted',
+      label: 'Tutor found',
       tone: 'violet',
       icon: CheckCircle2,
-      badge: 'Your session is ready. Joining now.',
-    };
-  }
-
-  if (status === REQUEST_STATUSES.WAITING_STUDENT || status === REQUEST_STATUSES.IN_PROGRESS) {
-    return {
-      label: 'Class ready',
-      tone: 'emerald',
-      icon: CalendarClock,
-      badge: 'You can now join from Classes',
-    };
-  }
-
-  if (status === REQUEST_STATUSES.IN_SESSION) {
-    return {
-      label: 'Live session',
-      tone: 'emerald',
-      icon: BookOpen,
-      badge: 'Your session is currently active',
+      badge: 'Tutor accepted your request',
     };
   }
 
   if (status === REQUEST_STATUSES.NO_TUTOR_AVAILABLE) {
     return {
-      label: 'Retrying match',
+      label: 'No tutor available',
       tone: 'amber',
       icon: Search,
-      badge: 'Looking for another tutor',
+      badge: 'No tutor available right now',
     };
   }
 
@@ -92,116 +51,58 @@ function getStatusMeta(status) {
       label: 'Completed',
       tone: 'emerald',
       icon: CheckCircle2,
-      badge: 'Your request has been completed',
+      badge: 'Class completed successfully',
     };
   }
 
-  if (status === REQUEST_STATUSES.CANCELED) {
+  if ([REQUEST_STATUSES.CANCELED, REQUEST_STATUSES.CANCELED_DURING, REQUEST_STATUSES.EXPIRED].includes(status)) {
     return {
-      label: 'Canceled',
+      label: 'Closed',
       tone: 'rose',
       icon: XCircle,
       badge: 'This request is no longer active',
     };
   }
 
-  if (status === REQUEST_STATUSES.CANCELED_DURING) {
-    return {
-      label: 'Canceled During Class',
-      tone: 'rose',
-      icon: XCircle,
-      badge: 'This class was canceled after the session started',
-    };
-  }
-
-  if (status === REQUEST_STATUSES.EXPIRED) {
-    return {
-      label: 'Expired',
-      tone: 'rose',
-      icon: XCircle,
-      badge: 'No tutor accepted within 3 minutes',
-    };
-  }
-
   return {
-    label: 'Processing',
+    label: 'Request made',
     tone: 'zinc',
-    icon: Sparkles,
+    icon: Search,
     badge: 'Preparing your request',
   };
-}
-
-function getProgressIndex(status) {
-  if ([REQUEST_STATUSES.PENDING, REQUEST_STATUSES.MATCHING].includes(status)) return 1;
-  if (status === REQUEST_STATUSES.OFFERED) return 2;
-  if (status === REQUEST_STATUSES.ACCEPTED) return 3;
-  if (
-    status === REQUEST_STATUSES.WAITING_STUDENT ||
-    status === REQUEST_STATUSES.IN_PROGRESS ||
-    status === REQUEST_STATUSES.IN_SESSION ||
-    status === REQUEST_STATUSES.COMPLETED
-  ) {
-    return 4;
-  }
-  return 1;
 }
 
 function getToneClasses(tone) {
   if (tone === 'emerald') {
     return {
-      ring: 'border-emerald-200 bg-emerald-50',
       iconWrap: 'bg-emerald-100 text-emerald-700',
-      badge: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-      text: 'text-emerald-700',
       gradient: 'from-emerald-500 via-teal-500 to-blue-500',
-    };
-  }
-
-  if (tone === 'blue') {
-    return {
-      ring: 'border-blue-200 bg-blue-50',
-      iconWrap: 'bg-blue-100 text-blue-700',
-      badge: 'border-blue-200 bg-blue-50 text-blue-700',
-      text: 'text-blue-700',
-      gradient: 'from-blue-500 via-cyan-500 to-indigo-500',
     };
   }
 
   if (tone === 'violet') {
     return {
-      ring: 'border-violet-200 bg-violet-50',
       iconWrap: 'bg-violet-100 text-violet-700',
-      badge: 'border-violet-200 bg-violet-50 text-violet-700',
-      text: 'text-violet-700',
       gradient: 'from-violet-500 via-fuchsia-500 to-blue-500',
     };
   }
 
   if (tone === 'amber') {
     return {
-      ring: 'border-amber-200 bg-amber-50',
       iconWrap: 'bg-amber-100 text-amber-700',
-      badge: 'border-amber-200 bg-amber-50 text-amber-700',
-      text: 'text-amber-700',
       gradient: 'from-amber-500 via-orange-500 to-yellow-500',
     };
   }
 
   if (tone === 'rose') {
     return {
-      ring: 'border-rose-200 bg-rose-50',
       iconWrap: 'bg-rose-100 text-rose-700',
-      badge: 'border-rose-200 bg-rose-50 text-rose-700',
-      text: 'text-rose-700',
       gradient: 'from-rose-500 via-pink-500 to-red-500',
     };
   }
 
   return {
-    ring: 'border-zinc-200 bg-zinc-50',
     iconWrap: 'bg-zinc-100 text-zinc-700',
-    badge: 'border-zinc-200 bg-zinc-50 text-zinc-700',
-    text: 'text-zinc-700',
     gradient: 'from-zinc-500 via-zinc-400 to-zinc-500',
   };
 }
@@ -227,7 +128,6 @@ export default function StudentRequestStatusPage() {
   const meta = getStatusMeta(currentStatus);
   const tone = getToneClasses(meta.tone);
   const StatusIcon = meta.icon;
-  const progressIndex = getProgressIndex(currentStatus);
 
   const topic = request?.topic || state?.topic || 'Your request';
   const duration = request?.duration || 'Per-minute billing';
@@ -241,13 +141,6 @@ export default function StudentRequestStatusPage() {
     [requestId, sessions],
   );
   const shouldAutoOpenSession = canJoin && Boolean(matchingSession?.id);
-
-  useEffect(() => {
-    console.log('request status:', currentStatus);
-    console.log('requestId:', requestId);
-    console.log('sessions:', sessions);
-    console.log('matchingSession:', matchingSession);
-  }, [currentStatus, requestId, sessions, matchingSession]);
 
   useEffect(() => {
     if (!shouldAutoOpenSession) return;
@@ -273,21 +166,14 @@ export default function StudentRequestStatusPage() {
     }
   };
 
-  const steps = [
-    { id: 1, title: 'Request received' },
-    { id: 2, title: 'Matching tutor' },
-    { id: 3, title: 'Tutor accepted' },
-    { id: 4, title: 'Class ready' },
-  ];
-
   return (
     <div className="space-y-6">
       <PageHeader
         title="Request Status"
-        description="Track your request in real time while we prepare the best class experience for you."
+        description="Simple live status for your class request."
       />
 
-      <div className="overflow-hidden rounded-[2rem] border border-white/60 bg-white/80 shadow-[0_20px_70px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+      <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-900/70 shadow-[0_20px_70px_rgba(2,6,23,0.4)] backdrop-blur-xl">
         <div className={`relative overflow-hidden bg-gradient-to-r ${tone.gradient} px-6 py-8 text-white md:px-8 md:py-10`}>
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.22),_transparent_35%)]" />
           <div className="relative flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
@@ -295,23 +181,19 @@ export default function StudentRequestStatusPage() {
               <div className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em]">
                 Live request update
               </div>
-              <h1 className="mt-4 text-3xl font-black tracking-tight md:text-5xl">
-                {statusText}
-              </h1>
+              <h1 className="mt-4 text-3xl font-black tracking-tight md:text-5xl">{statusText}</h1>
               <p className="mt-3 max-w-xl text-sm text-white/90 md:text-base">
-                We are keeping your request active and updating the status as it moves through the matching and scheduling process.
+                Request made, tutor search, and class completion updates appear here.
               </p>
             </div>
 
             <div className="w-full max-w-sm rounded-[1.75rem] border border-white/20 bg-white/10 p-4 backdrop-blur-md">
               <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
+                <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${tone.iconWrap}`}>
                   <StatusIcon className="h-6 w-6" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
-                    Current state
-                  </p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">Current state</p>
                   <p className="truncate text-lg font-bold text-white">{meta.label}</p>
                 </div>
               </div>
@@ -322,42 +204,40 @@ export default function StudentRequestStatusPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.35fr_0.95fr]">
-        <SectionCard title="Request overview" subtitle="If the request takes a little longer, do not worry. The system continues trying to match you with the right tutor based on availability.">
+        <SectionCard title="Request overview" subtitle="Essential details only. Open full details when needed.">
           <div className="space-y-5">
-            {request?.statusDetail ? (
-              <div className="rounded-[1.5rem] border border-indigo-200 bg-indigo-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-500">Latest update</p>
-                <p className="mt-2 text-sm font-medium text-indigo-900">{request.statusDetail}</p>
-              </div>
-            ) : null}
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-[1.5rem] border border-zinc-200 bg-zinc-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">Topic</p>
-                <p className="mt-2 break-words text-lg font-bold text-zinc-900">{topic}</p>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <div className="rounded-[1.5rem] border border-white/10 bg-zinc-900/70 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Topic</p>
+                <p className="mt-2 break-words text-lg font-bold text-zinc-100">{topic}</p>
               </div>
 
-              <div className="rounded-[1.5rem] border border-zinc-200 bg-zinc-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">Duration</p>
-                <p className="mt-2 text-lg font-bold text-zinc-900">{duration}</p>
+              <div className="rounded-[1.5rem] border border-white/10 bg-zinc-900/70 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Duration</p>
+                <p className="mt-2 text-lg font-bold text-zinc-100">{duration}</p>
+              </div>
+
+              <div className="rounded-[1.5rem] border border-white/10 bg-zinc-900/70 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Payment method</p>
+                <p className="mt-2 text-sm font-bold text-zinc-100">{request?.selectedCardId || 'Selected card on file'}</p>
               </div>
             </div>
 
             {canJoin ? (
               <div className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-4">
                 <p className="text-sm font-semibold text-emerald-800">
-                  Your online class link is ready. Open Classes to join the session.
+                  Your class is ready. Join now from the button on the right.
                 </p>
               </div>
             ) : null}
           </div>
         </SectionCard>
 
-        <SectionCard title="Actions" subtitle="Quick things the student may need right now.">
+        <SectionCard title="Actions" subtitle="Quick things you may need right now.">
           <div className="space-y-3">
             {canJoin ? (
               <Link
-                to={matchingSession?.id ? `/app/session/${matchingSession.id}` : '/app/student/sessions'}
+                to={matchingSession?.id ? `/app/session/${matchingSession.id}` : '/app/student/requests'}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-zinc-950 px-4 py-3 text-sm font-bold text-white transition hover:bg-zinc-800"
               >
                 Join session
@@ -366,10 +246,10 @@ export default function StudentRequestStatusPage() {
             ) : null}
 
             <Link
-              to="/app/student/requests"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-bold text-zinc-900 transition hover:bg-zinc-50"
-            >
-              View All Requests
+              to={`/app/student/requests/${requestId}`}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/15 bg-zinc-800 px-4 py-3 text-sm font-bold text-zinc-100 transition hover:bg-zinc-700"
+              >
+              View full request details
             </Link>
 
             {canCancel ? (

@@ -13,6 +13,8 @@ import SectionCard from '../../../components/ui/SectionCard';
 import LoadingState from '../../../components/ui/LoadingState';
 import { useStudentRequest } from '../../../hooks/useClassRequests';
 import StatusBadge from '../../../components/ui/StatusBadge';
+import { useStudentSessions } from '../../../hooks/useSessions';
+import { useAuth } from '../../../hooks/useAuth';
 
 function DetailItem({ icon: Icon, label, value, muted = false }) {
   return (
@@ -30,7 +32,9 @@ function DetailItem({ icon: Icon, label, value, muted = false }) {
 
 export default function StudentRequestDetailsPage() {
   const { requestId } = useParams();
+  const { user } = useAuth();
   const { request, isLoading } = useStudentRequest(requestId || '');
+  const { sessions } = useStudentSessions(user?.uid);
 
   if (!requestId) {
     return <Navigate to="/app/student/requests" replace />;
@@ -41,6 +45,7 @@ export default function StudentRequestDetailsPage() {
     : request?.attachment?.downloadUrl
       ? [request.attachment]
       : [];
+  const relatedSession = sessions.find((session) => session.requestId === requestId);
 
   return (
     <div className="space-y-6">
@@ -112,6 +117,14 @@ export default function StudentRequestDetailsPage() {
                   ? `Original R${Number(request.pricingSnapshot.originalPrice ?? request.pricingSnapshot.totalAmount).toFixed(2)} • Discount R${Number(request.pricingSnapshot.discountApplied || 0).toFixed(2)} • Pay R${Number(request.pricingSnapshot.finalPrice ?? request.pricingSnapshot.totalAmount).toFixed(2)}`
                   : 'Not quoted'}
                 muted={!request.pricingSnapshot?.totalAmount}
+              />
+              <DetailItem
+                icon={CalendarClock}
+                label="Session details"
+                value={relatedSession
+                  ? `Status ${relatedSession.status || 'waiting_student'} • Length ${relatedSession.duration || request.duration || 'TBD'}`
+                  : 'Session will appear here once tutor accepts'}
+                muted={!relatedSession}
               />
             </div>
 

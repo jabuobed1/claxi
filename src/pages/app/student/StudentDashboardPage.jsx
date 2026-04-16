@@ -11,6 +11,7 @@ import { REQUEST_STATUSES } from '../../../utils/requestStatus';
 import { DEFAULT_LESSON_DURATION, LESSON_DURATION_OPTIONS, formatRand } from '../../../utils/pricing';
 import { fetchPricingQuote } from '../../../services/pricingService';
 import { estimateFreeMinutePricing } from '../../../services/studentGrowthService';
+import { useStudentSessions } from '../../../hooks/useSessions';
 
 export default function StudentDashboardPage() {
   const { user } = useAuth();
@@ -26,23 +27,21 @@ export default function StudentDashboardPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const { requests } = useStudentRequests(user?.uid);
+  const { sessions } = useStudentSessions(user?.uid);
 
   const onboardingStatus = getStudentOnboardingStatus(user);
   const hasRequestContent = Boolean(topic.trim()) || attachments.length > 0;
   const canSend = onboardingStatus.complete && hasRequestContent && Boolean(cardId);
-  const activeOrOngoingRequest = requests.find((request) =>
-    [
-      REQUEST_STATUSES.PENDING,
-      REQUEST_STATUSES.MATCHING,
-      REQUEST_STATUSES.OFFERED,
-      REQUEST_STATUSES.ACCEPTED,
-      REQUEST_STATUSES.WAITING_STUDENT,
-      REQUEST_STATUSES.IN_PROGRESS,
-      REQUEST_STATUSES.IN_SESSION,
-      REQUEST_STATUSES.NO_TUTOR_AVAILABLE,
-    ].includes(request.status),
-  );
-  const latestRequest = requests[0] || null;
+  const activeOrOngoingRequest = requests.find((request) => [
+    REQUEST_STATUSES.PENDING,
+    REQUEST_STATUSES.MATCHING,
+    REQUEST_STATUSES.OFFERED,
+    REQUEST_STATUSES.ACCEPTED,
+    REQUEST_STATUSES.WAITING_STUDENT,
+    REQUEST_STATUSES.IN_PROGRESS,
+    REQUEST_STATUSES.IN_SESSION,
+  ].includes(request.status));
+  const latestOpenSession = sessions.find((session) => ['waiting_student', 'in_progress'].includes(session.status));
   const pricingPreview = quote
     ? estimateFreeMinutePricing({
         originalPrice: quote.totalAmount,
@@ -215,13 +214,13 @@ export default function StudentDashboardPage() {
 
       <div className="relative flex flex-1 flex-col px-4 pt-4 md:px-6 md:pt-6">
         <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col">
-          <div className="overflow-hidden rounded-[2rem] border border-white/60 bg-white/70 p-6 backdrop-blur-xl md:p-10">
+          <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-900/70 p-6 backdrop-blur-xl md:p-10">
             <div className="max-w-3xl">
               <div className="mb-4 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-700">
                 Smart class requests
               </div>
 
-              <h1 className="text-3xl font-black leading-tight tracking-tight text-zinc-950 md:text-3xl">
+              <h1 className="text-3xl font-black leading-tight tracking-tight text-zinc-100 md:text-3xl">
                 Hello{' '}
                 <span className="bg-gradient-to-r from-emerald-500 via-teal-500 to-blue-500 bg-clip-text text-transparent">
                   {displayName}
@@ -229,32 +228,32 @@ export default function StudentDashboardPage() {
                 , request anything you would like help with.
               </h1>
 
-              <p className="mt-4 max-w-2xl text-sm leading-6 text-zinc-600 md:text-base">
+              <p className="mt-4 max-w-2xl text-sm leading-6 text-zinc-300 md:text-base">
                 Describe or upload the question you need help with.
               </p>
             </div>
           </div>
 
-          <div className="mt-4 rounded-2xl border border-indigo-200 bg-indigo-50/80 p-4 text-sm text-indigo-900">
+          <div className="mt-4 rounded-2xl border border-indigo-500/25 bg-indigo-500/10 p-4 text-sm text-indigo-100">
             <p className="font-semibold">Free minutes balance: {Number(user?.freeMinutesRemaining || 0).toFixed(2)} min</p>
-            <p className="mt-1 text-xs text-indigo-700">
+            <p className="mt-1 text-xs text-indigo-200">
               Use your referral code <span className="font-semibold">{user?.referralCode || 'Loading...'}</span> to invite students and earn +30 min each.
             </p>
           </div>
 
-          {activeOrOngoingRequest || latestRequest ? (
-            <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 text-sm text-emerald-900">
-              <p className="font-semibold">Recent and active sessions</p>
-              {activeOrOngoingRequest ? (
+          {latestOpenSession || activeOrOngoingRequest ? (
+            <div className="mt-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-100">
+              <p className="font-semibold">Continue your class</p>
+              {latestOpenSession ? (
                 <p className="mt-1">
-                  Active request: <span className="font-semibold">{activeOrOngoingRequest.topic || 'Mathematics request'}</span> ({activeOrOngoingRequest.status}).
-                  <Link to={`/app/student/request/${activeOrOngoingRequest.id}`} className="ml-1 underline">Open status</Link>
+                  Live session available: <span className="font-semibold">{latestOpenSession.topic || 'Mathematics class'}</span>.
+                  <Link to={`/app/session/${latestOpenSession.id}`} className="ml-1 underline">Join now</Link>
                 </p>
               ) : null}
-              {latestRequest ? (
+              {!latestOpenSession && activeOrOngoingRequest ? (
                 <p className="mt-1">
-                  Last request: <span className="font-semibold">{latestRequest.topic || 'Mathematics request'}</span>.
-                  <Link to={`/app/student/requests/${latestRequest.id}`} className="ml-1 underline">View details</Link>
+                  We&apos;re still processing your latest request: <span className="font-semibold">{activeOrOngoingRequest.topic || 'Mathematics request'}</span>.
+                  <Link to={`/app/student/request/${activeOrOngoingRequest.id}`} className="ml-1 underline">View status</Link>
                 </p>
               ) : null}
             </div>
@@ -263,10 +262,10 @@ export default function StudentDashboardPage() {
           <div className="flex-1" />
 
           <div className="sticky bottom-0 z-20 mt-8 pb-1 md:pb-1">
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white via-white/90 to-transparent" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-zinc-950 via-zinc-950/85 to-transparent" />
 
             <div className="relative rounded-[2rem] bg-transparent p-1 md:p-1">
-              <div className="rounded-[1.5rem] border border-zinc-200/80 bg-white px-4 py-3 shadow-inner md:px-5 md:py-4">
+              <div className="rounded-[1.5rem] border border-white/10 bg-zinc-900 px-4 py-3 shadow-inner md:px-5 md:py-4">
                 {attachments.length > 0 ? (
                   <div className="mb-3 flex flex-wrap gap-2">
                     {attachments.map((file, index) => {
@@ -297,7 +296,7 @@ export default function StudentDashboardPage() {
                   onChange={onTopicChange}
                   placeholder="Ask for a class, explain the topic, or upload files..."
                   rows={1}
-                  className="max-h-[220px] min-h-[28px] w-full resize-none overflow-y-auto bg-transparent py-1 text-sm leading-7 text-zinc-900 placeholder:text-zinc-400 outline-none md:text-[15px]"
+                  className="max-h-[220px] min-h-[28px] w-full resize-none overflow-y-auto bg-transparent py-1 text-sm leading-7 text-zinc-100 placeholder:text-zinc-500 outline-none md:text-[15px]"
                 />
               </div>
 

@@ -17,22 +17,22 @@ export default function Sidebar({ role, onNavigate, mobile = false }) {
   };
 
   return (
-    <aside className="flex h-full w-full flex-col rounded-[2rem] border border-zinc-200/90 bg-white/95 p-4 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur">
+    <aside className="flex h-full w-full flex-col rounded-[2rem] border border-white/10 bg-zinc-900/80 p-4 shadow-[0_28px_60px_rgba(2,6,23,0.5)] backdrop-blur">
       <div className="mb-6 flex items-center justify-between px-2 pt-1">
         <Link to="/app" onClick={onNavigate} className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand text-white shadow-sm">
             <GraduationCap className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-sm font-bold tracking-tight text-zinc-900">Claxi</p>
-            <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">{role} workspace</p>
+            <p className="text-sm font-bold tracking-tight text-zinc-100">Claxi</p>
+            <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-400">{role} workspace</p>
           </div>
         </Link>
         {mobile ? (
           <button
             type="button"
             onClick={onNavigate}
-            className="rounded-xl border border-zinc-200 p-2 text-zinc-600"
+            className="rounded-xl border border-white/10 p-2 text-zinc-300"
             aria-label="Close navigation"
           >
             <X className="h-4 w-4" />
@@ -50,7 +50,7 @@ export default function Sidebar({ role, onNavigate, mobile = false }) {
             className={({ isActive }) =>
               `${baseClass} ${isActive
                 ? 'bg-brand text-white shadow-sm shadow-emerald-200'
-                : 'text-zinc-700 hover:bg-zinc-100/90 hover:text-zinc-900'}`
+                : 'text-zinc-300 hover:bg-zinc-800/90 hover:text-zinc-100'}`
             }
           >
             <Icon className="h-4 w-4 transition-transform group-hover:scale-110" />
@@ -59,17 +59,17 @@ export default function Sidebar({ role, onNavigate, mobile = false }) {
         ))}
       </nav>
 
-      <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-3 text-xs text-emerald-800">
+      <div className="mt-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-200">
         <p className="font-semibold">Tip</p>
         <p className="mt-1 leading-relaxed">Keep your profile and availability up to date for a smoother matching experience.</p>
       </div>
 
-      <div className="mt-auto border-t border-zinc-200 pt-4">
+      <div className="mt-auto border-t border-white/10 pt-4">
         <NavLink
           to="/app/profile"
           onClick={onNavigate}
           className={({ isActive }) =>
-            `${baseClass} ${isActive ? 'bg-zinc-900 text-white' : 'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900'}`
+            `${baseClass} ${isActive ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100'}`
           }
         >
           <UserCircle2 className="h-4 w-4" />
@@ -78,7 +78,7 @@ export default function Sidebar({ role, onNavigate, mobile = false }) {
         <button
           type="button"
           onClick={handleLogout}
-          className={`${baseClass} mt-1 w-full text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900`}
+          className={`${baseClass} mt-1 w-full text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100`}
         >
           <LogOut className="h-4 w-4" />
           Log out

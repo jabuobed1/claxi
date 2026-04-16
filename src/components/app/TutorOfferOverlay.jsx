@@ -8,6 +8,14 @@ import { acceptClassRequest, declineClassRequest } from '../../services/classReq
 import { findSessionIdByRequestAndTutor } from '../../services/sessionService';
 import { getTutorOnboardingStatus } from '../../utils/onboarding';
 import { debugError, debugLog } from '../../utils/devLogger';
+import { formatRand, normalizePricingSnapshot } from '../../utils/pricing';
+
+function getDemandLabel(pricingBand) {
+  const normalized = String(pricingBand || 'normal').toLowerCase();
+  if (normalized === 'low') return { text: 'Low demand', tone: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+  if (normalized === 'high') return { text: 'High demand', tone: 'bg-rose-50 text-rose-700 border-rose-200' };
+  return { text: 'Normal demand', tone: 'bg-blue-50 text-blue-700 border-blue-200' };
+}
 
 export default function TutorOfferOverlay() {
   const { user } = useAuth();
@@ -159,10 +167,22 @@ export default function TutorOfferOverlay() {
   if (!displayRequest) return null;
 
   const isImage = displayRequest.attachment?.contentType?.startsWith('image/');
+  const pricing = normalizePricingSnapshot(displayRequest.pricingSnapshot);
+  const demand = getDemandLabel(pricing.pricingBand);
+  const requestedDurationMinutes = Number(displayRequest.durationMinutes || pricing.requestedDurationMinutes || pricing.durationMinutes || 0);
+  const dynamicRate = Math.max(0, Number(pricing.adjustedRatePerMinute || pricing.ratePerMinute || 0));
+  const baseAmount = Number(pricing.adjustedBaseAmount ?? pricing.baseAmount ?? 0);
+  const estimatedTotal = Number(pricing.finalPrice ?? pricing.totalAmount ?? 0);
+  const dynamicPortion = Math.max(0, estimatedTotal - baseAmount);
+  const attachments = displayRequest.attachments?.length
+    ? displayRequest.attachments
+    : displayRequest.attachment?.downloadUrl
+      ? [displayRequest.attachment]
+      : [];
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-zinc-950/80 p-4">
-      <div className="w-full max-w-3xl rounded-3xl border border-emerald-300 bg-white p-6 shadow-2xl">
+      <div className="w-full max-w-3xl rounded-3xl border border-zinc-200 bg-white p-6 shadow-2xl">
         <div className="mb-3 flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600">
@@ -194,6 +214,18 @@ export default function TutorOfferOverlay() {
           </p>
         ) : null}
 
+        <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
+          <span className={`rounded-full border px-2.5 py-1 font-semibold ${demand.tone}`}>
+            {demand.text}
+          </span>
+          <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 font-semibold text-zinc-700">
+            Rate / min: {formatRand(dynamicRate)}
+          </span>
+          <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 font-semibold text-zinc-700">
+            Duration: {requestedDurationMinutes || 'N/A'} min
+          </span>
+        </div>
+
         <p className="mb-3 text-sm text-zinc-700">
           {displayRequest.description || 'Student sent a request with attachment(s).'}
         </p>
@@ -201,25 +233,52 @@ export default function TutorOfferOverlay() {
           Offers expire after {OFFER_TIMEOUT_SECONDS} seconds.
         </p>
 
-        {displayRequest.attachment?.downloadUrl ? (
+        <div className="mb-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+            What you&apos;re agreeing to
+          </p>
+          <div className="mt-2 grid gap-2 text-xs text-zinc-700 sm:grid-cols-2">
+            <p>Base amount: <span className="font-semibold">{formatRand(baseAmount)}</span></p>
+            <p>Dynamic demand value: <span className="font-semibold">{formatRand(dynamicPortion)}</span></p>
+            <p>Dynamic rate per minute: <span className="font-semibold">{formatRand(dynamicRate)}</span></p>
+            <p>Total expected session price: <span className="font-semibold">{formatRand(estimatedTotal)}</span></p>
+          </div>
+        </div>
+
+        {attachments.length ? (
           <div className="mb-3 rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs">
             <p className="mb-2 font-semibold text-zinc-700">Attachment preview</p>
-            {isImage ? (
-              <img
-                src={displayRequest.attachment.downloadUrl}
-                alt={displayRequest.attachment.fileName || 'Attachment preview'}
-                className="max-h-44 rounded-lg border border-zinc-200 object-contain"
-              />
-            ) : (
-              <div className="flex items-center gap-2 text-zinc-700">
-                {displayRequest.attachment?.contentType?.includes('pdf') ? (
-                  <FileText className="h-4 w-4" />
-                ) : (
-                  <ImageIcon className="h-4 w-4" />
-                )}
-                <span>{displayRequest.attachment.fileName || 'Document attachment'}</span>
-              </div>
-            )}
+            <div className="space-y-2">
+              {attachments.slice(0, 3).map((file, index) => {
+                const itemIsImage = file?.contentType?.startsWith('image/') || (index === 0 && isImage);
+                return (
+                  <a
+                    key={`${file.fileName || 'attachment'}-${index}`}
+                    href={file.downloadUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block rounded-lg border border-zinc-200 bg-white p-2 transition hover:border-emerald-300"
+                  >
+                    {itemIsImage ? (
+                      <img
+                        src={file.downloadUrl}
+                        alt={file.fileName || 'Attachment preview'}
+                        className="max-h-44 w-full rounded-lg object-contain"
+                      />
+                    ) : (
+                      <div className="flex items-center gap-2 text-zinc-700">
+                        {file?.contentType?.includes('pdf') ? (
+                          <FileText className="h-4 w-4" />
+                        ) : (
+                          <ImageIcon className="h-4 w-4" />
+                        )}
+                        <span>{file.fileName || 'Document attachment'}</span>
+                      </div>
+                    )}
+                  </a>
+                );
+              })}
+            </div>
           </div>
         ) : null}
 
