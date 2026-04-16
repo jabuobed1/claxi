@@ -13,7 +13,7 @@ function navConfig(role) {
   }
 
   return [
-    { to: '/app/student/sessions', label: 'Classes', icon: BookOpen },
+    { to: '/app/student/requests', label: 'Classes', icon: BookOpen },
     { to: '/app/student/request-class', label: 'Schedule', icon: CalendarClock },
     { to: '/app/student', label: 'Home', icon: Home, end: true },
     { to: '/app/student/payment', label: 'Payment', icon: Wallet },
@@ -26,7 +26,7 @@ export default function AppBottomNav({ role = 'student' }) {
 
   return (
     <div className="pointer-events-none fixed bottom-4 left-1/2 z-40 w-full max-w-md -translate-x-1/2 px-3 md:hidden">
-      <div className="pointer-events-auto grid grid-cols-5 items-center gap-1 rounded-[26px] border border-zinc-200/90 bg-white/95 px-2 py-2 shadow-[0_16px_40px_rgba(15,23,42,0.16)] backdrop-blur">
+      <div className="pointer-events-auto grid grid-cols-5 items-center gap-1 rounded-[26px] border border-white/10 bg-zinc-900/90 px-2 py-2 shadow-[0_16px_40px_rgba(2,6,23,0.55)] backdrop-blur">
         {links.map(({ to, icon: Icon, label, end }) => (
           <NavLink
             key={to}
@@ -36,8 +36,8 @@ export default function AppBottomNav({ role = 'student' }) {
             title={label}
             className={({ isActive }) =>
               `flex h-11 min-w-11 flex-col items-center justify-center rounded-2xl border transition ${isActive
-                ? 'border-emerald-100 bg-emerald-50 text-brand'
-                : 'border-transparent text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800'}`
+                ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-300'
+                : 'border-transparent text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'}`
             }
           >
             <Icon className="h-4 w-4" />
