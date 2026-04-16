@@ -1,15 +1,20 @@
 import { NavLink } from 'react-router-dom';
 import { BookOpen, CalendarClock, Home, UserCircle2, Wallet } from 'lucide-react';
 
-function navConfig(role) {
+function navConfig(role, restrictTutorActions = false) {
   if (role === 'tutor') {
-    return [
+    const tutorLinks = [
       { to: '/app/tutor/my-classes', label: 'Classes', icon: BookOpen },
-      { to: '/app/tutor/available-requests', label: 'Schedule', icon: CalendarClock },
       { to: '/app/tutor', label: 'Home', icon: Home, end: true },
       { to: '/app/tutor/payments', label: 'Payment', icon: Wallet },
       { to: '/app/profile', label: 'Profile', icon: UserCircle2 },
     ];
+
+    if (!restrictTutorActions) {
+      tutorLinks.splice(1, 0, { to: '/app/tutor/available-requests', label: 'Schedule', icon: CalendarClock });
+    }
+
+    return tutorLinks;
   }
 
   return [
@@ -21,12 +26,15 @@ function navConfig(role) {
   ];
 }
 
-export default function AppBottomNav({ role = 'student' }) {
-  const links = navConfig(role);
+export default function AppBottomNav({ role = 'student', restrictTutorActions = false }) {
+  const links = navConfig(role, restrictTutorActions);
 
   return (
-    <div className="pointer-events-none fixed bottom-4 left-1/2 z-40 w-full max-w-md -translate-x-1/2 px-3 md:hidden">
-      <div className="pointer-events-auto grid grid-cols-5 items-center gap-1 rounded-[26px] border border-white/10 bg-zinc-900/90 px-2 py-2 shadow-[0_16px_40px_rgba(2,6,23,0.55)] backdrop-blur">
+    <div className="pointer-events-none fixed bottom-4 left-1/2 z-40 w-full max-w-md -translate-x-1/2 px-3">
+      <div
+        className="pointer-events-auto grid items-center gap-1 rounded-[26px] border border-white/10 bg-zinc-900/90 px-2 py-2 shadow-[0_16px_40px_rgba(2,6,23,0.55)] backdrop-blur"
+        style={{ gridTemplateColumns: `repeat(${links.length}, minmax(0, 1fr))` }}
+      >
         {links.map(({ to, icon: Icon, label, end }) => (
           <NavLink
             key={to}

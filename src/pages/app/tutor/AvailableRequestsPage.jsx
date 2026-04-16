@@ -1,3 +1,4 @@
+import { Navigate } from 'react-router-dom';
 import PageHeader from '../../../components/ui/PageHeader';
 import SectionCard from '../../../components/ui/SectionCard';
 import LoadingState from '../../../components/ui/LoadingState';
@@ -7,12 +8,19 @@ import { useAuth } from '../../../hooks/useAuth';
 import { useTutorAvailableRequests } from '../../../hooks/useClassRequests';
 import { OFFER_TIMEOUT_SECONDS } from '../../../constants/lifecycle';
 import { getTutorOnboardingStatus } from '../../../utils/onboarding';
+import useViewportMode from '../../../hooks/useViewportMode';
 
 export default function AvailableRequestsPage() {
   const { user } = useAuth();
   const { requests, isLoading } = useTutorAvailableRequests(user?.uid);
   const onboardingStatus = getTutorOnboardingStatus(user);
+  const { useBottomNav } = useViewportMode();
+  const isTutorRestrictedMobile = useBottomNav;
   const canAccept = onboardingStatus.complete && user?.onlineStatus === 'online';
+
+  if (isTutorRestrictedMobile) {
+    return <Navigate to="/app/tutor" replace />;
+  }
 
   return (
     <div>
