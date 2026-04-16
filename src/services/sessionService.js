@@ -2,6 +2,7 @@ import { getFirebaseClients } from '../firebase/config';
 import { REQUEST_STATUS, SESSION_STATUS, PAYMENT_STATUS, canTransitionSession, deriveRequestStatusFromSession } from '../constants/lifecycle';
 import { TUTOR_PAYOUT_RATE, PLATFORM_FEE_RATE } from '../utils/onboarding';
 import { normalizePricingSnapshot } from '../utils/pricing';
+import { getWeekKey } from '../utils/payouts';
 import { createNotification } from './notificationService';
 import { EMAIL_EVENT_TYPES, queueEmailEvent } from './emailEventService';
 import { getUserProfile, updateUserRatingSummary } from './userService';
@@ -241,6 +242,8 @@ export async function finalizeSessionClosure(session, options = {}) {
     updated = await updateSession(session.id, {
       ...session,
       status: closureType,
+      completedAt: closureType === SESSION_STATUS.COMPLETED ? endedAt : null,
+      payoutWeekKey: closureType === SESSION_STATUS.COMPLETED ? getWeekKey(endedAt) : null,
       endedAt,
       canceledAt: isCancellation ? endedAt : null,
       canceledBy: isCancellation ? (options.canceledBy || null) : null,

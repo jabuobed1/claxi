@@ -9,6 +9,7 @@ import {
 } from '../constants/lifecycle';
 import { PLATFORM_FEE_RATE, TUTOR_PAYOUT_RATE } from '../utils/onboarding';
 import { normalizePricingSnapshot } from '../utils/pricing';
+import { getWeekKey } from '../utils/payouts';
 import { createNotification } from './notificationService';
 import { EMAIL_EVENT_TYPES, queueEmailEvent } from './emailEventService';
 import { getTutorCandidatesForRequest } from './userService';
@@ -1114,6 +1115,8 @@ export async function settleSessionBilling(session) {
   const platformAmount = Number((totalAmount * PLATFORM_FEE_RATE).toFixed(2));
 
   return {
+    completedAt: Date.now(),
+    payoutWeekKey: getWeekKey(Date.now()),
     billedSeconds,
     billedMinutes,
     totalAmount,
