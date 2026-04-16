@@ -50,7 +50,10 @@ export default function AppShell() {
   }, [isTutorRestrictedMobile, setUser, user?.onlineStatus, user?.uid]);
 
   return (
-    <div className="min-h-screen px-3 py-3 text-zinc-100 md:px-6 md:py-6">
+    <div
+      className="min-h-screen px-3 py-3 text-zinc-100 md:px-6 md:py-6"
+      style={useBottomNav ? { paddingBottom: "calc(6.5rem + env(safe-area-inset-bottom, 0px))" } : undefined}
+    >
       <div className={`mx-auto grid max-w-7xl gap-4 ${isTutor ? 'md:grid-cols-[300px_1fr]' : 'lg:grid-cols-[260px_1fr]'} md:gap-6`}>
         <div className={`hidden ${isTutor ? 'md:block' : 'lg:block'} md:sticky md:top-6 md:h-[calc(100vh-3rem)] ${useBottomNav ? '!hidden' : ''}`}>
           <Sidebar role={activeRole} />
@@ -87,10 +90,7 @@ export default function AppShell() {
       ) : null}
 
       {useBottomNav ? (
-        <AppBottomNav
-          role={activeRole}
-          restrictTutorActions={isTutorRestrictedMobile}
-        />
+        <AppBottomNav role={activeRole} />
       ) : null}
     </div>
   );

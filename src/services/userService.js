@@ -215,6 +215,20 @@ export async function getTutorsForAdmin() {
   return snapshot.docs.map((item) => ({ uid: item.id, ...item.data() }));
 }
 
+
+export async function getStudentsForAdmin() {
+  const clients = await getFirebaseClients();
+  if (!clients) {
+    return [];
+  }
+
+  const { db, firestoreModule } = clients;
+  const { collection, getDocs, query, where } = firestoreModule;
+  const q = query(collection(db, 'users'), where('activeRole', '==', 'student'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((item) => ({ uid: item.id, ...item.data() }));
+}
+
 export async function setTutorVerificationStatus(uid, verificationStatus) {
   const existing = await getUserProfile(uid);
   return updateUserProfile(uid, {

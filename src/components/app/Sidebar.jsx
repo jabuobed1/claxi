@@ -1,12 +1,14 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { GraduationCap, LogOut, UserCircle2, X } from 'lucide-react';
+import { GraduationCap, LogOut, ShieldCheck, UserCircle2, X } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { useAdmin } from '../../hooks/useAdmin';
 import { getRoleNavigation } from '../../constants/navigation';
 
 const baseClass = 'group flex items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold transition-all';
 
 export default function Sidebar({ role, onNavigate, mobile = false }) {
-  const links = getRoleNavigation(role);
+  const { isAdmin } = useAdmin();
+  const links = getRoleNavigation(role, { includeAdmin: isAdmin });
   const { logout } = useAuth();
   const navigate = useNavigate();
 
@@ -25,7 +27,15 @@ export default function Sidebar({ role, onNavigate, mobile = false }) {
           </div>
           <div>
             <p className="text-sm font-bold tracking-tight text-zinc-100">Claxi</p>
-            <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-400">{role} workspace</p>
+            <div className="flex items-center gap-2">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-400">{role} workspace</p>
+              {isAdmin ? (
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-200">
+                  <ShieldCheck className="h-3 w-3" />
+                  Admin
+                </span>
+              ) : null}
+            </div>
           </div>
         </Link>
         {mobile ? (

@@ -1,221 +1,250 @@
-import {
-  Banknote,
-  BadgePercent,
-  Wallet,
-  GraduationCap,
-  TrendingUp,
-} from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { CalendarClock } from 'lucide-react';
 import PageHeader from '../../../components/ui/PageHeader';
 import SectionCard from '../../../components/ui/SectionCard';
+import LoadingState from '../../../components/ui/LoadingState';
+import EmptyState from '../../../components/ui/EmptyState';
 import { PLATFORM_FEE_RATE, TUTOR_PAYOUT_RATE } from '../../../utils/onboarding';
 import { useAuth } from '../../../hooks/useAuth';
 import { useTutorSessions } from '../../../hooks/useSessions';
+import {
+  formatCurrency,
+  formatWeekRangeLabel,
+  getPayoutStatusBadgeClasses,
+  getSessionCompletedDate,
+  groupSessionsByWeek,
+  toDateValue,
+} from '../../../utils/payouts';
+import { listTutorWeeklyPayouts } from '../../../services/payoutService';
 
-function StatCard({ icon: Icon, label, value, tone = 'default', helper }) {
-  const toneStyles = {
-    default: 'border-zinc-200 bg-white text-zinc-900',
-    emerald: 'border-emerald-200 bg-emerald-50/80 text-emerald-900',
-    rose: 'border-rose-200 bg-rose-50/80 text-rose-900',
-    blue: 'border-sky-200 bg-sky-50/80 text-sky-900',
-  };
-
+function SummaryCard({ label, value, helper }) {
   return (
-    <div className={`rounded-3xl border p-5 shadow-sm ${toneStyles[tone] || toneStyles.default}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-            {label}
-          </p>
-          <p className="mt-2 text-2xl font-black tracking-tight">{value}</p>
-          {helper ? <p className="mt-2 text-sm text-zinc-600">{helper}</p> : null}
-        </div>
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/80 shadow-sm">
-          <Icon className="h-5 w-5" />
-        </div>
-      </div>
+    <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">{label}</p>
+      <p className="mt-2 text-2xl font-black tracking-tight text-zinc-900">{value}</p>
+      {helper ? <p className="mt-2 text-sm text-zinc-500">{helper}</p> : null}
     </div>
   );
 }
 
+function sessionDateLabel(session) {
+  const date = getSessionCompletedDate(session);
+  if (!date) return '—';
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(date);
+}
+
 export default function TutorPaymentsPage() {
   const { user } = useAuth();
-  const { sessions } = useTutorSessions(user?.uid);
+  const { sessions, isLoading } = useTutorSessions(user?.uid);
+  const [weeklyPayoutRecords, setWeeklyPayoutRecords] = useState([]);
+  const [isLoadingPayoutRecords, setIsLoadingPayoutRecords] = useState(false);
 
-  const completed = sessions.filter((session) => session.status === 'completed');
-  const gross = completed.reduce((sum, session) => sum + Number(session.totalAmount || 0), 0);
-  const tutorNet = completed.reduce(
-    (sum, session) => sum + Number(session.payoutBreakdown?.tutorAmount || 0),
-    0
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPayoutRecords() {
+      if (!user?.uid) {
+        setWeeklyPayoutRecords([]);
+        return;
+      }
+
+      setIsLoadingPayoutRecords(true);
+      try {
+        const records = await listTutorWeeklyPayouts(user.uid);
+        if (!cancelled) {
+          setWeeklyPayoutRecords(records);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingPayoutRecords(false);
+        }
+      }
+    }
+
+    loadPayoutRecords();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.uid]);
+
+  const payoutByWeekKey = useMemo(
+    () => weeklyPayoutRecords.reduce((acc, item) => ({ ...acc, [item.weekKey]: item }), {}),
+    [weeklyPayoutRecords],
   );
-  const platformNet = gross - tutorNet;
+
+  const weeklyGroups = useMemo(() => {
+    const completed = sessions.filter((session) => session.status === 'completed');
+    return groupSessionsByWeek(completed).map((group) => {
+      const payoutRecord = payoutByWeekKey[group.weekKey];
+      return {
+        ...group,
+        payoutRecord,
+        status: payoutRecord?.status || 'unpaid',
+        paidAt: payoutRecord?.paidAt || null,
+        notes: payoutRecord?.notes || '',
+      };
+    });
+  }, [payoutByWeekKey, sessions]);
+
+  const summaries = useMemo(() => {
+    const lifetimeTutorEarnings = weeklyGroups.reduce((sum, item) => sum + Number(item.tutorAmount || 0), 0);
+    const paidAmount = weeklyGroups
+      .filter((item) => item.status === 'paid')
+      .reduce((sum, item) => sum + Number(item.tutorAmount || 0), 0);
+    const unpaidAmount = weeklyGroups
+      .filter((item) => item.status !== 'paid')
+      .reduce((sum, item) => sum + Number(item.tutorAmount || 0), 0);
+
+    const currentDate = new Date();
+    const currentWeekGroup = weeklyGroups.find((item) => {
+      const weekStart = toDateValue(item.weekStart);
+      const weekEnd = toDateValue(item.weekEnd);
+      return weekStart && weekEnd && currentDate >= weekStart && currentDate <= weekEnd;
+    });
+
+    return {
+      lifetimeTutorEarnings,
+      paidAmount,
+      unpaidAmount,
+      currentWeekAmount: Number(currentWeekGroup?.tutorAmount || 0),
+    };
+  }, [weeklyGroups]);
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Tutor Payments"
-        description="Track your completed session earnings, payout split, and what was billed to students."
+        description="Track completed sessions by week, payout status, and amounts owed for manual payouts."
       />
 
-      <SectionCard className="overflow-hidden border border-zinc-200 bg-gradient-to-br from-white via-zinc-50 to-emerald-50/40 shadow-sm">
-        <div className="space-y-6">
-          <div className="rounded-3xl bg-gradient-to-r from-emerald-500 via-emerald-500 to-teal-500 p-6 text-white shadow-lg">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="max-w-2xl">
-                <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white/90">
-                  <Wallet className="h-4 w-4" />
-                  Earnings Overview
-                </div>
-                <h2 className="mt-3 text-2xl font-black tracking-tight md:text-3xl">
-                  Your tutor payment dashboard
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-emerald-50/90">
-                  View how much was charged, what your payout share is, and how your completed
-                  sessions contribute to your earnings.
-                </p>
-              </div>
-
-              <div className="grid min-w-[260px] gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl bg-white/12 p-4 backdrop-blur-sm">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/75">
-                    Gross billed
-                  </p>
-                  <p className="mt-2 text-2xl font-black">R{gross.toFixed(2)}</p>
-                </div>
-                <div className="rounded-2xl bg-white/12 p-4 backdrop-blur-sm">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/75">
-                    Your payout
-                  </p>
-                  <p className="mt-2 text-2xl font-black">R{tutorNet.toFixed(2)}</p>
-                </div>
-              </div>
-            </div>
+      <SectionCard className="overflow-hidden border border-zinc-200 bg-gradient-to-br from-white via-zinc-50 to-emerald-50/30 shadow-sm">
+        <div className="space-y-5">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <SummaryCard label="Lifetime tutor earnings" value={formatCurrency(summaries.lifetimeTutorEarnings)} />
+            <SummaryCard label="Unpaid amount" value={formatCurrency(summaries.unpaidAmount)} helper="Weeks marked unpaid or processing." />
+            <SummaryCard label="Paid amount" value={formatCurrency(summaries.paidAmount)} helper="Weeks marked as paid by admin." />
+            <SummaryCard label="Current week amount" value={formatCurrency(summaries.currentWeekAmount)} helper="Your earnings this Monday–Sunday." />
           </div>
 
-          <div>
-            <div className="mb-4 flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
-                <BadgePercent className="h-5 w-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-zinc-900">Payout logic</h3>
-                <p className="text-sm text-zinc-500">
-                  A quick summary of how each completed session is split
-                </p>
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <StatCard
-                icon={BadgePercent}
-                label="Platform fee"
-                value={`${Math.round(PLATFORM_FEE_RATE * 100)}%`}
-                tone="rose"
-                helper="Retained by the platform from completed sessions."
-              />
-              <StatCard
-                icon={GraduationCap}
-                label="Tutor share"
-                value={`${Math.round(TUTOR_PAYOUT_RATE * 100)}%`}
-                tone="emerald"
-                helper="Your portion from each successfully completed session."
-              />
-              <StatCard
-                icon={Banknote}
-                label="Gross billed"
-                value={`R${gross.toFixed(2)}`}
-                tone="blue"
-                helper="Total amount charged across completed sessions."
-              />
-              <StatCard
-                icon={TrendingUp}
-                label="Platform amount"
-                value={`R${platformNet.toFixed(2)}`}
-                helper="Estimated platform portion based on completed sessions."
-              />
-            </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <SummaryCard label="Platform fee" value={`${Math.round(PLATFORM_FEE_RATE * 100)}%`} helper="Applied to new completed sessions." />
+            <SummaryCard label="Tutor share" value={`${Math.round(TUTOR_PAYOUT_RATE * 100)}%`} helper="Applied to new completed sessions." />
+            <SummaryCard label="Completed payout weeks" value={String(weeklyGroups.length)} helper="Weeks with completed sessions." />
+            <SummaryCard label="Sessions completed" value={String(weeklyGroups.reduce((sum, item) => sum + item.totalSessions, 0))} helper="Total count across all weeks." />
           </div>
         </div>
       </SectionCard>
 
       <SectionCard className="border border-zinc-200 bg-white shadow-sm">
-        <div className="mb-5 flex items-center justify-between gap-4">
+        <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <h3 className="text-lg font-bold text-zinc-900">Completed session payouts</h3>
-            <p className="text-sm text-zinc-500">
-              A breakdown of your earnings from each completed class
-            </p>
+            <h3 className="text-lg font-black text-zinc-900">Weekly payout breakdown</h3>
+            <p className="text-sm text-zinc-500">Grouped Monday to Sunday with manual payout tracking status.</p>
           </div>
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm font-semibold text-zinc-700">
-            {completed.length} session{completed.length === 1 ? '' : 's'}
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-600">
+            {weeklyGroups.length} week{weeklyGroups.length === 1 ? '' : 's'}
           </div>
         </div>
 
-        {completed.length ? (
+        {(isLoading || isLoadingPayoutRecords) ? <LoadingState message="Loading payout history..." /> : null}
+
+        {!isLoading && !isLoadingPayoutRecords && !weeklyGroups.length ? (
+          <EmptyState
+            title="No completed sessions yet"
+            description="Completed sessions will appear here and automatically group into payout weeks."
+          />
+        ) : null}
+
+        {!isLoading && !isLoadingPayoutRecords && weeklyGroups.length ? (
           <div className="space-y-4">
-            {completed.map((session, index) => {
-              const totalAmount = Number(session.totalAmount || 0);
-              const tutorAmount = Number(session.payoutBreakdown?.tutorAmount || 0);
+            {weeklyGroups.map((group) => {
+              const paidAt = toDateValue(group.paidAt);
 
               return (
-                <div
-                  key={session.id}
-                  className="group rounded-3xl border border-zinc-200 bg-gradient-to-r from-white to-zinc-50 p-4 shadow-sm transition hover:border-emerald-300 hover:shadow-md"
-                >
-                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <div className="min-w-0">
-                      <div className="mb-2 flex items-center gap-2">
-                        <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-xs font-bold text-emerald-700">
-                          {index + 1}
-                        </span>
-                        <p className="truncate text-base font-bold text-zinc-900">
-                          {session.topic || 'Untitled session'}
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-zinc-500">
-                        <span className="rounded-full bg-zinc-100 px-3 py-1">
-                          Session ID: {session.id}
-                        </span>
-                        <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-700">
-                          Completed
-                        </span>
-                      </div>
+                <div key={group.weekKey} className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <p className="text-base font-black text-zinc-900">{formatWeekRangeLabel(group.weekStart, group.weekEnd)}</p>
+                      <p className="mt-1 text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">{group.weekKey}</p>
                     </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2 md:min-w-[320px]">
-                      <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
-                          Charged
-                        </p>
-                        <p className="mt-1 text-lg font-black text-zinc-900">
-                          R{totalAmount.toFixed(2)}
-                        </p>
-                      </div>
-                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-                          Tutor payout
-                        </p>
-                        <p className="mt-1 text-lg font-black text-emerald-800">
-                          R{tutorAmount.toFixed(2)}
-                        </p>
-                      </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getPayoutStatusBadgeClasses(group.status)}`}>
+                        {group.status}
+                      </span>
+                      {paidAt ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                          <CalendarClock className="h-3.5 w-3.5" />
+                          Paid {new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(paidAt)}
+                        </span>
+                      ) : null}
                     </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2">
+                      <p className="text-xs text-zinc-500">Sessions</p>
+                      <p className="text-lg font-bold text-zinc-900">{group.totalSessions}</p>
+                    </div>
+                    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2">
+                      <p className="text-xs text-zinc-500">Gross</p>
+                      <p className="text-lg font-bold text-zinc-900">{formatCurrency(group.grossAmount)}</p>
+                    </div>
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2">
+                      <p className="text-xs text-emerald-700">Tutor payout</p>
+                      <p className="text-lg font-bold text-emerald-800">{formatCurrency(group.tutorAmount)}</p>
+                    </div>
+                    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2">
+                      <p className="text-xs text-zinc-500">Platform amount</p>
+                      <p className="text-lg font-bold text-zinc-900">{formatCurrency(group.platformAmount)}</p>
+                    </div>
+                  </div>
+
+                  {group.notes ? (
+                    <div className="mt-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
+                      <span className="font-semibold">Admin note:</span> {group.notes}
+                    </div>
+                  ) : null}
+
+                  <div className="mt-4 overflow-hidden rounded-2xl border border-zinc-200">
+                    <table className="min-w-full divide-y divide-zinc-200 text-sm">
+                      <thead className="bg-zinc-50 text-zinc-600">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-semibold">Session</th>
+                          <th className="px-3 py-2 text-left font-semibold">Date</th>
+                          <th className="px-3 py-2 text-left font-semibold">Student</th>
+                          <th className="px-3 py-2 text-left font-semibold">Duration</th>
+                          <th className="px-3 py-2 text-right font-semibold">Total</th>
+                          <th className="px-3 py-2 text-right font-semibold">Tutor</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100 bg-white">
+                        {group.sessions.map((session) => {
+                          const durationMinutes = Number(session.billedMinutes || session.durationMinutes || 0);
+                          return (
+                            <tr key={session.id}>
+                              <td className="px-3 py-2 font-semibold text-zinc-800">{session.topic || 'Session'}</td>
+                              <td className="px-3 py-2 text-zinc-600">{sessionDateLabel(session)}</td>
+                              <td className="px-3 py-2 text-zinc-600">{session.studentName || session.studentEmail || '—'}</td>
+                              <td className="px-3 py-2 text-zinc-600">{durationMinutes ? `${durationMinutes.toFixed(2)} min` : '—'}</td>
+                              <td className="px-3 py-2 text-right text-zinc-700">{formatCurrency(session.computedAmounts?.totalAmount || session.totalAmount)}</td>
+                              <td className="px-3 py-2 text-right font-semibold text-emerald-700">{formatCurrency(session.computedAmounts?.tutorAmount)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               );
             })}
           </div>
-        ) : (
-          <div className="rounded-3xl border border-dashed border-zinc-200 bg-zinc-50 px-6 py-12 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-200 text-zinc-500">
-              <Wallet className="h-6 w-6" />
-            </div>
-            <h4 className="mt-4 text-lg font-bold text-zinc-900">No completed session payouts yet</h4>
-            <p className="mt-2 text-sm text-zinc-500">
-              Once your tutoring sessions are completed, your payout details will appear here.
-            </p>
-          </div>
-        )}
+        ) : null}
       </SectionCard>
     </div>
   );

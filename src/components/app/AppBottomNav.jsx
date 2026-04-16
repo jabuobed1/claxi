@@ -1,7 +1,8 @@
 import { NavLink } from 'react-router-dom';
-import { BookOpen, CalendarClock, Home, UserCircle2, Wallet } from 'lucide-react';
+import { BookOpen, Home, ShieldCheck, UserCircle2, Wallet } from 'lucide-react';
+import { useAdmin } from '../../hooks/useAdmin';
 
-function navConfig(role, restrictTutorActions = false) {
+function navConfig(role, isAdmin = false) {
   if (role === 'tutor') {
     const tutorLinks = [
       { to: '/app/tutor', label: 'Home', icon: Home, end: true },
@@ -10,19 +11,30 @@ function navConfig(role, restrictTutorActions = false) {
       { to: '/app/profile', label: 'Profile', icon: UserCircle2 },
     ];
 
+    if (isAdmin) {
+      tutorLinks.push({ to: '/app/admin', label: 'Admin', icon: ShieldCheck });
+    }
+
     return tutorLinks;
   }
 
-  return [
+  const studentLinks = [
     { to: '/app/student/requests', label: 'Classes', icon: BookOpen },
     { to: '/app/student', label: 'Home', icon: Home, end: true },
     { to: '/app/student/payment', label: 'Payment', icon: Wallet },
     { to: '/app/profile', label: 'Profile', icon: UserCircle2 },
   ];
+
+  if (isAdmin) {
+    studentLinks.push({ to: '/app/admin', label: 'Admin', icon: ShieldCheck });
+  }
+
+  return studentLinks;
 }
 
-export default function AppBottomNav({ role = 'student', restrictTutorActions = false }) {
-  const links = navConfig(role, restrictTutorActions);
+export default function AppBottomNav({ role = 'student' }) {
+  const { isAdmin } = useAdmin();
+  const links = navConfig(role, isAdmin);
 
   return (
     <div className="pointer-events-none fixed bottom-4 left-1/2 z-40 w-full max-w-md -translate-x-1/2 px-3">
